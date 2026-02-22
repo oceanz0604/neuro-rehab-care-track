@@ -1,0 +1,14 @@
+# Optional: keep your real Firebase keys out of the repo (use a copy of firebase-config.js with real keys and ignore it)
+# js/firebase-config.js
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+*.pyc
+__pycache__/
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*

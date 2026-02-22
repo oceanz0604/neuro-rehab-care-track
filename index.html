@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeuroRehab CareTrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,500;0,8..60,600;0,8..60,700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <!-- Login -->
+  <div id="login-screen" class="screen">
+    <div class="login-card">
+      <div class="login-head">
+        <div class="login-icon" aria-hidden="true">🧠</div>
+        <h1 class="login-title">NeuroRehab CareTrack</h1>
+        <p class="login-sub">Neuro-Psychiatric Rehabilitation Reporting</p>
+      </div>
+      <form id="login-form" class="login-form" autocomplete="on">
+        <div class="fld">
+          <label class="lbl" for="l-email">Email</label>
+          <input id="l-email" class="fi" type="email" placeholder="you@centre.org" required autocomplete="email">
+        </div>
+        <div class="fld">
+          <label class="lbl" for="l-password">Password / PIN</label>
+          <input id="l-password" class="fi" type="password" placeholder="••••••••" required autocomplete="current-password" minlength="6">
+        </div>
+        <p id="login-error" class="alert ar" style="display:none;"></p>
+        <button type="submit" class="btn btn-full" id="login-btn">Sign in</button>
+        <p class="login-hint">Role and name are loaded from your profile.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- App shell -->
+  <div id="app-shell" class="app-shell" hidden>
+    <header class="topbar">
+      <div class="topbar-left">
+        <button type="button" class="icon-btn menu-btn" id="menu-btn" aria-label="Menu">☰</button>
+        <span class="app-title">NeuroRehab CareTrack</span>
+      </div>
+      <div class="topbar-right">
+        <span class="shift-badge" id="shift-badge">Morning</span>
+        <button type="button" class="btn btn-ghost" id="logout-btn">Sign out</button>
+      </div>
+    </header>
+
+    <div id="drawer-overlay" class="drawer-overlay" aria-hidden="true">
+      <nav id="drawer" class="drawer">
+        <div class="drawer-user">
+          <div class="drawer-name" id="dr-name">—</div>
+          <div class="drawer-role" id="dr-role">—</div>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-label">Main</div>
+          <a href="#" class="ni active" data-page="dashboard">📊 Dashboard</a>
+          <a href="#" class="ni" data-page="clients">👥 Clients</a>
+          <a href="#" class="ni" data-page="daily">📝 Daily reports</a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-label">Clinical</div>
+          <a href="#" class="ni" data-page="psychiatric">🧠 Psychiatric</a>
+          <a href="#" class="ni" data-page="medication">💊 Medication</a>
+          <a href="#" class="ni" data-page="behavioral">👁️ Behavioral</a>
+          <a href="#" class="ni" data-page="adl">🏃 ADL</a>
+          <a href="#" class="ni" data-page="therapeutic">🏋️ Therapeutic</a>
+          <a href="#" class="ni" data-page="family">👨‍👩‍👧 Family</a>
+          <a href="#" class="ni" data-page="risk">⚖️ Risk</a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-group-label">More</div>
+          <a href="#" class="ni" data-page="mdt">🤝 MDT review</a>
+          <a href="#" class="ni" data-page="comms">💬 Team comms</a>
+          <a href="#" class="ni" data-page="freport">📄 Family report</a>
+          <a href="#" class="ni" data-page="settings">⚙️ Settings</a>
+        </div>
+      </nav>
+      <div id="drawer-bg" class="drawer-bg"></div>
+    </div>
+
+    <main id="page-content" class="page-content">
+      <!-- Dashboard -->
+      <section class="page active" id="page-dashboard">
+        <h2 class="page-title" id="d-greet">Dashboard</h2>
+        <p class="page-sub" id="d-date-display"></p>
+        <div class="stats-grid" id="dashboard-stats"></div>
+        <div class="card">
+          <h3 class="card-head">Risk alerts</h3>
+          <div id="risk-alerts"></div>
+        </div>
+        <div class="card">
+          <h3 class="card-head">Recent reports</h3>
+          <div id="recent-rpts"></div>
+        </div>
+        <div class="card card-info">
+          <h3 class="card-head">Quick guide</h3>
+          <div class="quick-guide" id="quick-guide"></div>
+        </div>
+      </section>
+
+      <!-- Clients -->
+      <section class="page" id="page-clients">
+        <div class="page-head-row">
+          <h2 class="page-title">Client registry</h2>
+          <button type="button" class="btn" id="btn-add-client">+ Add client</button>
+        </div>
+        <div class="client-grid" id="client-grid"></div>
+      </section>
+
+      <!-- Daily reports -->
+      <section class="page" id="page-daily">
+        <h2 class="page-title">Daily reports</h2>
+        <div class="card">
+          <div class="grid-2">
+            <div class="fld">
+              <label class="lbl" for="d-client">Client</label>
+              <select id="d-client" class="fi"></select>
+            </div>
+            <div class="fld">
+              <label class="lbl" for="d-date">Date</label>
+              <input type="date" id="d-date" class="fi">
+            </div>
+            <div class="fld">
+              <label class="lbl" for="d-shift">Shift</label>
+              <select id="d-shift" class="fi">
+                <option value="morning">Morning</option>
+                <option value="evening">Evening</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="d-prompt" class="alert alert-info">Select a client to start your shift report.</div>
+        <div id="d-form" class="daily-form" hidden>
+          <div class="alert alert-success" id="d-banner"></div>
+          <div class="card">
+            <div class="sbar" id="d-sbar">Quick shift summary</div>
+            <div class="grid-3">
+              <div class="fld">
+                <label class="lbl">Condition</label>
+                <select id="q-cond" class="fi">
+                  <option>Stable</option><option>Improved</option><option>Deteriorating</option><option>Critical</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label class="lbl">Mood</label>
+                <select id="q-mood" class="fi">
+                  <option>Euthymic</option><option>Elevated</option><option>Depressed</option><option>Irritable</option><option>Anxious</option>
+                </select>
+              </div>
+              <div class="fld">
+                <label class="lbl">Sleep</label>
+                <select id="q-sleep" class="fi">
+                  <option>Good (6–8h)</option><option>Partial (4–6h)</option><option>Poor (&lt;4h)</option><option>Not reported</option>
+                </select>
+              </div>
+            </div>
+            <div class="fld">
+              <label class="lbl" for="q-notes">Shift observations</label>
+              <textarea id="q-notes" class="fi" rows="3" placeholder="Brief summary…"></textarea>
+            </div>
+            <div class="btn-row">
+              <button type="button" class="btn" id="save-daily">Save shift report</button>
+              <button type="button" class="btn btn-outline" data-goto="psychiatric">Psychiatric →</button>
+              <button type="button" class="btn btn-outline" data-goto="risk">Risk →</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Psychiatric -->
+      <section class="page" id="page-psychiatric">
+        <h2 class="page-title">Psychiatric status</h2>
+        <p class="page-sub">Psychiatrist / Psychiatric nurse — 1 = severely impaired → 5 = normal</p>
+        <div class="card"><div class="fld"><label class="lbl">Client</label><select id="psy-cl" class="fi"></select></div></div>
+        <div class="card">
+          <div class="sbar">Mental state examination</div>
+          <div id="psy-rows"></div>
+          <div class="fld">
+            <label class="lbl">Overall risk</label>
+            <div class="rpills" id="psy-risk"></div>
+          </div>
+          <div class="fld">
+            <label class="lbl" for="psy-notes">Narrative notes</label>
+            <textarea id="psy-notes" class="fi" rows="3" placeholder="Clinical observations…"></textarea>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn" id="save-psychiatric">Save report</button>
+            <button type="button" class="btn btn-outline" id="clear-psy">Clear</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Medication -->
+      <section class="page" id="page-medication">
+        <h2 class="page-title">Medication & compliance</h2>
+        <p class="page-sub">Nursing staff — daily</p>
+        <div class="card"><div class="fld"><label class="lbl">Client</label><select id="med-cl" class="fi"></select></div></div>
+        <div class="card">
+          <div class="sbar">Medication status</div>
+          <div class="grid-2">
+            <div class="fld">
+              <label class="lbl">Compliance</label>
+              <select id="med-compliance" class="fi">
+                <option>Full compliance</option><option>Partial compliance</option><option>Refused</option>
+              </select>
+            </div>
+            <div class="fld">
+              <label class="lbl">Non-compliance reason</label>
+              <input id="med-reason" class="fi" placeholder="If partial/refused…">
+            </div>
+          </div>
+          <div class="fld">
+            <label class="lbl">Side effects</label>
+            <div class="cb-g" id="med-sideeffects"></div>
+          </div>
+          <div class="grid-2">
+            <div class="fld">
+              <label class="lbl">PRN given?</label>
+              <select id="med-prn" class="fi"><option>No</option><option>Yes</option></select>
+            </div>
+            <div class="fld">
+              <label class="lbl">PRN reason & response</label>
+              <input id="med-prn-desc" class="fi" placeholder="If yes…">
+            </div>
+          </div>
+          <div class="sbar">Vital signs</div>
+          <div class="grid-3">
+            <div class="fld"><label class="lbl">BP</label><input id="med-bp" class="fi" placeholder="120/80"></div>
+            <div class="fld"><label class="lbl">Pulse (bpm)</label><input id="med-pulse" class="fi" type="number" placeholder="72"></div>
+            <div class="fld"><label class="lbl">Weight (kg)</label><input id="med-weight" class="fi" type="number" placeholder="65"></div>
+            <div class="fld"><label class="lbl">Temp (°F)</label><input id="med-temp" class="fi" type="number" placeholder="98.6"></div>
+          </div>
+          <div class="fld"><label class="lbl">Notes</label><textarea id="med-notes" class="fi" rows="2" placeholder="Lab, observations…"></textarea></div>
+          <button type="button" class="btn" id="save-medication">Save report</button>
+        </div>
+      </section>
+
+      <!-- Behavioral -->
+      <section class="page" id="page-behavioral">
+        <h2 class="page-title">Behavioral observations</h2>
+        <p class="page-sub">Rehab workers / nursing aides — 1–5 scale</p>
+        <div class="card"><div class="fld"><label class="lbl">Client</label><select id="beh-cl" class="fi"></select></div></div>
+        <div class="card">
+          <div class="sbar">Behavioral parameters</div>
+          <div id="beh-rows"></div>
+          <div class="fld">
+            <label class="lbl">Critical incident?</label>
+            <select id="beh-inc" class="fi">
+              <option value="no">None</option><option value="yes">Yes — document below</option>
+            </select>
+          </div>
+          <div id="beh-inc-f" class="fld" hidden>
+            <label class="lbl">Incident details</label>
+            <textarea id="beh-inc-desc" class="fi" rows="3" placeholder="Triggers, response, outcome…"></textarea>
+          </div>
+          <div class="btn-row">
+            <button type="button" class="btn" id="save-behavioral">Save report</button>
+            <button type="button" class="btn btn-outline" id="clear-beh">Clear</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ADL -->
+      <section class="page" id="page-adl">
+        <h2 class="page-title">Activities of daily living</h2>
+        <p class="page-sub">Occupational therapist — weekly</p>
+        <div class="card"><div class="fld"><label class="lbl">Client</label><select id="adl-cl" class="fi"></select></div></div>
+        <div class="card">
+          <div class="sbar">ADL assessment</div>
+          <div class="table-wrap">
+            <table class="adl-t">
+              <thead>
+                <tr>
+                  <th>Domain</th>
+                  <th>Independent (4)</th>
+                  <th>Prompting (3)</th>
+                  <th>Assistance (2)</th>
+                  <th>Dependent (1)</th>
+                  <th>Score</th>
+                </tr>
+              </thead>
+              <tbody id="adl-body"></tbody>
+            </table>
+          </div>
+          <div class="adl-footer">
+            <span>Total: <strong id="adl-tot">0</strong>/40</span>
+            <div class="fld">
+              <label class="lbl">Trend</label>
+              <select id="adl-trend" class="fi" style="width:140px">
+                <option>Improving</option><option>Stable</option><option>Declining</option>
+              </select>
+            </div>
+          </div>
+          <div class="fld"><label class="lbl">Notes</label><textarea id="adl-notes" class="fi" rows="2" placeholder="Observations…"></textarea></div>
+          <button type="button" class="btn" id="save-adl">Save report</button>
+        </div>
+      </section>
+
+      <!-- Therapeutic -->
+      <section class="page" id="page-therapeutic">
+        <h2 class="page-title">Therapeutic activities</h2>
+        <p class="page-sub">Activity therapist / OT</p>
+        <div class="card"><div class="fld"><label class="lbl">Client</label><select id="ther-cl" class="fi"></select></div></div>
+        <div class="card">
+          <div class="sbar">Attendance & engagement (1–5)</div>
+          <div id="ther-rows"></div>
+          <button type="button" class="btn" id="save-therapeutic">Save report</button>
+        </div>
+      </section>
+
+      <!-- Family -->
+      <section class="page" id="page-family">
+        <h2 class="page-title">Family involvement</h2>
+        <p class="page-sub">Social worker / counselor</p>
+        <div class="card"><div class="fld"><label class="lbl">Client</label><select id="fam-cl" class="fi"></select></div></div>
+        <div class="card">
+          <div class="sbar">Family parameters</div>
+          <div class="grid-2" id="family-fields"></div>
+          <div class="fld"><label class="lbl">Notes / financial concerns</label><textarea id="fam-notes" class="fi" rows="3" placeholder="…"></textarea></div>
+          <button type="button" class="btn" id="save-family">Save report</button>
+        </div>
+      </section>
+
+      <!-- Risk -->
+      <section class="page" id="page-risk">
+        <h2 class="page-title">Risk monitoring & safety</h2>
+        <p class="page-sub">All staff — every shift</p>
+        <div class="card"><div class="fld"><label class="lbl">Client</label><select id="risk-cl" class="fi"></select></div></div>
+        <div class="card">
+          <div class="sbar">Risk level per domain</div>
+          <div id="risk-rows"></div>
+          <div class="fld">
+            <label class="lbl">Restraint / seclusion used?</label>
+            <select id="risk-rest" class="fi">
+              <option value="no">No</option><option value="yes">Yes — document below</option>
+            </select>
+          </div>
+          <div id="risk-rest-f" class="fld" hidden>
+            <label class="lbl">Type, duration, justification</label>
+            <textarea id="risk-rest-desc" class="fi" rows="3" placeholder="…"></textarea>
+          </div>
+          <div class="fld"><label class="lbl">Notes / interventions</label><textarea id="risk-notes" class="fi" rows="2" placeholder="…"></textarea></div>
+          <button type="button" class="btn btn-danger" id="save-risk">Save risk report</button>
+        </div>
+      </section>
+
+      <!-- MDT -->
+      <section class="page" id="page-mdt">
+        <h2 class="page-title">MDT review</h2>
+        <p class="page-sub">Multidisciplinary team — weekly/bi-weekly</p>
+        <div class="card"><div class="fld"><label class="lbl">Client</label><select id="mdt-cl" class="fi"></select></div></div>
+        <div class="card">
+          <div class="sbar">MDT notes</div>
+          <div class="fld">
+            <label class="lbl">Team members present</label>
+            <div class="cb-g" id="mdt-members"></div>
+          </div>
+          <div class="fld"><label class="lbl">Summary of progress</label><textarea id="mdt-progress" class="fi" rows="2" placeholder="…"></textarea></div>
+          <div class="fld"><label class="lbl">Areas of concern</label><textarea id="mdt-concerns" class="fi" rows="2" placeholder="…"></textarea></div>
+          <div class="fld"><label class="lbl">Changes to treatment plan</label><textarea id="mdt-changes" class="fi" rows="2" placeholder="…"></textarea></div>
+          <div class="fld"><label class="lbl">Revised goals</label><textarea id="mdt-goals" class="fi" rows="2" placeholder="…"></textarea></div>
+          <div class="fld">
+            <label class="lbl">Discharge readiness</label>
+            <select id="mdt-discharge" class="fi">
+              <option>Not ready</option><option>Approaching readiness</option><option>Ready with support</option><option>Ready for discharge</option>
+            </select>
+          </div>
+          <button type="button" class="btn" id="save-mdt">Save MDT review</button>
+        </div>
+      </section>
+
+      <!-- Team comms -->
+      <section class="page" id="page-comms">
+        <h2 class="page-title">Team communications</h2>
+        <div class="chan-tabs" id="chan-tabs"></div>
+        <div class="card">
+          <h3 class="card-head"><span id="chan-title">General Ward</span></h3>
+          <div id="msg-list" class="msg-list"></div>
+          <div class="msg-input-row">
+            <input type="text" id="msg-in" class="fi msg-in" placeholder="Type message… (Enter to send)">
+            <button type="button" class="btn" id="send-msg">Send</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Family report -->
+      <section class="page" id="page-freport">
+        <h2 class="page-title" id="fr-title">Family progress reports</h2>
+        <p class="page-sub" id="fr-sub">Monthly — supportive language only</p>
+        <div class="card">
+          <div class="grid-2">
+            <div class="fld">
+              <label class="lbl" id="fr-lbl-c">Client</label>
+              <select id="fr-cl" class="fi"></select>
+            </div>
+            <div class="fld">
+              <label class="lbl" id="fr-lbl-m">Report month</label>
+              <input type="month" id="fr-mon" class="fi">
+            </div>
+            <div class="fld">
+              <label class="lbl" id="fr-lbl-l">Language</label>
+              <div class="lang-tog">
+                <button type="button" class="lbtn active" data-lang="en">English</button>
+                <button type="button" class="lbtn" data-lang="mr">मराठी</button>
+              </div>
+            </div>
+          </div>
+          <p class="alert alert-info" id="fr-info"></p>
+          <p class="alert alert-warn" id="fr-noc">Select a client to preview.</p>
+        </div>
+        <div id="fr-prev" class="fr-preview" hidden></div>
+      </section>
+
+      <!-- Settings -->
+      <section class="page" id="page-settings">
+        <h2 class="page-title">Settings — customise lists</h2>
+        <p class="page-sub">Edit clinical parameters. Export/import to keep across devices.</p>
+        <div class="alert alert-info">Export saves lists as JSON. Import to restore. Reset reverts to defaults.</div>
+        <div class="card">
+          <h3 class="card-head">Config</h3>
+          <div class="btn-row">
+            <button type="button" class="btn" id="export-config">Export config</button>
+            <button type="button" class="btn btn-outline" id="import-config-btn">Import config</button>
+            <input type="file" id="cfg-file" accept=".json" hidden>
+            <button type="button" class="btn btn-outline btn-danger" id="reset-config">Reset to defaults</button>
+          </div>
+        </div>
+        <div id="settings-lists"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Add client modal -->
+  <div id="modal-client" class="modal-overlay" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Register new client</h3>
+        <button type="button" class="modal-close" id="modal-client-close" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="grid-2">
+          <div class="fld"><label class="lbl">Full name *</label><input id="nc-name" class="fi" placeholder="Client full name"></div>
+          <div class="fld"><label class="lbl">Date of birth</label><input id="nc-dob" class="fi" type="date"></div>
+          <div class="fld"><label class="lbl">Gender</label><select id="nc-gender" class="fi"><option>Male</option><option>Female</option><option>Other</option></select></div>
+          <div class="fld"><label class="lbl">Admission date</label><input id="nc-adm" class="fi" type="date"></div>
+          <div class="fld"><label class="lbl">Legal status</label><select id="nc-legal" class="fi"><option>Voluntary</option><option>Involuntary</option><option>Court-mandated</option></select></div>
+          <div class="fld"><label class="lbl">Referred by</label><select id="nc-ref" class="fi"><option>Self</option><option>Family</option><option>Hospital</option><option>Court</option><option>Other</option></select></div>
+          <div class="fld"><label class="lbl">Assigned therapist</label><input id="nc-therapist" class="fi" placeholder="Name"></div>
+          <div class="fld"><label class="lbl">Treating psychiatrist</label><input id="nc-psych" class="fi" placeholder="Name"></div>
+          <div class="fld"><label class="lbl">Emergency contact</label><input id="nc-emergency" class="fi" placeholder="Name & phone"></div>
+          <div class="fld"><label class="lbl">Payment mode</label><select id="nc-pay" class="fi"><option>Insurance</option><option>Self-pay</option><option>Government scheme</option><option>NGO-sponsored</option></select></div>
+        </div>
+        <div class="fld"><label class="lbl">Primary diagnosis (ICD-11)</label><input id="nc-dx" class="fi" placeholder="e.g. 6A20 Schizophrenia"></div>
+        <div class="btn-row">
+          <button type="button" class="btn" id="submit-client">Register client</button>
+          <button type="button" class="btn btn-outline" id="cancel-client">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
