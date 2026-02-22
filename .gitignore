@@ -1,5 +1,5 @@
-# Optional: keep your real Firebase keys out of the repo (use a copy of firebase-config.js with real keys and ignore it)
-# js/firebase-config.js
+# Keep Firebase keys local — use js/firebase-config.sample.js as template
+js/firebase-config.js
 
 # OS / editor
 .DS_Store
