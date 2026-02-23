@@ -4,11 +4,11 @@
  * RTDB URL: Firebase Console → Realtime Database → copy the URL.
  */
 var FIREBASE_CONFIG = {
-  apiKey: "AIzaSyAtCyLKdTIG3t3ZlJZCr3-9LjlL4rTJN28",
-  authDomain: "neuro-rehab-track.firebaseapp.com",
-  databaseURL: "https://neuro-rehab-track-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "neuro-rehab-track",
-  storageBucket: "neuro-rehab-track.firebasestorage.app",
-  messagingSenderId: "940914572804",
-  appId: "1:940914572804:web:fd7ea3522cd1586202bf51"
+  apiKey: "AIzaSyDkfOC2jlFKn22htsuYaRQNQA0oZ0mdNBo",
+  authDomain: "neuro-rehab-care-track-44b6a.firebaseapp.com",
+  databaseURL: "https://neuro-rehab-care-track-44b6a-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "neuro-rehab-care-track-44b6a",
+  storageBucket: "neuro-rehab-care-track-44b6a.firebasestorage.app",
+  messagingSenderId: "68762297273",
+  appId: "1:68762297273:web:05ee98834f4d6adf968c68"
 };

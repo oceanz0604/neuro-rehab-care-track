@@ -18,15 +18,16 @@
     selectedClientData: null
   };
 
+  // Short topbar labels only; page content keeps the real heading (avoids duplicate titles)
   var PAGE_TITLES = {
-    dashboard: 'Dashboard',
-    patients: 'Patients',
-    reports: 'Reports',
-    'patient-detail': 'Patient Detail',
-    comms: 'Team Chat',
-    freport: 'Family Reports',
+    dashboard: 'Home',
+    patients: 'List',
+    reports: 'Activity',
+    'patient-detail': 'Patient',
+    comms: 'Chat',
+    freport: 'Report',
     settings: 'Settings',
-    admin: 'Staff Management'
+    admin: 'Admin'
   };
 
   var _pageInited = {};
@@ -104,12 +105,12 @@
     $('app-shell').removeAttribute('hidden');
     var p = state.profile || {};
     $('sb-name').textContent = p.displayName || (state.user || {}).email || 'Staff';
-    $('sb-role').textContent = (window.CareTrackRoleLabel && window.CareTrackRoleLabel(p.role)) || p.role || '—';
+    var roleLabel = (p.roles && p.roles.length) ? p.roles.map(function (r) { return window.CareTrackRoleLabel ? window.CareTrackRoleLabel(r) : r; }).join(', ') : ((window.CareTrackRoleLabel && window.CareTrackRoleLabel(p.role)) || p.role || '—');
+    $('sb-role').textContent = roleLabel;
     $('sb-avatar').textContent = ((p.displayName || 'S')[0] || 'S').toUpperCase();
-    $('shift-badge').textContent = p.shift || 'Morning';
 
     var adminLink = $('nav-admin');
-    if (adminLink) adminLink.style.display = (window.Permissions && window.Permissions.canAccessAdmin(p.role)) ? '' : 'none';
+    if (adminLink) adminLink.style.display = (window.Permissions && window.Permissions.canAccessAdmin(p)) ? '' : 'none';
 
     if (window.Pages && window.Pages.comms) {
       if (Pages.comms.startUnreadListeners) Pages.comms.startUnreadListeners();
@@ -195,7 +196,7 @@
     state.page = 'patient-detail';
     document.querySelectorAll('.page').forEach(function (el) { el.classList.remove('active'); });
     $('page-patient-detail').classList.add('active');
-    $('tb-title').textContent = state.selectedClientData ? state.selectedClientData.name : 'Patient';
+    $('tb-title').textContent = 'Patient';
     document.querySelectorAll('.nav-link').forEach(function (a) {
       a.classList.toggle('active', a.getAttribute('data-page') === 'patients');
     });
@@ -388,13 +389,13 @@
           showApp();
           updateThemeIcon();
           setTimeout(function () { showPwaBanner(); }, 1500);
-          return loadConfig().then(function () { return loadData(); });
+          return loadConfig().then(function () { return loadData(); }).then(function () { navigate('dashboard'); });
         }).catch(function () {
           state.profile = {};
           showApp();
           updateThemeIcon();
           setTimeout(function () { showPwaBanner(); }, 1500);
-          loadData();
+          loadData().then(function () { navigate('dashboard'); });
         });
       } else {
         state.user = null;

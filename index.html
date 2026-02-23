@@ -63,7 +63,7 @@
       <a href="#" class="nav-link" data-page="patients"><i class="fas fa-hospital-user"></i><span>Patients</span></a>
       <a href="#" class="nav-link" data-page="reports"><i class="fas fa-file-lines"></i><span>Reports</span></a>
       <a href="#" class="nav-link nav-link-chat" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat</span><span id="chat-unread-badge" class="nav-badge"></span></a>
-      <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Family Reports</span></a>
+      <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Client Progress Report</span></a>
       <a href="#" class="nav-link" data-page="admin" id="nav-admin" style="display:none"><i class="fas fa-shield-halved"></i><span>Admin</span></a>
     </nav>
     <div class="sb-foot"><button id="logout-btn" class="logout-btn"><i class="fas fa-right-from-bracket"></i><span>Sign out</span></button></div>
@@ -83,7 +83,6 @@
           <i class="fas fa-bell"></i>
           <span id="notif-badge"></span>
         </button>
-        <span class="shift-badge" id="shift-badge">Morning</span>
       </div>
       <div class="notif-panel" id="notif-panel"></div>
     </header>
@@ -111,6 +110,7 @@
           <button type="button" class="btn btn-sm" id="add-patient-btn"><i class="fas fa-plus"></i> Add Patient</button>
         </div>
         <div class="list-toolbar">
+          <select class="filter-select" id="pt-filter-view" style="display:none"><option value="all">All patients</option><option value="mine">My patients</option></select>
           <div class="search-box"><i class="fas fa-magnifying-glass"></i><input type="text" id="pt-search" placeholder="Search by name..."></div>
           <select class="filter-select" id="pt-filter-status"><option value="">All Status</option><option value="active">Active</option><option value="discharged">Discharged</option></select>
           <select class="filter-select" id="pt-filter-risk"><option value="">All Risk</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="none">None</option></select>
@@ -120,16 +120,27 @@
 
       <!-- ── Reports ── -->
       <section class="page" id="page-reports">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
           <h1 class="pg-title" style="margin-bottom:0">Reports</h1>
           <span id="reports-total" class="hist-total"></span>
+        </div>
+        <div class="reports-patient-cards-wrap" style="margin-bottom:20px">
+          <div class="search-box" style="max-width:280px;margin-bottom:10px"><i class="fas fa-magnifying-glass"></i><input type="text" id="reports-patient-search" placeholder="Search patients..."></div>
+          <div class="reports-patient-cards" id="reports-patient-cards"></div>
         </div>
         <div class="list-toolbar">
           <select class="filter-select" id="reports-date-range">
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
             <option value="week">Last 7 days</option>
+            <option value="4weeks">Last 4 weeks</option>
+            <option value="custom">Custom date</option>
           </select>
+          <span id="reports-custom-dates" style="display:none;align-items:center;gap:6px">
+            <input type="date" id="reports-date-from" class="fi" style="width:auto;padding:6px 8px">
+            <span>to</span>
+            <input type="date" id="reports-date-to" class="fi" style="width:auto;padding:6px 8px">
+          </span>
           <select class="filter-select" id="reports-filter-section">
             <option value="">All sections</option>
             <option value="psychiatric">Psychiatric</option>
@@ -151,15 +162,15 @@
         <div id="pd-content"></div>
       </section>
 
-      <!-- ── Team Chat ── -->
+      <!-- ── Team Chat (WhatsApp-style: channels pinned top, input fixed bottom) ── -->
       <section class="page" id="page-comms">
         <h1 class="pg-title">Team Chat</h1>
-        <div class="chat-layout">
-          <div class="channel-list" id="channel-list"></div>
+        <div class="chat-layout chat-layout-wa">
           <div class="chat-main">
+            <div class="channel-list channel-list-pinned" id="channel-list"></div>
             <div class="chat-header" id="chat-header">General Ward</div>
             <div class="msg-list" id="msg-list"></div>
-            <div class="chat-compose">
+            <div class="chat-compose chat-compose-fixed">
               <input type="text" id="msg-in" placeholder="Type a message..." autocomplete="off">
               <button type="button" class="urgent-toggle" id="urgent-toggle" title="Mark as urgent"><i class="fas fa-exclamation-triangle"></i></button>
               <button type="button" class="btn btn-sm" id="send-msg"><i class="fas fa-paper-plane"></i></button>
@@ -168,9 +179,9 @@
         </div>
       </section>
 
-      <!-- ── Family Reports ── -->
+      <!-- ── Client Progress Report (family-facing) ── -->
       <section class="page" id="page-freport">
-        <h1 class="pg-title" id="fr-title">Family Progress Reports</h1>
+        <h1 class="pg-title" id="fr-title">Client Progress Report</h1>
         <p class="pg-sub" id="fr-sub">Monthly &mdash; supportive language only</p>
         <div class="fr-controls">
           <div class="fg" style="min-width:180px"><label id="fr-lbl-c">Client</label><select class="fi" id="fr-cl"><option value="">— Choose client —</option></select></div>

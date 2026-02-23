@@ -17,6 +17,9 @@ service cloud.firestore {
     // Clients: all authenticated staff can read and write
     match /clients/{clientId} {
       allow read, write: if isAuth();
+      match /diagnosisHistory/{entryId} {
+        allow read, write: if isAuth();
+      }
     }
 
     // Reports: all authenticated staff can read and write

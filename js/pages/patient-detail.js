@@ -12,18 +12,24 @@
 
   var TABS = [
     { key: 'overview',    label: 'Overview',     icon: 'fa-id-card' },
+    { key: 'diagnosis',   label: 'Diagnosis',    icon: 'fa-stethoscope' },
+    { key: 'reports',     label: 'Reports',      icon: 'fa-file-lines' },
+    { key: 'history',     label: 'History',      icon: 'fa-clock-rotate-left' },
+    { key: 'summary',     label: 'Latest Summary', icon: 'fa-list-check' }
+  ];
+
+  var REPORT_SECTIONS = [
     { key: 'psychiatric', label: 'Psychiatric',  icon: 'fa-brain' },
     { key: 'behavioral',  label: 'Behavioral',   icon: 'fa-comments' },
     { key: 'medication',  label: 'Medication & Compliance', icon: 'fa-pills' },
     { key: 'adl',         label: 'ADL',          icon: 'fa-hands-helping' },
-    { key: 'therapeutic',  label: 'Therapeutic',  icon: 'fa-dumbbell' },
-    { key: 'risk',        label: 'Risk',         icon: 'fa-shield-halved' },
-    { key: 'history',     label: 'History',      icon: 'fa-clock-rotate-left' }
+    { key: 'therapeutic', label: 'Therapeutic',  icon: 'fa-dumbbell' },
+    { key: 'risk',        label: 'Risk',         icon: 'fa-shield-halved' }
   ];
 
   function render(state) {
     _client = state.selectedClientData;
-    if (!_client) { $('pd-header').innerHTML = '<p>Patient not found.</p>'; return; }
+    if (!_client) { $('pd-header').innerHTML = '<p>Patient not found.</p>'; $('pd-tabs').innerHTML = ''; $('pd-content').innerHTML = ''; return; }
 
     $('pd-header').innerHTML = headerHTML(_client, state);
     $('pd-tabs').innerHTML = TABS.map(function (t) {
@@ -36,24 +42,22 @@
 
   function headerHTML(c, state) {
     var profile = (state && state.profile) || {};
-    var role = profile.role;
-    var canEdit = window.Permissions && window.Permissions.canEditPatient(role);
-    var canDischarge = window.Permissions && window.Permissions.canDischargePatient(role);
+    var canEdit = window.Permissions && window.Permissions.canEditPatient(profile);
+    var canDischarge = window.Permissions && window.Permissions.canDischargePatient(profile);
     var actions = '';
     if (canEdit) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-edit-btn"><i class="fas fa-pen"></i> Edit</button>';
     if (c.status === 'active' && canDischarge) actions += '<button type="button" class="btn btn-danger btn-sm" id="pd-discharge-btn"><i class="fas fa-right-from-bracket"></i> Discharge</button>';
-    actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-latest-summary-btn"><i class="fas fa-file-lines"></i> Latest reports summary</button>';
     actions += '<button type="button" class="btn btn-ghost btn-sm" id="pd-back-btn"><i class="fas fa-arrow-left"></i> Back</button>';
+    var meta = '<span><i class="fas fa-venus-mars"></i> ' + (c.gender || '—') + '</span>' +
+      '<span><i class="fas fa-calendar"></i> Adm: ' + (c.admissionDate || '—') + '</span>' +
+      (c.plannedDischargeDate ? '<span><i class="fas fa-calendar-check"></i> Planned discharge: ' + esc(c.plannedDischargeDate) + '</span>' : '') +
+      (c.status === 'discharged' && c.dischargeDate ? '<span><i class="fas fa-right-from-bracket"></i> Final discharge: ' + esc(c.dischargeDate) + '</span>' : '') +
+      '<span><i class="fas fa-stethoscope"></i> ' + (c.assignedTherapist || '—') + '</span>' +
+      '<span><i class="fas fa-bed"></i> ' + (c.ward || '—') + ' / ' + (c.roomNumber || '—') + '</span>' +
+      '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + ' risk</span>' +
+      '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>';
     return '<div class="patient-header">' +
-      '<div><h2>' + esc(c.name || 'Unknown') + '</h2>' +
-      '<div class="patient-meta">' +
-        '<span><i class="fas fa-venus-mars"></i> ' + (c.gender || '—') + '</span>' +
-        '<span><i class="fas fa-calendar"></i> Adm: ' + (c.admissionDate || '—') + '</span>' +
-        '<span><i class="fas fa-stethoscope"></i> ' + (c.assignedTherapist || '—') + '</span>' +
-        '<span><i class="fas fa-bed"></i> ' + (c.ward || '—') + ' / ' + (c.roomNumber || '—') + '</span>' +
-        '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + ' risk</span>' +
-        '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>' +
-      '</div></div>' +
+      '<div><h2>' + esc(c.name || 'Unknown') + '</h2><div class="patient-meta">' + meta + '</div></div>' +
       '<div class="patient-actions">' + actions + '</div></div>';
   }
 
@@ -74,8 +78,6 @@
     if (back) back.addEventListener('click', function () { window.CareTrack.navigate('patients'); });
     var edit = document.getElementById('pd-edit-btn');
     if (edit) edit.addEventListener('click', showEditModal);
-    var summaryBtn = document.getElementById('pd-latest-summary-btn');
-    if (summaryBtn) summaryBtn.addEventListener('click', showLatestReportsSummaryModal);
     var dis = document.getElementById('pd-discharge-btn');
     if (dis) dis.addEventListener('click', function () {
       AppModal.confirm('Discharge Patient', 'Are you sure you want to discharge <strong>' + esc(_client.name) + '</strong>?', function () {
@@ -96,6 +98,7 @@
       fgv('ep-dob', 'Date of Birth', 'date', c.dob) +
       fgs('ep-gender', 'Gender', ['', 'Male', 'Female', 'Other'], c.gender) +
       fgv('ep-diag', 'Diagnosis', 'text', c.diagnosis) +
+      fgv('ep-planned-discharge', 'Planned Discharge Date', 'date', c.plannedDischargeDate) +
       fgv('ep-legal', 'Legal Status', 'text', c.legalStatus) +
       fgv('ep-emergency', 'Emergency Contact', 'text', c.emergencyContact) +
       fgv('ep-consent', 'Consent', 'text', c.consent) +
@@ -113,7 +116,8 @@
         document.getElementById('ep-save').addEventListener('click', function () {
           var data = {
             name: v('ep-name'), dob: v('ep-dob'), gender: v('ep-gender'),
-            diagnosis: v('ep-diag'), legalStatus: v('ep-legal'), emergencyContact: v('ep-emergency'), consent: v('ep-consent'),
+            diagnosis: v('ep-diag'), plannedDischargeDate: v('ep-planned-discharge') || null,
+            legalStatus: v('ep-legal'), emergencyContact: v('ep-emergency'), consent: v('ep-consent'),
             assignedTherapist: v('ep-therapist'), ward: v('ep-ward'), roomNumber: v('ep-room'), currentRisk: v('ep-risk')
           };
           if (!data.name) { window.CareTrack.toast('Name required'); return; }
@@ -140,23 +144,261 @@
   function renderTab(tab, state) {
     var el = $('pd-content');
     if (tab === 'overview') { renderOverview(el); return; }
+    if (tab === 'diagnosis') { renderDiagnosisTab(el); return; }
+    if (tab === 'reports') { renderReportsTab(el, state); return; }
     if (tab === 'history')  { renderHistory(el); return; }
+    if (tab === 'summary') { renderSummaryTab(el); return; }
     renderClinicalTab(el, tab, state);
+  }
+
+  function collapsible(id, title, bodyHtml, expanded) {
+    var cls = expanded !== false ? 'collapsible-section' : 'collapsible-section collapsed';
+    return '<div class="' + cls + '" id="' + id + '">' +
+      '<button type="button" class="collapsible-head" aria-expanded="' + (expanded !== false ? 'true' : 'false') + '">' +
+      '<i class="fas fa-chevron-down"></i> ' + title +
+      '</button><div class="collapsible-body">' + bodyHtml + '</div></div>';
+  }
+
+  function bindCollapsibles(container) {
+    if (!container) return;
+    container.querySelectorAll('.collapsible-section .collapsible-head').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var section = btn.closest('.collapsible-section');
+        if (section) {
+          section.classList.toggle('collapsed');
+          btn.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+        }
+      });
+    });
   }
 
   function renderOverview(el) {
     var c = _client;
-    el.innerHTML = '<div class="card"><div class="card-hd"><i class="fas fa-id-card"></i> Patient Information</div>' +
-      '<div class="form-grid">' +
+    var basicHtml = '<div class="form-grid">' +
       info('Name', c.name) + info('DOB', c.dob) + info('Gender', c.gender) +
-      info('Diagnosis', c.diagnosis) + info('Admission', c.admissionDate) +
-      info('Legal Status', c.legalStatus) + info('Emergency Contact', c.emergencyContact) + info('Consent', c.consent) +
-      info('Therapist', c.assignedTherapist) + info('Ward', c.ward) + info('Room', c.roomNumber) +
+      info('Diagnosis', (c.diagnoses && c.diagnoses.length ? c.diagnoses.join(', ') : c.diagnosis) || '—') +
+      info('Admission', c.admissionDate) +
+      info('Planned Discharge', c.plannedDischargeDate || '—') +
+      (c.status === 'discharged' && c.dischargeDate ? info('Final Discharge', c.dischargeDate) : '') +
+      info('Assigned', (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—') +
+      info('Ward', c.ward) + info('Room', c.roomNumber) +
       info('Risk', '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + '</span>') +
       info('Status', '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>') +
-      '</div></div>' +
-      '<div class="card" id="pd-trend-card" style="margin-top:16px"><div class="card-hd"><i class="fas fa-chart-simple"></i> Reports (last 4 weeks)</div><div id="pd-trend-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>';
+      '</div>';
+    el.innerHTML =
+      collapsible('pd-overview-basic', 'Basic Information', basicHtml, true) +
+      collapsible('pd-overview-reports', 'Reports today &amp; yesterday', '<div id="pd-today-yesterday-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', true) +
+      collapsible('pd-overview-notes', 'Notes / Observations', '<div id="pd-observations-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', true) +
+      collapsible('pd-overview-trend', 'Reports (last 4 weeks)', '<div id="pd-trend-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', true);
+    bindCollapsibles(el);
+    loadTodayYesterdayReports();
+    loadOverviewObservations();
     loadOverviewTrend();
+  }
+
+  function loadTodayYesterdayReports() {
+    var el = document.getElementById('pd-today-yesterday-body');
+    if (!el || !_client) return;
+    var today = new Date().toISOString().slice(0, 10);
+    var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    AppDB.getClientReports(_client.id, null, 50, null).then(function (res) {
+      var docs = (res.docs || []).filter(function (r) {
+        var d = r.createdAt ? (typeof r.createdAt === 'string' ? r.createdAt.slice(0, 10) : new Date(r.createdAt).toISOString().slice(0, 10)) : '';
+        return d === today || d === yesterday;
+      });
+      if (!docs.length) { el.innerHTML = '<p class="empty-state" style="margin:0">No reports for today or yesterday.</p>'; return; }
+      var byDate = {};
+      docs.forEach(function (r) {
+        var d = r.createdAt ? (typeof r.createdAt === 'string' ? r.createdAt.slice(0, 10) : new Date(r.createdAt).toISOString().slice(0, 10)) : '';
+        if (!byDate[d]) byDate[d] = [];
+        byDate[d].push(r);
+      });
+      var html = '';
+      [today, yesterday].forEach(function (day) {
+        if (!byDate[day]) return;
+        var label = day === today ? 'Today' : 'Yesterday';
+        html += '<div class="pd-day-group" style="margin-bottom:14px">';
+        html += '<strong style="font-size:.85rem;color:var(--text-2)">' + label + ' (' + day + ')</strong>';
+        byDate[day].forEach(function (r) {
+          var timeStr = r.createdAt ? new Date(r.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+          html += '<div class="report-entry" style="margin-top:8px">' +
+            '<span class="risk-badge risk-' + sectionColor(r.section) + '">' + capitalize(r.section) + '</span> ' +
+            (r.submittedByName || '') + ' ' + timeStr +
+            '<div class="report-entry-body" style="font-size:.85rem;color:var(--text-2);margin-top:4px">' + summarizePayload(r.section, r.payload || {}) + '</div></div>';
+        });
+        html += '</div>';
+      });
+      el.innerHTML = html;
+    }).catch(function () { if (el) el.innerHTML = '<p class="empty-state" style="margin:0">Could not load reports.</p>'; });
+  }
+
+  function loadOverviewObservations() {
+    var el = document.getElementById('pd-observations-body');
+    if (!el || !_client) return;
+    AppDB.getClientDiagnosisHistory(_client.id).then(function (entries) {
+      if (!entries.length) {
+        el.innerHTML = '<p class="empty-state" style="margin:0">No notes or observations yet.</p>';
+        return;
+      }
+      el.innerHTML = '<ul class="diagnosis-history-list">' + entries.map(function (e) {
+        var fromStr = e.fromDate || '—';
+        var addedStr = e.addedByName ? ' by ' + esc(e.addedByName) : '';
+        return '<li><span class="diagnosis-history-text">' + esc(e.diagnosis || '—') + '</span>' +
+          '<span class="diagnosis-history-meta">From ' + fromStr + addedStr + '</span></li>';
+      }).join('') + '</ul>';
+    }).catch(function () { if (el) el.innerHTML = '<p class="empty-state" style="margin:0">Could not load.</p>'; });
+  }
+
+  function renderDiagnosisTab(el) {
+    var profile = (window.CareTrack && window.CareTrack.getState().profile) || {};
+    var canEdit = window.Permissions && window.Permissions.canEditPatient(profile);
+    el.innerHTML = '<div class="card">' +
+      '<div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' +
+      '<span><i class="fas fa-stethoscope"></i> Diagnosis</span>' +
+      (canEdit ? '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-btn"><i class="fas fa-plus"></i> Add entry</button>' : '') +
+      '</div><div id="pd-diagnosis-history-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>';
+    loadDiagnosisHistory();
+    var addBtn = document.getElementById('pd-add-diagnosis-btn');
+    if (addBtn) addBtn.addEventListener('click', showAddDiagnosisModal);
+  }
+
+  function renderReportsTab(el, state) {
+    if (!_client) return;
+    el.innerHTML = '<p class="pd-reports-summary-line" style="margin-bottom:16px;color:var(--text-2);font-size:.9rem"><i class="fas fa-spinner fa-spin"></i> Loading...</p>';
+    AppDB.getClientReports(_client.id, null, 100, null).then(function (res) {
+      var bySection = getLatestReportPerSection(res.docs || []);
+      var summaryParts = REPORT_SECTIONS.map(function (s) {
+        var item = bySection[s.key];
+        var txt = item && item.report ? new Date(item.report.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + ' ' + new Date(item.report.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'No report yet';
+        return capitalize(s.key) + ': ' + txt;
+      });
+      var summaryHtml = '<p class="pd-reports-summary-line" style="margin-bottom:16px;color:var(--text-2);font-size:.9rem">' + esc(summaryParts.join(' &middot; ')) + '</p>';
+      var profile = (state && state.profile) || {};
+      var sectionsHtml = REPORT_SECTIONS.map(function (s) {
+        var payload = (bySection[s.key] && bySection[s.key].report && bySection[s.key].report.payload) ? bySection[s.key].report.payload : {};
+        var params = getParams(s.key, state);
+        var formHtml = getSectionFormHtml(s.key, params, payload);
+        var canSave = window.Permissions && window.Permissions.canSubmitSection(profile, s.key);
+        var cardInner = '<div class="card-hd"><i class="fas ' + s.icon + '"></i> ' + s.label + '</div>' + formHtml +
+          '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3">' + esc(payload.notes || '') + '</textarea></div>' +
+          (canSave ? '<div style="margin-top:14px"><button type="button" class="btn ct-save" disabled data-section="' + esc(s.key) + '"><i class="fas fa-save"></i> Save Report</button></div>' : '');
+        return collapsible('pd-reports-' + s.key, s.label, '<div class="card ct-card" data-section="' + s.key + '">' + cardInner + '</div>', false);
+      }).join('');
+      el.innerHTML = summaryHtml + sectionsHtml;
+      bindCollapsibles(el);
+      var _reportDirty = {};
+      REPORT_SECTIONS.forEach(function (s) {
+        var card = el.querySelector('.ct-card[data-section="' + s.key + '"]');
+        if (!card) return;
+        var saveBtn = card.querySelector('.ct-save');
+        card.querySelectorAll('.rating-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var param = btn.getAttribute('data-param');
+            card.querySelectorAll('.rating-btn[data-param="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
+            btn.classList.add('selected');
+            _reportDirty[s.key] = true; if (saveBtn) saveBtn.disabled = false;
+          });
+        });
+        var notifyBtn = card.querySelector('.ct-notify-psych');
+        if (notifyBtn) notifyBtn.addEventListener('click', function () {
+          var profile = (state && state.profile) || {};
+          AppDB.addRiskEscalation(_client.id, _client.name, profile.displayName || '').then(function () { window.CareTrack.toast('Psychiatrist notified'); });
+        });
+        function setDirty() { _reportDirty[s.key] = true; if (saveBtn) saveBtn.disabled = false; }
+        card.querySelectorAll('input, select, textarea').forEach(function (inp) {
+          inp.addEventListener('change', setDirty); inp.addEventListener('input', setDirty);
+        });
+        if (saveBtn) saveBtn.addEventListener('click', function () {
+          if (!_reportDirty[s.key]) return;
+          doSaveReport(card, s.key, getParams(s.key, state), state);
+          _reportDirty[s.key] = false; saveBtn.disabled = true;
+        });
+      });
+    }).catch(function () {
+      el.innerHTML = '<p class="empty-state">Could not load reports.</p>';
+    });
+  }
+
+  function renderSummaryTab(el) {
+    if (!_client) return;
+    el.innerHTML = '<div class="card"><div class="card-hd"><i class="fas fa-list-check"></i> Latest reports summary</div><div id="pd-summary-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>';
+    function renderSummary(bodyEl, bySection) {
+      var sections = ['psychiatric', 'behavioral', 'medication', 'adl', 'therapeutic', 'risk'];
+      var html = sections.map(function (sec) {
+        var item = bySection[sec];
+        var dt = '—', sub = '—', summary = 'No report yet.';
+        if (item && item.report) {
+          var r = item.report;
+          dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+          sub = r.submittedByName || '—';
+          summary = summarizePayload(sec, r.payload || {});
+        }
+        return '<div class="latest-summary-item">' +
+          '<div class="latest-summary-hd"><span class="risk-badge risk-' + sectionColor(sec) + '">' + capitalize(sec) + '</span>' +
+          '<span style="font-size:.8rem;color:var(--text-3)">' + dt + ' · ' + esc(sub) + '</span></div>' +
+          '<p class="latest-summary-body">' + esc(summary) + '</p></div>';
+      }).join('');
+      bodyEl.innerHTML = html;
+    }
+    if (_cachedReports100.clientId === _client.id && _cachedReports100.docs.length > 0) {
+      renderSummary(document.getElementById('pd-summary-body'), getLatestReportPerSection(_cachedReports100.docs));
+      return;
+    }
+    AppDB.getClientReports(_client.id, null, 100, null).then(function (res) {
+      _cachedReports100 = { clientId: _client.id, docs: res.docs || [] };
+      renderSummary(document.getElementById('pd-summary-body'), getLatestReportPerSection(res.docs || []));
+    }).catch(function () {
+      var b = document.getElementById('pd-summary-body');
+      if (b) b.innerHTML = '<p class="empty-state">Could not load.</p>';
+    });
+  }
+
+  function loadDiagnosisHistory() {
+    var el = document.getElementById('pd-diagnosis-history-body');
+    if (!el || !_client) return;
+    AppDB.getClientDiagnosisHistory(_client.id).then(function (entries) {
+      if (!entries.length) {
+        el.innerHTML = '<p class="empty-state" style="padding:16px;margin:0">No diagnosis history recorded.</p>';
+        return;
+      }
+      el.innerHTML = '<ul class="diagnosis-history-list">' + entries.map(function (e) {
+        var fromStr = e.fromDate || '—';
+        var addedStr = e.addedByName ? ' by ' + esc(e.addedByName) : '';
+        return '<li><span class="diagnosis-history-text">' + esc(e.diagnosis || '—') + '</span>' +
+          '<span class="diagnosis-history-meta">From ' + fromStr + addedStr + '</span></li>';
+      }).join('') + '</ul>';
+    }).catch(function () {
+      if (el) el.innerHTML = '<p class="empty-state" style="padding:16px;margin:0">Could not load history.</p>';
+    });
+  }
+
+  function showAddDiagnosisModal() {
+    if (!_client) return;
+    var html = '<div class="modal-card"><h3 class="modal-title">Add Diagnosis Entry</h3>' +
+      '<div class="form-grid">' +
+      '<div class="fg fg-full"><label>Diagnosis</label><input id="dh-diagnosis" type="text" class="fi" value="' + esc(_client.diagnosis || '') + '" placeholder="e.g. Schizophrenia"></div>' +
+      '<div class="fg"><label>From date</label><input id="dh-from" type="date" class="fi" value="' + (new Date().toISOString().slice(0, 10)) + '"></div>' +
+      '</div><div class="modal-actions" style="margin-top:18px">' +
+      '<button type="button" class="btn btn-ghost" id="dh-cancel">Cancel</button>' +
+      '<button type="button" class="btn" id="dh-save">Add</button></div></div>';
+    AppModal.open(html, {
+      onReady: function () {
+        document.getElementById('dh-cancel').addEventListener('click', AppModal.close);
+        document.getElementById('dh-save').addEventListener('click', function () {
+          var diagnosis = (document.getElementById('dh-diagnosis') || {}).value || '';
+          var fromDate = (document.getElementById('dh-from') || {}).value || '';
+          if (!diagnosis.trim()) { window.CareTrack.toast('Enter diagnosis'); return; }
+          var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+          var profile = state.profile || {};
+          AppDB.addClientDiagnosisEntry(_client.id, { diagnosis: diagnosis.trim(), fromDate: fromDate, addedByName: profile.displayName || '' }).then(function () {
+            AppModal.close();
+            window.CareTrack.toast('Diagnosis entry added');
+            loadDiagnosisHistory();
+            window.CareTrack.refreshData();
+          }).catch(function (e) { window.CareTrack.toast('Error: ' + e.message); });
+        });
+      }
+    });
   }
 
   function loadOverviewTrend() {
@@ -268,10 +510,10 @@
         html += buildRatingForm(params, payload);
       }
 
-      html += '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea id="ct-notes" class="fi" rows="3">' + esc(payload.notes || '') + '</textarea></div>';
+      html += '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3">' + esc(payload.notes || '') + '</textarea></div>';
       var profile = (state && state.profile) || {};
-      var canSave = window.Permissions && window.Permissions.canSubmitSection(profile.role, section);
-      if (canSave) html += '<div style="margin-top:14px;display:flex;gap:8px"><button type="button" class="btn" id="ct-save"><i class="fas fa-save"></i> Save Report</button></div>';
+      var canSave = window.Permissions && window.Permissions.canSubmitSection(profile, section);
+      if (canSave) html += '<div style="margin-top:14px;display:flex;gap:8px"><button type="button" class="btn ct-save" id="ct-save"><i class="fas fa-save"></i> Save Report</button></div>';
       html += '</div>';
 
       el.innerHTML = html;
@@ -287,17 +529,30 @@
       else if (section === 'risk') {
         html += buildRiskForm(params, payload);
         var clientRisk = (_client && _client.currentRisk) || '';
-        if (clientRisk === 'medium' || clientRisk === 'high') html += '<div class="fg fg-full" style="margin-top:12px"><button type="button" class="btn btn-outline btn-sm" id="ct-notify-psych"><i class="fas fa-bell"></i> Notify Psychiatrist</button></div>';
+        if (clientRisk === 'medium' || clientRisk === 'high') html += '<div class="fg fg-full" style="margin-top:12px"><button type="button" class="btn btn-outline btn-sm ct-notify-psych"><i class="fas fa-bell"></i> Notify Psychiatrist</button></div>';
       } else if (section === 'medication') html += buildMedicationForm(payload);
       else html += buildRatingForm(params, payload);
-      html += '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea id="ct-notes" class="fi" rows="3"></textarea></div>';
+      html += '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3"></textarea></div>';
       var profile = (state && state.profile) || {};
-      var canSave = window.Permissions && window.Permissions.canSubmitSection(profile.role, section);
-      if (canSave) html += '<div style="margin-top:14px"><button type="button" class="btn" id="ct-save"><i class="fas fa-save"></i> Save Report</button></div>';
+      var canSave = window.Permissions && window.Permissions.canSubmitSection(profile, section);
+      if (canSave) html += '<div style="margin-top:14px"><button type="button" class="btn ct-save" id="ct-save"><i class="fas fa-save"></i> Save Report</button></div>';
       html += '</div>';
       el.innerHTML = html;
       bindClinicalSave(section, params, state);
     });
+  }
+
+  function getSectionFormHtml(section, params, payload) {
+    if (section === 'adl') return buildADLForm(params, payload);
+    if (section === 'therapeutic') return buildTherapeuticForm(params, payload);
+    if (section === 'risk') {
+      var h = buildRiskForm(params, payload);
+      if ((_client && _client.currentRisk) === 'medium' || (_client && _client.currentRisk) === 'high')
+        h += '<div class="fg fg-full" style="margin-top:12px"><button type="button" class="btn btn-outline btn-sm ct-notify-psych"><i class="fas fa-bell"></i> Notify Psychiatrist</button></div>';
+      return h;
+    }
+    if (section === 'medication') return buildMedicationForm(payload);
+    return buildRatingForm(params, payload);
   }
 
   function getParams(section, state) {
@@ -388,10 +643,10 @@
           opts.map(function (o) { return '<option' + (val === o ? ' selected' : '') + '>' + o + '</option>'; }).join('') +
         '</select></div>';
     }).join('');
-    html += '<div class="fg fg-full" style="margin-top:12px"><label>Restraint Used</label><select class="fi" id="ct-restraint">' +
+    html += '<div class="fg fg-full" style="margin-top:12px"><label>Restraint Used</label><select class="fi ct-restraint">' +
       '<option value="">—</option><option value="Yes"' + (payload.restraintUsed === 'Yes' ? ' selected' : '') + '>Yes</option><option value="No"' + (payload.restraintUsed === 'No' ? ' selected' : '') + '>No</option></select></div>';
-    html += '<div class="fg fg-full"><label>Restraint Justification</label><input type="text" class="fi" id="ct-restraint-just" value="' + esc(payload.restraintJustification || '') + '" placeholder="If applicable"></div>';
-    html += '<div class="fg fg-full"><label>Intervention Taken</label><input type="text" class="fi" id="ct-intervention" value="' + esc(payload.interventionTaken || '') + '" placeholder="Brief description"></div>';
+    html += '<div class="fg fg-full"><label>Restraint Justification</label><input type="text" class="fi ct-restraint-just" value="' + esc(payload.restraintJustification || '') + '" placeholder="If applicable"></div>';
+    html += '<div class="fg fg-full"><label>Intervention Taken</label><input type="text" class="fi ct-intervention" value="' + esc(payload.interventionTaken || '') + '" placeholder="Brief description"></div>';
     return html;
   }
 
@@ -407,7 +662,7 @@
       });
     });
 
-    var notifyBtn = document.getElementById('ct-notify-psych');
+    var notifyBtn = card.querySelector('.ct-notify-psych');
     if (notifyBtn) notifyBtn.addEventListener('click', function () {
       var profile = (state && state.profile) || {};
       AppDB.addRiskEscalation(_client.id, _client.name, profile.displayName || '').then(function () {
@@ -415,80 +670,70 @@
       }).catch(function (e) { window.CareTrack.toast('Failed: ' + (e && e.message)); });
     });
 
-    var saveBtn = document.getElementById('ct-save');
+    var saveBtn = card.querySelector('.ct-save') || document.getElementById('ct-save');
     if (saveBtn) saveBtn.addEventListener('click', function () {
-      var payload = {};
-
-      if (section === 'psychiatric' || section === 'behavioral') {
-        payload.ratings = {};
-        card.querySelectorAll('.rating-btn.selected').forEach(function (b) {
-          payload.ratings[b.getAttribute('data-param')] = parseInt(b.getAttribute('data-val'), 10);
-        });
-      } else if (section === 'adl') {
-        payload.levels = {};
-        card.querySelectorAll('.adl-select').forEach(function (s) {
-          if (s.value) payload.levels[s.getAttribute('data-param')] = s.value;
-        });
-      } else if (section === 'therapeutic') {
-        payload.activities = {};
-        card.querySelectorAll('[data-ther]').forEach(function (s) {
-          var name = s.getAttribute('data-ther');
-          var field = s.getAttribute('data-field');
-          if (!payload.activities[name]) payload.activities[name] = {};
-          if (s.value) payload.activities[name][field] = s.value;
-        });
-      } else if (section === 'risk') {
-        payload.levels = {};
-        card.querySelectorAll('[data-risk]').forEach(function (s) {
-          if (s.value) payload.levels[s.getAttribute('data-risk')] = s.value;
-        });
-        var restraintEl = document.getElementById('ct-restraint');
-        var restraintJustEl = document.getElementById('ct-restraint-just');
-        var interventionEl = document.getElementById('ct-intervention');
-        if (restraintEl) payload.restraintUsed = restraintEl.value;
-        if (restraintJustEl) payload.restraintJustification = restraintJustEl.value.trim();
-        if (interventionEl) payload.interventionTaken = interventionEl.value.trim();
-      } else if (section === 'medication') {
-        card.querySelectorAll('[data-med]').forEach(function (el) {
-          var key = el.getAttribute('data-med');
-          if (el.value !== undefined && el.value !== null) payload[key] = el.value.trim ? el.value.trim() : el.value;
-        });
-      }
-
-      var notesEl = document.getElementById('ct-notes');
-      payload.notes = notesEl ? notesEl.value.trim() : '';
-
-      var profile = state.profile || {};
-      var reportData = {
-        clientId: _client.id,
-        clientName: _client.name,
-        section: section,
-        submittedBy: (AppDB.getCurrentUser() || {}).uid || '',
-        submittedByName: profile.displayName || '',
-        shift: profile.shift || '',
-        payload: payload
-      };
-
+      doSaveReport(card, section, params, state);
       if (saveBtn) saveBtn.disabled = true;
-      AppDB.saveReport(reportData).then(function () {
-        window.CareTrack.toast('Report saved');
-        var btn = document.getElementById('ct-save');
-        if (btn) btn.disabled = false;
-
-        if (section === 'risk') {
-          var highest = computeHighestRisk(payload.levels || {});
-          if (highest !== (_client.currentRisk || 'none')) {
-            AppDB.updateClientRisk(_client.id, highest).then(function () {
-              window.CareTrack.refreshData();
-            });
-          }
-        }
-      }).catch(function (e) {
-        window.CareTrack.toast('Save failed: ' + e.message);
-        var b = document.getElementById('ct-save');
-        if (b) b.disabled = false;
-      });
     });
+  }
+
+  function doSaveReport(card, section, params, state) {
+    var payload = {};
+    if (section === 'psychiatric' || section === 'behavioral') {
+      payload.ratings = {};
+      card.querySelectorAll('.rating-btn.selected').forEach(function (b) {
+        payload.ratings[b.getAttribute('data-param')] = parseInt(b.getAttribute('data-val'), 10);
+      });
+    } else if (section === 'adl') {
+      payload.levels = {};
+      card.querySelectorAll('.adl-select').forEach(function (s) {
+        if (s.value) payload.levels[s.getAttribute('data-param')] = s.value;
+      });
+    } else if (section === 'therapeutic') {
+      payload.activities = {};
+      card.querySelectorAll('[data-ther]').forEach(function (s) {
+        var name = s.getAttribute('data-ther');
+        var field = s.getAttribute('data-field');
+        if (!payload.activities[name]) payload.activities[name] = {};
+        if (s.value) payload.activities[name][field] = s.value;
+      });
+    } else if (section === 'risk') {
+      payload.levels = {};
+      card.querySelectorAll('[data-risk]').forEach(function (s) {
+        if (s.value) payload.levels[s.getAttribute('data-risk')] = s.value;
+      });
+      var restraintEl = card.querySelector('.ct-restraint');
+      var restraintJustEl = card.querySelector('.ct-restraint-just');
+      var interventionEl = card.querySelector('.ct-intervention');
+      if (restraintEl) payload.restraintUsed = restraintEl.value;
+      if (restraintJustEl) payload.restraintJustification = restraintJustEl.value.trim();
+      if (interventionEl) payload.interventionTaken = interventionEl.value.trim();
+    } else if (section === 'medication') {
+      card.querySelectorAll('[data-med]').forEach(function (el) {
+        var key = el.getAttribute('data-med');
+        if (el.value !== undefined && el.value !== null) payload[key] = el.value.trim ? el.value.trim() : el.value;
+      });
+    }
+    var notesEl = card.querySelector('.ct-notes');
+    payload.notes = notesEl ? notesEl.value.trim() : '';
+    var profile = (state && state.profile) || {};
+    var reportData = {
+      clientId: _client.id,
+      clientName: _client.name,
+      section: section,
+      submittedBy: (AppDB.getCurrentUser() || {}).uid || '',
+      submittedByName: profile.displayName || '',
+      payload: payload
+    };
+    AppDB.saveReport(reportData).then(function () {
+      window.CareTrack.toast('Report saved');
+      if (section === 'risk') {
+        var highest = computeHighestRisk(payload.levels || {});
+        if (highest !== (_client.currentRisk || 'none')) {
+          AppDB.updateClientRisk(_client.id, highest).then(function () { window.CareTrack.refreshData(); });
+        }
+      }
+    }).catch(function (e) { window.CareTrack.toast('Save failed: ' + e.message); });
   }
 
   function computeHighestRisk(levels) {
@@ -635,7 +880,7 @@
       '<div class="modal-card report-detail-modal">' +
         '<h3 class="modal-title"><span class="risk-badge risk-' + sectionColor(section) + '">' + capitalize(section) + '</span> Report</h3>' +
         '<div class="report-detail-meta">' +
-          '<p><strong>Submitted by</strong> ' + esc(r.submittedByName || '—') + (r.shift ? ' <span style="color:var(--text-3)">(' + esc(r.shift) + ')</span>' : '') + '</p>' +
+          '<p><strong>Submitted by</strong> ' + esc(r.submittedByName || '—') + '</p>' +
           '<p><strong>Date & time</strong> ' + dt + '</p>' +
         '</div>' +
         '<div class="report-detail-body">' + payloadHtml + '</div>' +

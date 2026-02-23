@@ -12,6 +12,7 @@
   var ROLES = [
     { value: 'admin', label: 'Admin' },
     { value: 'psychiatrist', label: 'Psychiatrist' },
+    { value: 'medical_officer', label: 'Medical Officer' },
     { value: 'nurse', label: 'Nurse' },
     { value: 'therapist', label: 'Therapist' },
     { value: 'psychologist', label: 'Psychologist' },
@@ -22,11 +23,15 @@
   var ROLE_LABELS = {};
   ROLES.forEach(function (r) { ROLE_LABELS[r.value] = r.label; });
   function roleLabel(role) { return ROLE_LABELS[role] || (role || '—'); }
+  function rolesToLabels(roles) {
+    if (!roles || !roles.length) return '—';
+    return (roles.map(function (r) { return roleLabel(r); })).join(', ');
+  }
 
   var _settingsInited = false;
 
   function render(state) {
-    if (!state.profile || state.profile.role !== 'admin') {
+    if (!state.profile || !(window.Permissions && window.Permissions.canAccessAdmin(state.profile))) {
       $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i><p>Admin access required</p></div>';
       $('admin-staff-wrap').style.display = '';
       $('admin-settings-wrap').style.display = 'none';
@@ -102,14 +107,14 @@
       $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No staff members</p></div>';
       return;
     }
-    var html = '<table class="staff-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Shift</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    var html = '<table class="staff-table"><thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     _staff.forEach(function (s) {
       var active = s.isActive !== false;
+      var rolesDisplay = rolesToLabels(s.roles);
       html += '<tr>' +
         '<td><strong>' + esc(s.displayName || '—') + '</strong></td>' +
         '<td>' + esc(s.email || '—') + '</td>' +
-        '<td><span class="role-badge">' + esc(roleLabel(s.role)) + '</span></td>' +
-        '<td>' + (s.shift || '—') + '</td>' +
+        '<td><span class="role-badge">' + esc(rolesDisplay) + '</span></td>' +
         '<td><span class="status-badge ' + (active ? 'status-active' : 'status-discharged') + '">' + (active ? 'Active' : 'Inactive') + '</span></td>' +
         '<td style="white-space:nowrap">' +
           '<button type="button" class="btn btn-sm btn-outline" data-edit="' + s.uid + '" style="margin-right:4px"><i class="fas fa-pen"></i></button>' +
@@ -154,16 +159,16 @@
   }
 
   function showAddModal() {
-    var shifts = ['Morning', 'Afternoon', 'Night'];
-    var roleOptions = ROLES.map(function (r) { return '<option value="' + r.value + '">' + esc(r.label) + '</option>'; }).join('');
+    var roleChecks = ROLES.map(function (r) {
+      return '<label class="role-check"><input type="checkbox" class="as-role-cb" value="' + esc(r.value) + '"> ' + esc(r.label) + '</label>';
+    }).join('');
     var html =
       '<div class="modal-card"><h3 class="modal-title">Add Staff Member</h3>' +
       '<div class="form-grid">' +
         '<div class="fg fg-full"><label>Email</label><input id="as-email" type="email" class="fi" placeholder="staff@centre.org" required></div>' +
         '<div class="fg fg-full"><label>Temporary Password</label><input id="as-pw" type="text" class="fi" placeholder="Min 6 characters" minlength="6"></div>' +
         '<div class="fg fg-full"><label>Full Name</label><input id="as-name" type="text" class="fi" placeholder="Staff name"></div>' +
-        '<div class="fg"><label>Role</label><select id="as-role" class="fi">' + roleOptions + '</select></div>' +
-        '<div class="fg"><label>Shift</label><select id="as-shift" class="fi">' + shifts.map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select></div>' +
+        '<div class="fg fg-full"><label>Roles</label><div class="role-check-group">' + roleChecks + '</div></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px">' +
         '<button type="button" class="btn btn-ghost" id="as-cancel">Cancel</button>' +
@@ -175,11 +180,14 @@
         document.getElementById('as-cancel').addEventListener('click', AppModal.close);
         document.getElementById('as-save').addEventListener('click', function () {
           var email = vv('as-email'), pw = vv('as-pw'), name = vv('as-name');
-          var role = vv('as-role'), shift = vv('as-shift');
+          var roles = [];
+          document.querySelectorAll('.as-role-cb:checked').forEach(function (cb) { roles.push(cb.value); });
+          if (!roles.length) roles = ['nurse'];
+          var primaryRole = roles.indexOf('admin') !== -1 ? 'admin' : roles[0];
           if (!email || !pw || pw.length < 6) { window.CareTrack.toast('Valid email & password (6+ chars) required'); return; }
           document.getElementById('as-save').disabled = true;
           document.getElementById('as-save').textContent = 'Creating...';
-          AppDB.createStaffAccount(email, pw, { displayName: name, role: role, shift: shift })
+          AppDB.createStaffAccount(email, pw, { displayName: name, role: primaryRole, roles: roles })
             .then(function () {
               AppModal.close();
               window.CareTrack.toast('Staff account created');
@@ -197,15 +205,16 @@
 
   function showEditStaff(uid) {
     var s = findStaff(uid); if (!s) return;
-    var currentRole = s.role;
-    var shifts = ['Morning', 'Afternoon', 'Night'];
-    var roleOptions = ROLES.map(function (r) { return '<option value="' + r.value + '"' + (r.value === currentRole ? ' selected' : '') + '>' + esc(r.label) + '</option>'; }).join('');
+    var currentRoles = s.roles && s.roles.length ? s.roles : [s.role || 'nurse'];
+    var roleChecks = ROLES.map(function (r) {
+      var checked = currentRoles.indexOf(r.value) !== -1 ? ' checked' : '';
+      return '<label class="role-check"><input type="checkbox" class="es-role-cb" value="' + esc(r.value) + '"' + checked + '> ' + esc(r.label) + '</label>';
+    }).join('');
     var html =
       '<div class="modal-card"><h3 class="modal-title">Edit Staff</h3>' +
       '<div class="form-grid">' +
         '<div class="fg fg-full"><label>Full Name</label><input id="es-name" type="text" class="fi" value="' + esc(s.displayName || '') + '"></div>' +
-        '<div class="fg"><label>Role</label><select id="es-role" class="fi">' + roleOptions + '</select></div>' +
-        '<div class="fg"><label>Shift</label><select id="es-shift" class="fi">' + shifts.map(function (sh) { return '<option' + (sh === s.shift ? ' selected' : '') + '>' + sh + '</option>'; }).join('') + '</select></div>' +
+        '<div class="fg fg-full"><label>Roles</label><div class="role-check-group">' + roleChecks + '</div></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px">' +
         '<button type="button" class="btn btn-ghost" id="es-cancel">Cancel</button>' +
@@ -216,7 +225,11 @@
       onReady: function () {
         document.getElementById('es-cancel').addEventListener('click', AppModal.close);
         document.getElementById('es-save').addEventListener('click', function () {
-          AppDB.updateStaffProfile(uid, { displayName: vv('es-name'), role: vv('es-role'), shift: vv('es-shift') })
+          var roles = [];
+          document.querySelectorAll('.es-role-cb:checked').forEach(function (cb) { roles.push(cb.value); });
+          if (!roles.length) roles = ['nurse'];
+          var primaryRole = roles.indexOf('admin') !== -1 ? 'admin' : roles[0];
+          AppDB.updateStaffProfile(uid, { displayName: vv('es-name'), role: primaryRole, roles: roles })
             .then(function () { AppModal.close(); window.CareTrack.toast('Staff updated'); render(window.CareTrack.getState()); })
             .catch(function (e) { window.CareTrack.toast('Error: ' + e.message); });
         });

@@ -23,6 +23,20 @@
       start.setDate(start.getDate() - 6);
       start.setHours(0, 0, 0, 0);
       end.setDate(end.getDate() + 1);
+    } else if (range === '4weeks') {
+      start.setDate(start.getDate() - 27);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() + 1);
+    } else if (range === 'custom') {
+      var fromEl = $('reports-date-from');
+      var toEl = $('reports-date-to');
+      var fromStr = fromEl && fromEl.value ? fromEl.value : now.toISOString().slice(0, 10);
+      var toStr = toEl && toEl.value ? toEl.value : fromStr;
+      start = new Date(fromStr + 'T00:00:00');
+      end = new Date(toStr + 'T23:59:59');
+      end.setSeconds(59, 999);
+      if (end < start) end = new Date(start.getTime());
+      return { start: start.getTime(), end: end.getTime() + 1 };
     }
     return { start: start.getTime(), end: end.getTime() };
   }
@@ -80,18 +94,22 @@
     var section = r.section || '';
     var dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
     var payloadHtml = formatPayloadForModal(section, r.payload || {});
+    var profile = (window.CareTrack && window.CareTrack.getState && window.CareTrack.getState().profile) || {};
+    var canEdit = window.Permissions && window.Permissions.canEditReport(profile);
+    var editBtnHtml = canEdit ? '<button type="button" class="btn btn-outline" id="report-detail-edit">Edit Report</button>' : '';
     var html =
       '<div class="modal-card report-detail-modal">' +
         '<h3 class="modal-title"><span class="risk-badge risk-' + sectionColor(section) + '">' + capitalize(section) + '</span> Report</h3>' +
         '<div class="report-detail-meta">' +
-          '<p><strong>Patient</strong> ' + esc(r.clientName || '—') + '</p>' +
-          '<p><strong>Submitted by</strong> ' + esc(r.submittedByName || '—') + (r.shift ? ' <span style="color:var(--text-3)">(' + esc(r.shift) + ')</span>' : '') + '</p>' +
+          '<p><strong>Patient</strong> <a href="#" id="report-detail-patient-link">' + esc(r.clientName || '—') + '</a></p>' +
+          '<p><strong>Submitted by</strong> ' + esc(r.submittedByName || '—') + '</p>' +
           '<p><strong>Date & time</strong> ' + dt + '</p>' +
         '</div>' +
         '<div class="report-detail-body">' + payloadHtml + '</div>' +
-        '<div class="modal-actions" style="margin-top:16px">' +
+        '<div class="modal-actions" style="margin-top:16px;flex-wrap:wrap;gap:8px">' +
           '<button type="button" class="btn" id="report-detail-close">Close</button>' +
           '<button type="button" class="btn btn-outline" id="report-detail-open-patient">Open Patient</button>' +
+          editBtnHtml +
         '</div>' +
       '</div>';
     AppModal.open(html, {
@@ -99,12 +117,131 @@
         document.getElementById('report-detail-close').addEventListener('click', AppModal.close);
         var openBtn = document.getElementById('report-detail-open-patient');
         if (openBtn && r.clientId && window.CareTrack) {
-          openBtn.addEventListener('click', function () {
-            AppModal.close();
-            window.CareTrack.openPatient(r.clientId);
-          });
+          openBtn.addEventListener('click', function () { AppModal.close(); window.CareTrack.openPatient(r.clientId); });
         } else if (openBtn) openBtn.style.display = 'none';
+        var patientLink = document.getElementById('report-detail-patient-link');
+        if (patientLink && r.clientId && window.CareTrack) {
+          patientLink.addEventListener('click', function (e) { e.preventDefault(); AppModal.close(); window.CareTrack.openPatient(r.clientId); });
+        }
+        var editBtn = document.getElementById('report-detail-edit');
+        if (editBtn) editBtn.addEventListener('click', function () { AppModal.close(); showEditReportModal(r); });
       }
+    });
+  }
+
+  function showEditReportModal(r) {
+    var section = r.section || '';
+    var p = r.payload || {};
+    var notes = p.notes || '';
+    var profile = (window.CareTrack && window.CareTrack.getState && window.CareTrack.getState().profile) || {};
+    var canEdit = window.Permissions && window.Permissions.canEditReport(profile);
+    var payloadHtml = formatPayloadForModal(section, p);
+    var deleteBtnHtml = canEdit ? '<button type="button" class="btn btn-danger" id="report-edit-delete">Delete Report</button>' : '';
+    var html =
+      '<div class="modal-card report-detail-modal">' +
+        '<h3 class="modal-title">Edit Report — <span class="risk-badge risk-' + sectionColor(section) + '">' + capitalize(section) + '</span></h3>' +
+        '<div class="report-detail-meta">' +
+          '<p><strong>Patient</strong> ' + esc(r.clientName || '—') + '</p>' +
+          '<p><strong>Submitted by</strong> ' + esc(r.submittedByName || '—') + '</p>' +
+        '</div>' +
+        '<div class="report-detail-body">' + payloadHtml + '</div>' +
+        '<div class="fg fg-full" style="margin-top:12px"><label>Notes</label><textarea id="report-edit-notes" class="fi" rows="3">' + esc(notes) + '</textarea></div>' +
+        '<div class="modal-actions" style="margin-top:16px;flex-wrap:wrap;gap:8px">' +
+          '<button type="button" class="btn btn-ghost" id="report-edit-cancel">Cancel</button>' +
+          deleteBtnHtml +
+          '<button type="button" class="btn" id="report-edit-save">Save</button>' +
+        '</div>' +
+      '</div>';
+    AppModal.open(html, {
+      onReady: function () {
+        document.getElementById('report-edit-cancel').addEventListener('click', AppModal.close);
+        document.getElementById('report-edit-save').addEventListener('click', function () {
+          var newNotes = (document.getElementById('report-edit-notes') || {}).value || '';
+          var payload = Object.assign({}, r.payload || {}, { notes: newNotes });
+          AppDB.updateReport(r.id, { payload: payload, updatedByName: profile.displayName || '' }).then(function () {
+            AppModal.close();
+            window.CareTrack.toast('Report updated');
+            window.CareTrack.refreshData();
+            if (window.Pages.reports && window.Pages.reports.render) window.Pages.reports.render(window.CareTrack.getState());
+          }).catch(function (e) { window.CareTrack.toast('Error: ' + (e && e.message)); });
+        });
+        var delBtn = document.getElementById('report-edit-delete');
+        if (delBtn && canEdit) delBtn.addEventListener('click', function () {
+          if (!window.AppModal || !AppModal.confirm) { AppDB.deleteReport(r.id).then(function () { AppModal.close(); window.CareTrack.refreshData(); }); return; }
+          AppModal.confirm('Delete Report', 'Are you sure you want to delete this ' + (section || '') + ' report? This cannot be undone.', function () {
+            AppDB.deleteReport(r.id).then(function () {
+              AppModal.close();
+              window.CareTrack.toast('Report deleted');
+              window.CareTrack.refreshData();
+              if (window.Pages.reports && window.Pages.reports.render) window.Pages.reports.render(window.CareTrack.getState());
+            }).catch(function (e) { window.CareTrack.toast('Error: ' + (e && e.message)); });
+          }, 'Delete');
+        });
+      }
+    });
+  }
+
+  var RISK_ORDER = { high: 0, medium: 1, low: 2, none: 3 };
+  function sortClientsForReports(clients, profile) {
+    var myName = (profile && profile.displayName) ? profile.displayName.trim() : '';
+    function isMyPatient(c) {
+      if (!myName) return false;
+      if ((c.assignedTherapist || '').trim() === myName) return true;
+      var doctors = c.assignedDoctors || [];
+      return doctors.some(function (d) { return (d || '').trim() === myName; });
+    }
+    return clients.slice().sort(function (a, b) {
+      var aMine = isMyPatient(a); var bMine = isMyPatient(b);
+      if (aMine && !bMine) return -1;
+      if (!aMine && bMine) return 1;
+      var ra = RISK_ORDER[a.currentRisk] !== undefined ? RISK_ORDER[a.currentRisk] : 4;
+      var rb = RISK_ORDER[b.currentRisk] !== undefined ? RISK_ORDER[b.currentRisk] : 4;
+      return ra - rb;
+    });
+  }
+
+  function renderPatientCards(state) {
+    var container = $('reports-patient-cards');
+    var searchEl = $('reports-patient-search');
+    if (!container) return;
+    var clients = state.clients || [];
+    var active = clients.filter(function (c) { return c.status === 'active'; });
+    var profile = state.profile || {};
+    var search = (searchEl && searchEl.value) || '';
+    var q = search.toLowerCase();
+    if (q) active = active.filter(function (c) { return (c.name || '').toLowerCase().indexOf(q) !== -1; });
+    var sorted = sortClientsForReports(active, profile);
+    var myName = (profile.displayName || '').trim();
+    function isMyPatient(c) {
+      if (!myName) return false;
+      if ((c.assignedTherapist || '').trim() === myName) return true;
+      return (c.assignedDoctors || []).some(function (d) { return (d || '').trim() === myName; });
+    }
+    var reportCountByClient = {};
+    (_reports || []).forEach(function (r) {
+      var id = r.clientId || '';
+      reportCountByClient[id] = (reportCountByClient[id] || 0) + 1;
+    });
+    if (!sorted.length) {
+      container.innerHTML = '<p class="empty-state" style="padding:16px;margin:0">No active patients' + (q ? ' match search' : '') + '.</p>';
+      return;
+    }
+    container.innerHTML = sorted.map(function (c) {
+      var count = reportCountByClient[c.id] || 0;
+      var summary = count ? count + ' report' + (count !== 1 ? 's' : '') + ' in range' : 'No reports in range';
+      var myBadge = (window.Permissions && (window.Permissions.hasRole(profile, 'therapist') || window.Permissions.hasRole(profile, 'medical_officer') || window.Permissions.hasRole(profile, 'doctor')) && isMyPatient(c))
+        ? ' <span class="badge-my-patient">My patient</span>' : '';
+      return '<div class="reports-patient-card" data-client-id="' + esc(c.id) + '" role="button" tabindex="0">' +
+        '<div class="card-name">' + esc(c.name || '—') + myBadge + '</div>' +
+        '<div class="card-meta">' + esc(c.diagnosis || '—') + '</div>' +
+        '<div><span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + '</span></div>' +
+        '<div class="card-summary">' + summary + '</div></div>';
+    }).join('');
+    container.querySelectorAll('.reports-patient-card').forEach(function (card) {
+      var id = card.getAttribute('data-client-id');
+      function openPatient() { if (id && window.CareTrack) window.CareTrack.openPatient(id); }
+      card.addEventListener('click', openPatient);
+      card.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openPatient(); } });
     });
   }
 
@@ -117,6 +254,8 @@
     var range = (rangeSelect && rangeSelect.value) || 'today';
     _dateRange = range;
 
+    renderPatientCards(state);
+
     if (!_reports.length) {
       if (state.recentReports && state.recentReports.length) {
         _reports = state.recentReports.slice();
@@ -125,9 +264,10 @@
       }
       listEl.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading reports...</p></div>';
       if (totalEl) totalEl.textContent = '';
-      AppDB.getRecentReports(50).then(function (reports) {
+      AppDB.getRecentReports(200).then(function (reports) {
         _reports = reports || [];
         renderTable(state, range);
+        renderPatientCards(window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state);
       }).catch(function () {
         listEl.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Failed to load reports.</p></div>';
         if (totalEl) totalEl.textContent = '';
@@ -192,11 +332,26 @@
     if (_inited) return;
     _inited = true;
     var rangeSelect = $('reports-date-range');
+    var customDates = $('reports-custom-dates');
     if (rangeSelect) {
       rangeSelect.addEventListener('change', function () {
+        if (customDates) customDates.style.display = this.value === 'custom' ? 'inline-flex' : 'none';
+        if (this.value === 'custom') {
+          var to = new Date();
+          var from = new Date(to);
+          from.setDate(from.getDate() - 6);
+          var fromEl = $('reports-date-from');
+          var toEl = $('reports-date-to');
+          if (fromEl) fromEl.value = from.toISOString().slice(0, 10);
+          if (toEl) toEl.value = to.toISOString().slice(0, 10);
+        }
         render(window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state);
       });
     }
+    var fromEl = $('reports-date-from');
+    var toEl = $('reports-date-to');
+    if (fromEl) fromEl.addEventListener('change', function () { if (rangeSelect && rangeSelect.value === 'custom') render(window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state); });
+    if (toEl) toEl.addEventListener('change', function () { if (rangeSelect && rangeSelect.value === 'custom') render(window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state); });
     var searchEl = $('reports-search');
     if (searchEl) searchEl.addEventListener('input', function () {
       render(window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state);
@@ -205,6 +360,10 @@
     if (sectionEl) sectionEl.addEventListener('change', function () {
       render(window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state);
     });
+    var patientSearch = $('reports-patient-search');
+    if (patientSearch) patientSearch.addEventListener('input', function () {
+      renderPatientCards(window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state);
+    });
   }
 
   function destroy() {
@@ -212,5 +371,5 @@
   }
 
   window.Pages = window.Pages || {};
-  window.Pages.reports = { render: render, init: init, destroy: destroy };
+  window.Pages.reports = { render: render, init: init, destroy: destroy, showReportDetailModal: showReportDetailModal };
 })();

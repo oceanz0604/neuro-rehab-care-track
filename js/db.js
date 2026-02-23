@@ -61,22 +61,31 @@
   /* ─── Normalize legacy Firestore data to expected shape ───────── */
   function normalizeClient(o) {
     if (!o) return o;
+    var diagnoses = o.diagnoses && Array.isArray(o.diagnoses) ? o.diagnoses : (o.diagnosis ? [o.diagnosis] : []);
+    var assignedDoctors = o.assignedDoctors && Array.isArray(o.assignedDoctors) ? o.assignedDoctors : (o.assignedTherapist || o.therapist ? [(o.assignedTherapist || o.therapist)] : []);
+    var diagnosis = o.diagnosis || (diagnoses.length ? diagnoses[0] : '');
+    var assignedTherapist = o.assignedTherapist || o.therapist || (assignedDoctors.length ? assignedDoctors[0] : '');
     return {
       id: o.id,
       name: o.name || o.fullName || '',
       dob: o.dob || o.dateOfBirth || '',
       gender: o.gender || '',
-      diagnosis: o.diagnosis || '',
+      diagnosis: diagnosis,
+      diagnoses: diagnoses,
       admissionDate: o.admissionDate || o.admission || '',
+      plannedDischargeDate: o.plannedDischargeDate || '',
+      admissionDays: o.admissionDays != null ? o.admissionDays : null,
       status: o.status || 'active',
       currentRisk: o.currentRisk || o.riskLevel || 'none',
-      assignedTherapist: o.assignedTherapist || o.therapist || '',
+      assignedTherapist: assignedTherapist,
+      assignedDoctors: assignedDoctors,
       ward: o.ward || '',
       roomNumber: o.roomNumber || o.room || '',
       dischargeDate: o.dischargeDate || '',
       legalStatus: o.legalStatus || '',
       emergencyContact: o.emergencyContact || '',
       consent: o.consent || '',
+      progressReportNote: o.progressReportNote || '',
       createdBy: o.createdBy || '',
       createdAt: o.createdAt,
       updatedAt: o.updatedAt
@@ -93,18 +102,24 @@
       submittedBy: o.submittedBy || o.userId || '',
       submittedByName: o.submittedByName || o.userName || '',
       shift: o.shift || '',
+      reportNote: o.reportNote || '',
       payload: o.payload || {},
-      createdAt: o.createdAt
+      createdAt: o.createdAt,
+      updatedAt: o.updatedAt,
+      updatedBy: o.updatedBy || '',
+      updatedByName: o.updatedByName || ''
     };
   }
 
   function normalizeProfile(o) {
     if (!o) return o;
+    var roles = o.roles && Array.isArray(o.roles) ? o.roles : (o.role ? [o.role] : ['nurse']);
     return {
       uid: o.uid,
       displayName: o.displayName || o.display_name || o.name || '',
       email: o.email || '',
-      role: o.role || 'nurse',
+      role: o.role || roles[0] || 'nurse',
+      roles: roles,
       shift: o.shift || 'Morning',
       isActive: o.isActive !== false && o.isActive !== 'false',
       createdAt: o.createdAt,
@@ -130,11 +145,12 @@
     return tempAuth.createUserWithEmailAndPassword(email, password)
       .then(function (cred) {
         var uid = cred.user.uid;
+        var roles = profile.roles && profile.roles.length ? profile.roles : [profile.role || 'nurse'];
         var doc = {
           displayName: profile.displayName || '',
           email: email,
-          role: profile.role || 'nurse',
-          shift: profile.shift || 'Morning',
+          role: roles[0] || 'nurse',
+          roles: roles,
           isActive: true,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
@@ -197,6 +213,15 @@
     cacheClear('clients');
     data.status = data.status || 'active';
     data.currentRisk = data.currentRisk || 'none';
+    if (data.admissionDays != null && data.admissionDate) {
+      var d = new Date(data.admissionDate + 'T12:00:00');
+      d.setDate(d.getDate() + (parseInt(data.admissionDays, 10) || 0));
+      data.plannedDischargeDate = data.plannedDischargeDate || d.toISOString().slice(0, 10);
+    }
+    if (data.diagnoses && Array.isArray(data.diagnoses)) data.diagnosis = data.diagnoses[0] || data.diagnosis || '';
+    else if (data.diagnosis && !data.diagnoses) data.diagnoses = [data.diagnosis];
+    if (data.assignedDoctors && Array.isArray(data.assignedDoctors)) data.assignedTherapist = data.assignedDoctors[0] || data.assignedTherapist || '';
+    else if (data.assignedTherapist && !data.assignedDoctors) data.assignedDoctors = [data.assignedTherapist];
     data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
     data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
     return db.collection('clients').add(data).then(function (ref) {
@@ -224,6 +249,39 @@
 
   function updateClientRisk(id, level) { return updateClient(id, { currentRisk: level }); }
 
+  /* ─── Diagnosis history ──────────────────────────────────────── */
+  function getClientDiagnosisHistory(clientId, limit) {
+    return db.collection('clients').doc(clientId).collection('diagnosisHistory')
+      .orderBy('createdAt', 'desc')
+      .limit(limit || 50)
+      .get()
+      .then(function (snap) {
+        return snap.docs.map(function (d) {
+          var o = d.data(); o.id = d.id;
+          if (o.fromDate && o.fromDate.toDate) o.fromDate = o.fromDate.toDate().toISOString().slice(0, 10);
+          if (o.toDate && o.toDate.toDate) o.toDate = o.toDate.toDate().toISOString().slice(0, 10);
+          if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
+          return o;
+        });
+      });
+  }
+
+  function addClientDiagnosisEntry(clientId, data) {
+    var user = getCurrentUser();
+    var doc = {
+      diagnosis: data.diagnosis || '',
+      fromDate: data.fromDate || new Date().toISOString().slice(0, 10),
+      addedBy: user ? user.uid : '',
+      addedByName: data.addedByName || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    return db.collection('clients').doc(clientId).collection('diagnosisHistory').add(doc).then(function (ref) {
+      cacheClear('clients');
+      logAudit('diagnosis_history_add', 'client', clientId, { entryId: ref.id }).catch(function () {});
+      return ref;
+    });
+  }
+
   /* ─── Reports ───────────────────────────────────────────────── */
   function _tsToISO(o) {
     if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
@@ -237,12 +295,31 @@
       section: data.section,
       submittedBy: data.submittedBy,
       submittedByName: data.submittedByName || '',
-      shift: data.shift || '',
       payload: data.payload || {},
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(function (ref) {
       logAudit('report_save', 'report', ref.id, { clientId: data.clientId, section: data.section }).catch(function () {});
       return ref;
+    });
+  }
+
+  function updateReport(reportId, data) {
+    var user = getCurrentUser();
+    var update = {
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: user ? user.uid : '',
+      updatedByName: (data && data.updatedByName) ? data.updatedByName : ''
+    };
+    if (data.payload !== undefined) update.payload = data.payload;
+    if (data.reportNote !== undefined) update.reportNote = data.reportNote;
+    return db.collection('reports').doc(reportId).update(update).then(function () {
+      logAudit('report_edit', 'report', reportId, data.details || {}).catch(function () {});
+    });
+  }
+
+  function deleteReport(reportId) {
+    return db.collection('reports').doc(reportId).delete().then(function () {
+      logAudit('report_delete', 'report', reportId, null).catch(function () {});
     });
   }
 
@@ -384,7 +461,11 @@
     updateClient: updateClient,
     dischargeClient: dischargeClient,
     updateClientRisk: updateClientRisk,
+    getClientDiagnosisHistory: getClientDiagnosisHistory,
+    addClientDiagnosisEntry: addClientDiagnosisEntry,
     saveReport: saveReport,
+    updateReport: updateReport,
+    deleteReport: deleteReport,
     getRecentReports: getRecentReports,
     getClientReports: getClientReports,
     getLatestReport: getLatestReport,

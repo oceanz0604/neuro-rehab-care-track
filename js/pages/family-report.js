@@ -10,9 +10,9 @@
 
   var STRINGS = {
     en: {
-      frTitle: 'Family Progress Reports', frSub: 'Monthly — supportive language only',
+      frTitle: 'Client Progress Report', frSub: 'Monthly — supportive language only',
       lblC: 'Client', lblM: 'Report month', lblL: 'Language', noc: 'Select a client to preview.',
-      center: 'Neuro-Psychiatric Rehabilitation Centre', rTitle: 'Monthly Family Progress Report',
+      center: 'Neuro-Psychiatric Rehabilitation Centre', rTitle: 'Monthly Client Progress Report',
       cLbl: 'Client', tLbl: 'Therapist', aLbl: 'Admitted', pTitle: 'Progress this month',
       mTitle: 'Monthly progress', wTitle: 'Weekly trend summary',
       wCols: ['Area', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Change'],
@@ -26,6 +26,9 @@
       tipsTitle: 'How you can support your family member',
       tips: ['Regular, calm visits help your family member feel safe.', 'Participate in family counseling sessions.', 'Encourage every small progress.', 'Contact your assigned social worker for concerns.', 'Follow caregiver guidelines from sessions.'],
       disc: 'This report uses supportive, family-friendly language. It does not contain diagnosis or medication details.',
+      noteTitle: 'Additional note',
+      notePlaceholder: 'Add a note for this client’s progress report (e.g. summary for family). Saved per client.',
+      saveNote: 'Save note',
       footer: 'Neuro-Psychiatric Rehabilitation Centre | Confidential Family Report | NeuroRehab CareTrack',
       exportPdf: 'Export PDF', locale: 'en-IN',
       sectionSummary: {
@@ -56,6 +59,9 @@
       tipsTitle: 'आपण कुटुंब सदस्याला कसे सहाय्य करू शकता',
       tips: ['नियमित भेट द्या.', 'कुटुंब समुपदेशन सत्रांमध्ये सहभागी व्हा.', 'छोट्या प्रगतीलाही प्रोत्साहन द्या.', 'शंका असल्यास सामाजिक कार्यकर्त्याशी संपर्क करा.', 'काळजीवाहू मार्गदर्शक पाळा.'],
       disc: 'हा अहवाल सहाय्यक भाषेत आहे. निदान किंवा औषध तपशील नाही.',
+      noteTitle: 'अतिरिक्त नोट',
+      notePlaceholder: 'या रुग्णाच्या प्रगती अहवालासाठी नोट (उदा. कुटुंबासाठी सारांश). प्रति रुग्ण सेव्ह होते.',
+      saveNote: 'नोट सेव्ह करा',
       footer: 'न्यूरो-मनोरुग्ण पुनर्वसन केंद्र | कुटुंब अहवाल — गोपनीय | NeuroRehab CareTrack',
       exportPdf: 'PDF एक्सपोर्ट करा', locale: 'mr-IN',
       sectionSummary: {
@@ -108,15 +114,22 @@
       var bars = computeBars(data, s);
       var trend = computeTrend(data, mon, s);
 
+      var noteHtml = (c.progressReportNote && c.progressReportNote.trim()) ? '<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:8px">' + s.noteTitle + '</div><p style="margin:0;font-size:.9rem;white-space:pre-wrap">' + esc(c.progressReportNote) + '</p></div>' : '';
       $('fr-prev').innerHTML =
         '<div class="fr-export-wrap" style="margin-bottom:12px">' +
         '<button type="button" class="btn" id="fr-export-pdf"><i class="fas fa-file-pdf"></i> ' + s.exportPdf + '</button>' +
+        '</div>' +
+        '<div class="fr-note-edit card" style="margin-bottom:16px">' +
+        '<div style="font-weight:700;margin-bottom:8px">' + s.noteTitle + '</div>' +
+        '<textarea id="fr-progress-note" class="fi" rows="3" placeholder="' + esc(s.notePlaceholder) + '">' + esc(c.progressReportNote || '') + '</textarea>' +
+        '<button type="button" class="btn btn-sm" id="fr-save-note" style="margin-top:8px"><i class="fas fa-save"></i> ' + s.saveNote + '</button>' +
         '</div>' +
         '<div id="fr-report-content" class="fr-report-content">' +
         '<div class="rh"><div class="rh-c">' + s.center + '</div><div class="rh-t">' + s.rTitle + '</div>' +
         '<div class="rh-d">' + s.cLbl + ': <strong>' + esc(c.name) + '</strong> | ID: ' + c.id + ' | ' + s.tLbl + ': ' + (c.assignedTherapist || '—') + '</div>' +
         '<div class="rh-s">' + mStr + ' | ' + s.aLbl + ': ' + (c.admissionDate || '—') + '</div></div>' +
         '<div class="alert alert-warn">' + s.disc + '</div>' +
+        noteHtml +
         '<div class="card"><div style="font-weight:700;color:var(--primary);margin-bottom:12px">' + s.pTitle + '</div>' +
         s.sections.map(function (sec) {
           var summary = getSectionSummary(data, sec.key, s);
@@ -137,6 +150,7 @@
         '<div class="fr-foot">' + s.footer + '</div>' +
         '</div>';
       bindExportPdf(c, mon);
+      bindSaveNote(c);
     });
   }
 
@@ -380,6 +394,26 @@
     btn.onclick = function () {
       exportReportPdf(client, month);
     };
+  }
+
+  function bindSaveNote(client) {
+    var btn = document.getElementById('fr-save-note');
+    if (!btn || !client) return;
+    btn.addEventListener('click', function () {
+      var ta = document.getElementById('fr-progress-note');
+      var value = (ta && ta.value) ? ta.value.trim() : '';
+      btn.disabled = true;
+      AppDB.updateClient(client.id, { progressReportNote: value }).then(function () {
+        if (window.CareTrack) {
+          window.CareTrack.toast('Note saved');
+          window.CareTrack.refreshData();
+        }
+        btn.disabled = false;
+      }).catch(function (e) {
+        if (window.CareTrack) window.CareTrack.toast('Error: ' + (e && e.message ? e.message : 'Save failed'));
+        btn.disabled = false;
+      });
+    });
   }
 
   function exportReportPdf(client, month) {
