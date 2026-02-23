@@ -14,6 +14,7 @@
 
   var rtdb = firebase.database();
   var _listeners = {};
+  var _unreadListeners = {};
 
   var CHANNELS = [
     'General Ward', 'Urgent Alerts', 'Shift Handover',
@@ -48,6 +49,33 @@
   function unsubscribeAll() {
     Object.keys(_listeners).forEach(function (k) { _listeners[k].off(); });
     _listeners = {};
+    Object.keys(_unreadListeners).forEach(function (k) { _unreadListeners[k].off(); });
+    _unreadListeners = {};
+  }
+
+  /**
+   * Subscribe to a channel's latest message only (for unread detection).
+   * Callback(latestMessage) with latestMessage = { timestamp, text, ... } or null.
+   */
+  function subscribeChannelLatest(channelName, callback) {
+    var key = channelKey(channelName);
+    if (_unreadListeners[key]) _unreadListeners[key].off();
+    var ref = rtdb.ref('chat/' + key).orderByChild('timestamp').limitToLast(1);
+    ref.on('value', function (snap) {
+      var latest = null;
+      snap.forEach(function (child) { latest = child.val(); latest.id = child.key; return true; });
+      callback(latest);
+    });
+    _unreadListeners[key] = ref;
+  }
+
+  /**
+   * Subscribe to all channels' latest message. Callback(channelName, latestMessage) when any channel updates.
+   */
+  function subscribeAllChannelsLatest(callback) {
+    CHANNELS.forEach(function (ch) {
+      subscribeChannelLatest(ch, function (latest) { callback(ch, latest); });
+    });
   }
 
   function sendMessage(channelName, data) {
@@ -61,11 +89,12 @@
     });
   }
 
-  /** One-time read of urgent messages since a timestamp (for notification bell). */
+  /** One-time read of urgent messages since a timestamp (for notification bell). Limited to last 50 to save bandwidth. */
   function getUrgentMessages(sinceTs) {
     return rtdb.ref('chat/' + channelKey('Urgent Alerts'))
       .orderByChild('timestamp')
       .startAt(sinceTs || 0)
+      .limitToLast(50)
       .once('value')
       .then(function (snap) {
         var list = [];
@@ -79,6 +108,8 @@
     CHANNELS: CHANNELS,
     channelKey: channelKey,
     subscribeChannel: subscribeChannel,
+    subscribeChannelLatest: subscribeChannelLatest,
+    subscribeAllChannelsLatest: subscribeAllChannelsLatest,
     unsubscribeChannel: unsubscribeChannel,
     unsubscribeAll: unsubscribeAll,
     sendMessage: sendMessage,

@@ -74,6 +74,9 @@
       ward: o.ward || '',
       roomNumber: o.roomNumber || o.room || '',
       dischargeDate: o.dischargeDate || '',
+      legalStatus: o.legalStatus || '',
+      emergencyContact: o.emergencyContact || '',
+      consent: o.consent || '',
       createdBy: o.createdBy || '',
       createdAt: o.createdAt,
       updatedAt: o.updatedAt
@@ -196,17 +199,27 @@
     data.currentRisk = data.currentRisk || 'none';
     data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
     data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-    return db.collection('clients').add(data);
+    return db.collection('clients').add(data).then(function (ref) {
+      logAudit('client_add', 'client', ref.id, null).catch(function () {});
+      return ref;
+    });
   }
 
   function updateClient(id, data) {
     cacheClear('clients');
     data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-    return db.collection('clients').doc(id).update(data);
+    return db.collection('clients').doc(id).update(data).then(function () {
+      logAudit('client_update', 'client', id, null).catch(function () {});
+    });
   }
 
   function dischargeClient(id, date) {
-    return updateClient(id, { status: 'discharged', dischargeDate: date || new Date().toISOString().slice(0, 10) });
+    var payload = { status: 'discharged', dischargeDate: date || new Date().toISOString().slice(0, 10) };
+    cacheClear('clients');
+    payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    return db.collection('clients').doc(id).update(payload).then(function () {
+      logAudit('client_discharge', 'client', id, null).catch(function () {});
+    });
   }
 
   function updateClientRisk(id, level) { return updateClient(id, { currentRisk: level }); }
@@ -227,6 +240,9 @@
       shift: data.shift || '',
       payload: data.payload || {},
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function (ref) {
+      logAudit('report_save', 'report', ref.id, { clientId: data.clientId, section: data.section }).catch(function () {});
+      return ref;
     });
   }
 
@@ -285,6 +301,69 @@
     return db.collection('config').doc('org').set(data, { merge: true });
   }
 
+  /* ─── Risk escalation (Notify Psychiatrist) ──────────────────── */
+  function addRiskEscalation(clientId, clientName, requestedByName) {
+    var user = getCurrentUser();
+    var uid = user ? user.uid : '';
+    return db.collection('riskEscalations').add({
+      clientId: clientId,
+      clientName: clientName || '',
+      requestedBy: uid,
+      requestedByName: requestedByName || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      acknowledgedBy: null,
+      acknowledgedAt: null
+    });
+  }
+
+  function getUnacknowledgedEscalations() {
+    return db.collection('riskEscalations')
+      .where('acknowledgedBy', '==', null)
+      .orderBy('createdAt', 'desc')
+      .limit(20)
+      .get()
+      .then(function (snap) {
+        return snap.docs.map(function (d) { var o = d.data(); o.id = d.id; if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString(); return o; });
+      });
+  }
+
+  function acknowledgeEscalation(id) {
+    var user = getCurrentUser();
+    return db.collection('riskEscalations').doc(id).update({
+      acknowledgedBy: user ? user.uid : null,
+      acknowledgedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  /* ─── Audit log ──────────────────────────────────────────────── */
+  function logAudit(action, targetType, targetId, details) {
+    var user = getCurrentUser();
+    return db.collection('auditLog').add({
+      uid: user ? user.uid : '',
+      action: action,
+      targetType: targetType || '',
+      targetId: targetId || '',
+      details: details || null,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }
+
+  function getAuditLog(limit, startAfterDoc) {
+    var q = db.collection('auditLog').orderBy('timestamp', 'desc').limit(limit || 50);
+    if (startAfterDoc) q = q.startAfter(startAfterDoc);
+    return q.get().then(function (snap) {
+      return {
+        docs: snap.docs.map(function (d) {
+          var o = d.data();
+          o.id = d.id;
+          if (o.timestamp && o.timestamp.toDate) o.timestamp = o.timestamp.toDate().toISOString();
+          return o;
+        }),
+        lastDoc: snap.docs.length ? snap.docs[snap.docs.length - 1] : null
+      };
+    });
+  }
+
   /* ─── Export ────────────────────────────────────────────────── */
   window.AppDB = {
     ready: true, auth: auth, db: db,
@@ -313,6 +392,11 @@
     setConfig: setConfig,
     getOrgConfig: getOrgConfig,
     setOrgConfig: setOrgConfig,
+    addRiskEscalation: addRiskEscalation,
+    getUnacknowledgedEscalations: getUnacknowledgedEscalations,
+    acknowledgeEscalation: acknowledgeEscalation,
+    logAudit: logAudit,
+    getAuditLog: getAuditLog,
     cacheClear: cacheClear
   };
 })();

@@ -1,12 +1,27 @@
 /**
  * Admin panel — staff CRUD using secondary Firebase app instance pattern.
  * Only visible to users with role === 'admin'.
+ * Roles: admin, psychiatrist, nurse, therapist, psychologist, social_worker, rehab_worker, care_taker.
  */
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var _inited = false;
   var _staff = [];
+
+  var ROLES = [
+    { value: 'admin', label: 'Admin' },
+    { value: 'psychiatrist', label: 'Psychiatrist' },
+    { value: 'nurse', label: 'Nurse' },
+    { value: 'therapist', label: 'Therapist' },
+    { value: 'psychologist', label: 'Psychologist' },
+    { value: 'social_worker', label: 'Social Worker' },
+    { value: 'rehab_worker', label: 'Rehab Worker' },
+    { value: 'care_taker', label: 'Care Taker' }
+  ];
+  var ROLE_LABELS = {};
+  ROLES.forEach(function (r) { ROLE_LABELS[r.value] = r.label; });
+  function roleLabel(role) { return ROLE_LABELS[role] || (role || '—'); }
 
   var _settingsInited = false;
 
@@ -34,15 +49,52 @@
     }
   }
 
+  var _auditLastDoc = null;
+
   function switchAdminTab(tab) {
     var staffWrap = $('admin-staff-wrap');
     var settingsWrap = $('admin-settings-wrap');
+    var auditWrap = $('admin-audit-wrap');
     document.querySelectorAll('.admin-tab').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-admin-tab') === tab);
       b.classList.toggle('btn-outline', b.getAttribute('data-admin-tab') !== tab);
     });
     if (staffWrap) staffWrap.style.display = tab === 'staff' ? '' : 'none';
     if (settingsWrap) settingsWrap.style.display = tab === 'settings' ? '' : 'none';
+    if (auditWrap) auditWrap.style.display = tab === 'audit' ? '' : 'none';
+    if (tab === 'audit') loadAuditLog(false);
+  }
+
+  function loadAuditLog(append) {
+    var table = $('audit-table');
+    var moreBtn = $('audit-load-more');
+    if (!table) return;
+    if (!append) { table.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading...</div>'; _auditLastDoc = null; }
+    if (moreBtn) moreBtn.disabled = true;
+    AppDB.getAuditLog(30, append ? _auditLastDoc : null).then(function (result) {
+      var docs = result.docs || [];
+      _auditLastDoc = result.lastDoc;
+      if (!append) table.innerHTML = '';
+      if (!docs.length && !append) {
+        table.innerHTML = '<div class="empty-state"><i class="fas fa-clipboard-list"></i><p>No audit entries</p></div>';
+        if (moreBtn) moreBtn.style.display = 'none';
+        return;
+      }
+      var rowHtml = docs.map(function (e) {
+        var ts = e.timestamp ? new Date(e.timestamp).toLocaleString('en-IN') : '—';
+        var details = e.details && typeof e.details === 'object' ? (e.details.clientId || e.details.section || '') : '';
+        return '<tr><td style="font-size:.8rem;white-space:nowrap">' + ts + '</td><td>' + esc(e.action || '') + '</td><td>' + esc(e.targetType || '') + '</td><td style="font-size:.8rem">' + esc(e.targetId || '') + (details ? ' <span style="color:var(--text-3)">' + esc(details) + '</span>' : '') + '</td></tr>';
+      }).join('');
+      if (append && table.querySelector('tbody')) {
+        table.querySelector('tbody').insertAdjacentHTML('beforeend', rowHtml);
+      } else {
+        table.innerHTML = '<table class="staff-table"><thead><tr><th>Time</th><th>Action</th><th>Target</th><th>ID</th></tr></thead><tbody>' + rowHtml + '</tbody></table>';
+      }
+      if (moreBtn) { moreBtn.style.display = docs.length >= 30 ? 'block' : 'none'; moreBtn.disabled = false; }
+    }).catch(function () {
+      table.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Failed to load audit log</p></div>';
+      if (moreBtn) { moreBtn.style.display = 'none'; moreBtn.disabled = false; }
+    });
   }
 
   function renderTable() {
@@ -56,7 +108,7 @@
       html += '<tr>' +
         '<td><strong>' + esc(s.displayName || '—') + '</strong></td>' +
         '<td>' + esc(s.email || '—') + '</td>' +
-        '<td><span class="role-badge">' + (s.role || '—') + '</span></td>' +
+        '<td><span class="role-badge">' + esc(roleLabel(s.role)) + '</span></td>' +
         '<td>' + (s.shift || '—') + '</td>' +
         '<td><span class="status-badge ' + (active ? 'status-active' : 'status-discharged') + '">' + (active ? 'Active' : 'Inactive') + '</span></td>' +
         '<td style="white-space:nowrap">' +
@@ -102,15 +154,15 @@
   }
 
   function showAddModal() {
-    var roles = ['nurse', 'doctor', 'therapist', 'support', 'admin'];
     var shifts = ['Morning', 'Afternoon', 'Night'];
+    var roleOptions = ROLES.map(function (r) { return '<option value="' + r.value + '">' + esc(r.label) + '</option>'; }).join('');
     var html =
       '<div class="modal-card"><h3 class="modal-title">Add Staff Member</h3>' +
       '<div class="form-grid">' +
         '<div class="fg fg-full"><label>Email</label><input id="as-email" type="email" class="fi" placeholder="staff@centre.org" required></div>' +
         '<div class="fg fg-full"><label>Temporary Password</label><input id="as-pw" type="text" class="fi" placeholder="Min 6 characters" minlength="6"></div>' +
         '<div class="fg fg-full"><label>Full Name</label><input id="as-name" type="text" class="fi" placeholder="Staff name"></div>' +
-        '<div class="fg"><label>Role</label><select id="as-role" class="fi">' + roles.map(function (r) { return '<option value="' + r + '">' + r + '</option>'; }).join('') + '</select></div>' +
+        '<div class="fg"><label>Role</label><select id="as-role" class="fi">' + roleOptions + '</select></div>' +
         '<div class="fg"><label>Shift</label><select id="as-shift" class="fi">' + shifts.map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px">' +
@@ -145,13 +197,14 @@
 
   function showEditStaff(uid) {
     var s = findStaff(uid); if (!s) return;
-    var roles = ['nurse', 'doctor', 'therapist', 'support', 'admin'];
+    var currentRole = s.role;
     var shifts = ['Morning', 'Afternoon', 'Night'];
+    var roleOptions = ROLES.map(function (r) { return '<option value="' + r.value + '"' + (r.value === currentRole ? ' selected' : '') + '>' + esc(r.label) + '</option>'; }).join('');
     var html =
       '<div class="modal-card"><h3 class="modal-title">Edit Staff</h3>' +
       '<div class="form-grid">' +
         '<div class="fg fg-full"><label>Full Name</label><input id="es-name" type="text" class="fi" value="' + esc(s.displayName || '') + '"></div>' +
-        '<div class="fg"><label>Role</label><select id="es-role" class="fi">' + roles.map(function (r) { return '<option value="' + r + '"' + (r === s.role ? ' selected' : '') + '>' + r + '</option>'; }).join('') + '</select></div>' +
+        '<div class="fg"><label>Role</label><select id="es-role" class="fi">' + roleOptions + '</select></div>' +
         '<div class="fg"><label>Shift</label><select id="es-shift" class="fi">' + shifts.map(function (sh) { return '<option' + (sh === s.shift ? ' selected' : '') + '>' + sh + '</option>'; }).join('') + '</select></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px">' +
@@ -182,8 +235,11 @@
         switchAdminTab(b.getAttribute('data-admin-tab'));
       });
     });
+    var auditMore = $('audit-load-more');
+    if (auditMore) auditMore.addEventListener('click', function () { loadAuditLog(true); });
   }
 
   window.Pages = window.Pages || {};
-  window.Pages.admin = { render: render, init: init };
+  window.Pages.admin = { render: render, init: init, ROLES: ROLES, roleLabel: roleLabel };
+  window.CareTrackRoleLabel = roleLabel;
 })();

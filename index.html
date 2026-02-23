@@ -6,13 +6,13 @@
   <script>
     (function(){ try { var t = localStorage.getItem('caretrack-theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch(e) {} })();
   </script>
-  <title>NeuroRehab CareTrack</title>
+  <title>Maitra Clinic &amp; Saarth Sanmaan</title>
   <meta name="theme-color" content="#0d9488">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="CareTrack">
-  <meta name="description" content="Clinical Neuro-Psychiatric Rehabilitation Reporting System">
+  <meta name="apple-mobile-web-app-title" content="Maitra Clinic">
+  <meta name="description" content="Maitra Clinic &amp; Saarth Sanmaan Psychiatric Rehabilitation Center — Clinical Rehabilitation Reporting">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="apple-touch-icon" href="icons/icon.svg">
@@ -28,9 +28,9 @@
 <div id="login-screen" class="login-screen">
   <div class="login-card">
     <div class="login-header">
-      <div class="login-icon"><i class="fas fa-brain"></i></div>
-      <h1>NeuroRehab CareTrack</h1>
-      <p>Clinical Rehabilitation Reporting</p>
+      <div class="login-icon"><img src="https://www.maitraclinic.com/public/front/img/logo.png" alt="Maitra Clinic"></div>
+      <h1>Maitra Clinic &amp; Saarth Sanmaan</h1>
+      <p>Psychiatric Rehabilitation Center</p>
     </div>
     <form id="login-form" autocomplete="on">
       <div class="fg">
@@ -53,7 +53,7 @@
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-    <div class="sb-brand"><i class="fas fa-brain"></i><span>CareTrack</span></div>
+    <div class="sb-brand"><img src="https://www.maitraclinic.com/public/front/img/logo.png" alt="" class="sb-brand-logo"><span class="sb-brand-text">Maitra Clinic &amp; Saarth Sanmaan</span></div>
     <div class="sb-user">
       <div class="sb-avatar" id="sb-avatar">S</div>
       <div><div class="sb-name" id="sb-name">Staff</div><div class="sb-role" id="sb-role">&mdash;</div></div>
@@ -61,7 +61,8 @@
     <nav class="sb-nav">
       <a href="#" class="nav-link active" data-page="dashboard"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
       <a href="#" class="nav-link" data-page="patients"><i class="fas fa-hospital-user"></i><span>Patients</span></a>
-      <a href="#" class="nav-link" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat</span></a>
+      <a href="#" class="nav-link" data-page="reports"><i class="fas fa-file-lines"></i><span>Reports</span></a>
+      <a href="#" class="nav-link nav-link-chat" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat</span><span id="chat-unread-badge" class="nav-badge"></span></a>
       <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Family Reports</span></a>
       <a href="#" class="nav-link" data-page="admin" id="nav-admin" style="display:none"><i class="fas fa-shield-halved"></i><span>Admin</span></a>
     </nav>
@@ -117,6 +118,32 @@
         <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="patients-table"></div></div>
       </section>
 
+      <!-- ── Reports ── -->
+      <section class="page" id="page-reports">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+          <h1 class="pg-title" style="margin-bottom:0">Reports</h1>
+          <span id="reports-total" class="hist-total"></span>
+        </div>
+        <div class="list-toolbar">
+          <select class="filter-select" id="reports-date-range">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="week">Last 7 days</option>
+          </select>
+          <select class="filter-select" id="reports-filter-section">
+            <option value="">All sections</option>
+            <option value="psychiatric">Psychiatric</option>
+            <option value="behavioral">Behavioral</option>
+            <option value="medication">Medication</option>
+            <option value="adl">ADL</option>
+            <option value="therapeutic">Therapeutic</option>
+            <option value="risk">Risk</option>
+          </select>
+          <div class="search-box"><i class="fas fa-magnifying-glass"></i><input type="text" id="reports-search" placeholder="Search by patient..."></div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="reports-table"></div></div>
+      </section>
+
       <!-- ── Patient Detail ── -->
       <section class="page" id="page-patient-detail">
         <div id="pd-header"></div>
@@ -159,6 +186,7 @@
         <div class="admin-tabs" style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px">
           <button type="button" class="btn btn-sm admin-tab active" data-admin-tab="staff"><i class="fas fa-users"></i> Staff</button>
           <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="settings"><i class="fas fa-gear"></i> Settings</button>
+          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="audit"><i class="fas fa-clipboard-list"></i> Audit Log</button>
         </div>
         <div id="admin-staff-wrap">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
@@ -177,6 +205,12 @@
             <button type="button" class="btn btn-outline btn-sm btn-danger" id="reset-config"><i class="fas fa-rotate-left"></i> Reset</button>
             <input type="file" id="cfg-file" accept=".json" style="display:none">
           </div>
+        </div>
+        <div id="admin-audit-wrap" style="display:none">
+          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Audit Log</h2>
+          <p class="pg-sub" style="margin-bottom:16px">Recent actions: report saves, client add/update/discharge.</p>
+          <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="audit-table"></div></div>
+          <button type="button" class="btn btn-outline btn-sm" id="audit-load-more" style="margin-top:8px;display:none">Load more</button>
         </div>
       </section>
 
@@ -215,11 +249,13 @@
 <!-- App scripts (order matters) -->
 <script src="js/firebase-config.js"></script>
 <script src="js/db.js"></script>
+<script src="js/permissions.js"></script>
 <script src="js/rtdb.js"></script>
 <script src="js/components/modal.js"></script>
 <script src="js/components/notifications.js"></script>
 <script src="js/pages/dashboard.js"></script>
 <script src="js/pages/patients.js"></script>
+<script src="js/pages/reports.js"></script>
 <script src="js/pages/patient-detail.js"></script>
 <script src="js/pages/team.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>

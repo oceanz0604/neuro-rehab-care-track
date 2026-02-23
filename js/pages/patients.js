@@ -7,6 +7,10 @@
   var _inited = false;
 
   function render(state) {
+    var profile = state.profile || {};
+    var addBtn = $('add-patient-btn');
+    if (addBtn && window.Permissions) addBtn.style.display = window.Permissions.canAddPatient(profile.role) ? '' : 'none';
+
     var clients = state.clients || [];
     var q = ($('pt-search') || {}).value || '';
     var sf = ($('pt-filter-status') || {}).value || '';
@@ -55,6 +59,9 @@
           fg('ap-gender', 'Gender', 'select', '<option value="">—</option><option>Male</option><option>Female</option><option>Other</option>') +
           searchableFg('ap-diag', 'Diagnosis', 'Select or type') +
           fg('ap-admission', 'Admission Date', 'date') +
+          fg('ap-legal', 'Legal Status', 'text') +
+          fg('ap-emergency', 'Emergency Contact', 'text') +
+          fg('ap-consent', 'Consent (e.g. URL or note)', 'text') +
           searchableFg('ap-therapist', 'Assigned Therapist', 'Select staff') +
           searchableFg('ap-ward', 'Ward', 'Select or type') +
           searchableFg('ap-room', 'Room / Bed', 'Select or type') +
@@ -153,6 +160,9 @@
       gender: (document.getElementById('ap-gender') || {}).value || '',
       diagnosis: (document.getElementById('ap-diag') || {}).value || '',
       admissionDate: (document.getElementById('ap-admission') || {}).value || new Date().toISOString().slice(0, 10),
+      legalStatus: (document.getElementById('ap-legal') || {}).value || '',
+      emergencyContact: (document.getElementById('ap-emergency') || {}).value || '',
+      consent: (document.getElementById('ap-consent') || {}).value || '',
       assignedTherapist: (document.getElementById('ap-therapist') || {}).value || '',
       ward: (document.getElementById('ap-ward') || {}).value || '',
       roomNumber: (document.getElementById('ap-room') || {}).value || '',

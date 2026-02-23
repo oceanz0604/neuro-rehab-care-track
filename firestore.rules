@@ -24,9 +24,10 @@ service cloud.firestore {
       allow read, write: if isAuth();
     }
 
-    // User profiles: users can read/write own; admins can read/write any
+    // User profiles: any authenticated user can read/write their own; admins can read/write any
     match /userProfiles/{uid} {
-      allow read, write: if isOwner(uid) || isAdmin();
+      allow read, write: if isAuth() && request.auth.uid == uid;
+      allow read, write: if isAdmin();
 
       // Per-user config (legacy); only the owner
       match /config/{docId} {
@@ -38,6 +39,18 @@ service cloud.firestore {
     match /config/{docId} {
       allow read: if isAuth();
       allow write: if isAdmin();
+    }
+
+    // Risk escalations (Notify Psychiatrist): any auth can create and read; any auth can update (acknowledge)
+    match /riskEscalations/{docId} {
+      allow read, create: if isAuth();
+      allow update: if isAuth();
+    }
+
+    // Audit log: any auth can create; only admin can read
+    match /auditLog/{docId} {
+      allow create: if isAuth();
+      allow read: if isAdmin();
     }
   }
 }

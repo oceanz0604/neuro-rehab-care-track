@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "riskEscalations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "acknowledgedBy", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "reports",
       "queryScope": "COLLECTION",
       "fields": [

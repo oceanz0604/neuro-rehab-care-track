@@ -21,6 +21,7 @@
   var PAGE_TITLES = {
     dashboard: 'Dashboard',
     patients: 'Patients',
+    reports: 'Reports',
     'patient-detail': 'Patient Detail',
     comms: 'Team Chat',
     freport: 'Family Reports',
@@ -85,17 +86,36 @@
     $('app-shell').setAttribute('hidden', '');
   }
 
+  function updateChatBadge() {
+    var badge = $('chat-unread-badge');
+    if (!badge) return;
+    var total = (window.Pages && window.Pages.comms && window.Pages.comms.getUnreadTotal) ? window.Pages.comms.getUnreadTotal() : 0;
+    if (total > 0) {
+      badge.textContent = total > 99 ? '99+' : total;
+      badge.classList.add('visible');
+    } else {
+      badge.textContent = '';
+      badge.classList.remove('visible');
+    }
+  }
+
   function showApp() {
     $('login-screen').style.display = 'none';
     $('app-shell').removeAttribute('hidden');
     var p = state.profile || {};
     $('sb-name').textContent = p.displayName || (state.user || {}).email || 'Staff';
-    $('sb-role').textContent = p.role || '—';
+    $('sb-role').textContent = (window.CareTrackRoleLabel && window.CareTrackRoleLabel(p.role)) || p.role || '—';
     $('sb-avatar').textContent = ((p.displayName || 'S')[0] || 'S').toUpperCase();
     $('shift-badge').textContent = p.shift || 'Morning';
 
     var adminLink = $('nav-admin');
-    if (adminLink) adminLink.style.display = (p.role === 'admin') ? '' : 'none';
+    if (adminLink) adminLink.style.display = (window.Permissions && window.Permissions.canAccessAdmin(p.role)) ? '' : 'none';
+
+    if (window.Pages && window.Pages.comms) {
+      if (Pages.comms.startUnreadListeners) Pages.comms.startUnreadListeners();
+      if (Pages.comms.setOnUnreadChange) Pages.comms.setOnUnreadChange(updateChatBadge);
+      updateChatBadge();
+    }
   }
 
   /* ─── Data loading ──────────────────────────────────────────── */
@@ -106,7 +126,7 @@
     ]).then(function (results) {
       state.clients = results[0] || [];
       state.recentReports = results[1] || [];
-      AppNotify.refresh(state.clients);
+      AppNotify.refresh(state.clients, state);
       renderCurrentPage();
     }).catch(function (err) {
       console.error('loadData error:', err);
@@ -153,6 +173,7 @@
     closeSidebar();
     initPage(page);
     renderCurrentPage();
+    if (page === 'comms') updateChatBadge();
   }
 
   function openPatient(clientId) {
