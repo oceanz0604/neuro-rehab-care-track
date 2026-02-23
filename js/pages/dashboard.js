@@ -33,7 +33,8 @@
   }
 
   function statCard(icon, color, label, value) {
-    return '<div class="stat-card"><div class="stat-icon ' + color + '"><i class="fas ' + icon + '"></i></div>' +
+    var cardClass = 'stat-card stat-card-' + color;
+    return '<div class="' + cardClass + '"><div class="stat-icon ' + color + '"><i class="fas ' + icon + '"></i></div>' +
       '<div><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div></div></div>';
   }
 

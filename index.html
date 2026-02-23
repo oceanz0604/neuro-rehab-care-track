@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script>
+    (function(){ try { var t = localStorage.getItem('caretrack-theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch(e) {} })();
+  </script>
   <title>NeuroRehab CareTrack</title>
   <meta name="theme-color" content="#0d9488">
   <meta name="mobile-web-app-capable" content="yes">
@@ -72,6 +75,9 @@
       <button type="button" id="menu-btn" class="menu-btn"><i class="fas fa-bars"></i></button>
       <h2 class="tb-title" id="tb-title">Dashboard</h2>
       <div class="tb-right">
+        <button type="button" class="theme-toggle-btn notif-btn" id="theme-toggle" title="Toggle dark/light theme" aria-label="Theme">
+          <i class="fas fa-moon" id="theme-icon"></i>
+        </button>
         <button type="button" class="notif-btn" id="notif-btn" title="Notifications">
           <i class="fas fa-bell"></i>
           <span id="notif-badge"></span>
@@ -92,8 +98,8 @@
         <p class="pg-sub" id="d-date"></p>
         <div class="stats-row" id="dash-stats"></div>
         <div class="two-col">
-          <div class="card"><div class="card-hd"><i class="fas fa-triangle-exclamation" style="color:var(--accent)"></i> Risk Alerts</div><div id="risk-alerts"></div></div>
-          <div class="card"><div class="card-hd"><i class="fas fa-clock-rotate-left" style="color:var(--text-3)"></i> Recent Reports</div><div id="recent-rpts"></div></div>
+          <div class="card card-accent-danger"><div class="card-hd card-hd-accent"><i class="fas fa-triangle-exclamation"></i> Risk Alerts</div><div id="risk-alerts"></div></div>
+          <div class="card card-accent"><div class="card-hd card-hd-primary"><i class="fas fa-clock-rotate-left"></i> Recent Reports</div><div id="recent-rpts"></div></div>
         </div>
       </section>
 
@@ -183,6 +189,22 @@
 
 <!-- Toast -->
 <div id="toast" data-show="false"></div>
+
+<!-- PWA Install banner -->
+<div id="pwa-install-banner" class="pwa-install-banner" hidden>
+  <div class="pwa-install-inner">
+    <div class="pwa-install-icon"><i class="fas fa-brain"></i></div>
+    <div class="pwa-install-text">
+      <strong>Install CareTrack</strong>
+      <span>Add to home screen for quick access</span>
+    </div>
+    <div class="pwa-install-actions">
+      <button type="button" class="btn btn-ghost btn-sm" id="pwa-install-dismiss">Not now</button>
+      <button type="button" class="btn btn-sm" id="pwa-install-btn"><i class="fas fa-download"></i> Install</button>
+    </div>
+    <button type="button" class="pwa-install-close" id="pwa-install-close" aria-label="Close"><i class="fas fa-times"></i></button>
+  </div>
+</div>
 
 <!-- Firebase SDKs (compat for no-bundler setup) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>

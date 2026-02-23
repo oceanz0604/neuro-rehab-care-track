@@ -203,6 +203,95 @@
     $('sb-overlay').classList.remove('visible');
   }
 
+  function doLogout() {
+    if (AppChat && AppChat.ready) AppChat.unsubscribeAll();
+    AppDB.signOut();
+  }
+
+  /* ─── PWA Install banner ─────────────────────────────────────── */
+  var _deferredInstallPrompt = null;
+  var PWA_DISMISS_KEY = 'pwaInstallDismissed';
+  var PWA_DISMISS_DAYS = 7;
+
+  function showPwaBanner() {
+    var banner = $('pwa-install-banner');
+    if (!banner || !_deferredInstallPrompt) return;
+    if (window.matchMedia('(display-mode: standalone)').matches) return;
+    try {
+      var dismissed = localStorage.getItem(PWA_DISMISS_KEY);
+      if (dismissed) {
+        var t = parseInt(dismissed, 10);
+        if (Date.now() - t < PWA_DISMISS_DAYS * 24 * 60 * 60 * 1000) return;
+      }
+    } catch (e) { /* ignore */ }
+    banner.hidden = false;
+  }
+
+  function hidePwaBanner() {
+    var banner = $('pwa-install-banner');
+    if (banner) banner.hidden = true;
+  }
+
+  function dismissPwaBanner() {
+    try { localStorage.setItem(PWA_DISMISS_KEY, String(Date.now())); } catch (e) { /* ignore */ }
+    hidePwaBanner();
+  }
+
+  function bindPwaInstall() {
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      _deferredInstallPrompt = e;
+      if ($('app-shell') && !$('app-shell').hasAttribute('hidden')) {
+        setTimeout(showPwaBanner, 1500);
+      }
+    });
+    window.addEventListener('appinstalled', function () {
+      _deferredInstallPrompt = null;
+      try { localStorage.setItem(PWA_DISMISS_KEY, String(Date.now())); } catch (e) { /* ignore */ }
+      hidePwaBanner();
+    });
+    var installBtn = $('pwa-install-btn');
+    var dismissBtn = $('pwa-install-dismiss');
+    var closeBtn = $('pwa-install-close');
+    if (installBtn) installBtn.addEventListener('click', function () {
+      if (!_deferredInstallPrompt) return;
+      _deferredInstallPrompt.prompt();
+      _deferredInstallPrompt.userChoice.then(function (choice) {
+        _deferredInstallPrompt = null;
+        hidePwaBanner();
+      });
+    });
+    if (dismissBtn) dismissBtn.addEventListener('click', dismissPwaBanner);
+    if (closeBtn) closeBtn.addEventListener('click', dismissPwaBanner);
+  }
+
+  /* ─── Theme (dark/light) ────────────────────────────────────── */
+  var THEME_KEY = 'caretrack-theme';
+  function getTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'light';
+  }
+  function setTheme(theme) {
+    theme = theme === 'dark' ? 'dark' : 'light';
+    if (theme === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+    else document.documentElement.removeAttribute('data-theme');
+    try { localStorage.setItem(THEME_KEY, theme); } catch (e) { /* ignore */ }
+    updateThemeIcon();
+  }
+  function toggleTheme() {
+    setTheme(getTheme() === 'dark' ? 'light' : 'dark');
+  }
+  function updateThemeIcon() {
+    var icon = $('theme-icon');
+    if (!icon) return;
+    if (getTheme() === 'dark') {
+      icon.className = 'fas fa-sun';
+      if (icon.parentNode) icon.parentNode.setAttribute('title', 'Switch to light theme');
+    } else {
+      icon.className = 'fas fa-moon';
+      if (icon.parentNode) icon.parentNode.setAttribute('title', 'Switch to dark theme');
+    }
+  }
+
   /* ─── Init ──────────────────────────────────────────────────── */
   function init() {
     if (!window.AppDB || !AppDB.ready) {
@@ -210,7 +299,12 @@
       return;
     }
     bindLogin();
+    bindPwaInstall();
     AppNotify.init();
+
+    // Theme toggle (only visible in app shell)
+    var themeBtn = $('theme-toggle');
+    if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
     // Sidebar nav
     document.querySelectorAll('.nav-link').forEach(function (a) {
@@ -227,10 +321,13 @@
     });
     $('sb-overlay').addEventListener('click', closeSidebar);
 
-    // Logout
+    // Logout (with confirmation)
     $('logout-btn').addEventListener('click', function () {
-      if (AppChat && AppChat.ready) AppChat.unsubscribeAll();
-      AppDB.signOut();
+      if (!window.AppModal || !AppModal.confirm) {
+        doLogout();
+        return;
+      }
+      AppModal.confirm('Sign out', 'Are you sure you want to sign out?', doLogout, 'Sign out');
     });
 
     // Notification bell
@@ -268,10 +365,14 @@
           }
           state.profile = profile || {};
           showApp();
+          updateThemeIcon();
+          setTimeout(function () { showPwaBanner(); }, 1500);
           return loadConfig().then(function () { return loadData(); });
         }).catch(function () {
           state.profile = {};
           showApp();
+          updateThemeIcon();
+          setTimeout(function () { showPwaBanner(); }, 1500);
           loadData();
         });
       } else {

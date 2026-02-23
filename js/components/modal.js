@@ -34,14 +34,15 @@
     });
   }
 
-  function confirm(title, message, onYes) {
+  function confirm(title, message, onYes, confirmLabel) {
+    var label = (confirmLabel && confirmLabel.length) ? confirmLabel : 'Confirm';
     var html =
       '<div class="modal-card">' +
         '<h3 class="modal-title">' + title + '</h3>' +
         '<p class="modal-body">' + message + '</p>' +
         '<div class="modal-actions">' +
           '<button type="button" class="btn btn-ghost" id="mdl-cancel">Cancel</button>' +
-          '<button type="button" class="btn btn-danger" id="mdl-confirm">Confirm</button>' +
+          '<button type="button" class="btn btn-danger" id="mdl-confirm">' + label + '</button>' +
         '</div>' +
       '</div>';
     open(html, {
