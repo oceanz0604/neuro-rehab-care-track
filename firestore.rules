@@ -1,34 +1,43 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Only authenticated users can read/write
+
+    // Helpers
     function isAuth() {
       return request.auth != null;
     }
-    // Clients: any authenticated user can read/write (shared registry)
+    function isOwner(uid) {
+      return request.auth.uid == uid;
+    }
+    function isAdmin() {
+      let path = /databases/$(database)/documents/userProfiles/$(request.auth.uid);
+      return isAuth() && exists(path) && get(path).data.role == 'admin';
+    }
+
+    // Clients: all authenticated staff can read and write
     match /clients/{clientId} {
       allow read, write: if isAuth();
     }
-    // Reports: any authenticated user can create/read; structure by section + client
+
+    // Reports: all authenticated staff can read and write
     match /reports/{reportId} {
-      allow read, create: if isAuth();
-      allow update, delete: if isAuth();
-    }
-    // Channel messages: any authenticated user can read/write
-    match /channels/{channelId}/messages/{messageId} {
       allow read, write: if isAuth();
     }
-    // User profiles: users can read/write their own (uid = document id)
-    match /userProfiles/{userId} {
-      allow read, write: if isAuth() && request.auth.uid == userId;
+
+    // User profiles: users can read/write own; admins can read/write any
+    match /userProfiles/{uid} {
+      allow read, write: if isOwner(uid) || isAdmin();
+
+      // Per-user config (legacy); only the owner
       match /config/{docId} {
-        allow read, write: if isAuth() && request.auth.uid == userId;
+        allow read, write: if isOwner(uid);
       }
     }
-    // Optional: global config/lists (e.g. PSY, BEH, ADL) — read for all, write for admins if you add claims later
+
+    // Org-wide config (diagnosis, wards, rooms, parameter lists): read all auth, write admin only
     match /config/{docId} {
       allow read: if isAuth();
-      allow write: if isAuth();
+      allow write: if isAdmin();
     }
   }
 }
