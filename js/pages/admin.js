@@ -174,39 +174,9 @@
   function vv(id) { return (document.getElementById(id) || {}).value || ''; }
   function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
-  var SEED_STAFF = [
-    { email: 'test-therapist1@centre.org', password: 'Test123!', displayName: 'Dr. Priya Sharma', role: 'therapist', shift: 'Morning' },
-    { email: 'test-therapist2@centre.org', password: 'Test123!', displayName: 'Dr. Rajesh Kumar', role: 'therapist', shift: 'Afternoon' },
-    { email: 'test-doctor1@centre.org', password: 'Test123!', displayName: 'Dr. Amit Shah', role: 'doctor', shift: 'Morning' }
-  ];
-
-  function seedTestStaff() {
-    var btn = $('seed-test-staff-btn');
-    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating…'; }
-    var i = 0;
-    function next() {
-      if (i >= SEED_STAFF.length) {
-        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-flask"></i> Seed test staff'; }
-        window.CareTrack.toast('Test staff accounts created. Password: Test123!');
-        render(window.CareTrack.getState());
-        return;
-      }
-      var s = SEED_STAFF[i];
-      AppDB.createStaffAccount(s.email, s.password, { displayName: s.displayName, role: s.role, shift: s.shift })
-        .then(function () { i++; next(); })
-        .catch(function (err) {
-          if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-flask"></i> Seed test staff'; }
-          window.CareTrack.toast(err.message || 'Seed failed (accounts may already exist)');
-        });
-    }
-    next();
-  }
-
   function init() {
     if (_inited) return; _inited = true;
     $('add-staff-btn').addEventListener('click', showAddModal);
-    var seedBtn = $('seed-test-staff-btn');
-    if (seedBtn) seedBtn.addEventListener('click', seedTestStaff);
     document.querySelectorAll('.admin-tab').forEach(function (b) {
       b.addEventListener('click', function () {
         switchAdminTab(b.getAttribute('data-admin-tab'));
