@@ -24,14 +24,49 @@
       return r.createdAt && r.createdAt.slice(0, 10) === todayStr;
     });
 
-    $('dash-stats').innerHTML =
-      statCard('fa-hospital-user', 'teal', 'Active Patients', active.length) +
-      statCard('fa-triangle-exclamation', 'red', 'High Risk', highRisk.length) +
-      statCard('fa-file-lines', 'amber', 'Reports Today', todayReports.length) +
-      statCard('fa-users', 'green', 'Total Clients', clients.length);
+    var taskCounts = { pendingOnYou: 0, createdByYou: 0 };
+    function buildStats(tc) {
+      var html = statCard('fa-hospital-user', 'teal', 'Active Patients', active.length) +
+        statCard('fa-triangle-exclamation', 'red', 'High Risk', highRisk.length) +
+        statCard('fa-file-lines', 'amber', 'Reports Today', todayReports.length) +
+        statCard('fa-users', 'green', 'Total Clients', clients.length);
+      if (tc.pendingOnYou > 0) html += statCardLink('fa-list-check', 'teal', 'Pending on you', tc.pendingOnYou, 'tasks');
+      if (tc.createdByYou > 0) html += statCardLink('fa-user-pen', 'amber', 'Created by you (pending)', tc.createdByYou, 'tasks');
+      return html;
+    }
+    $('dash-stats').innerHTML = buildStats(taskCounts);
+    bindTaskStatLinks();
+
+    if (window.AppDB && window.AppDB.getTasks) {
+      window.AppDB.getTasks().then(function (tasks) {
+        var uid = (state.user && state.user.uid) || '';
+        var pendingOnYou = tasks.filter(function (t) { return (t.assignedTo || '') === uid && (t.status || '') !== 'done'; }).length;
+        var createdByYou = tasks.filter(function (t) { return (t.createdBy || '') === uid && (t.status || '') !== 'done'; }).length;
+        $('dash-stats').innerHTML = buildStats({ pendingOnYou: pendingOnYou, createdByYou: createdByYou });
+        bindTaskStatLinks();
+      }).catch(function () {});
+    } else {
+      bindTaskStatLinks();
+    }
 
     renderRiskAlerts(active, state.profile || {});
     renderRecentReports(state.recentReports || []);
+  }
+
+  function statCardLink(icon, color, label, value, page) {
+    var cardClass = 'stat-card stat-card-' + color + ' clickable';
+    return '<div class="' + cardClass + '" data-nav="' + (page || '') + '" role="button" tabindex="0">' +
+      '<div class="stat-icon ' + color + '"><i class="fas ' + icon + '"></i></div>' +
+      '<div><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div></div></div>';
+  }
+
+  function bindTaskStatLinks() {
+    var el = $('dash-stats');
+    if (!el) return;
+    el.querySelectorAll('.stat-card[data-nav="tasks"]').forEach(function (card) {
+      card.addEventListener('click', function () { if (window.CareTrack) window.CareTrack.navigate('tasks'); });
+      card.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (window.CareTrack) window.CareTrack.navigate('tasks'); } });
+    });
   }
 
   function statCard(icon, color, label, value) {

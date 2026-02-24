@@ -64,6 +64,7 @@
       <a href="#" class="nav-link" data-page="reports"><i class="fas fa-file-lines"></i><span>Reports</span></a>
       <a href="#" class="nav-link nav-link-chat" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat</span><span id="chat-unread-badge" class="nav-badge"></span></a>
       <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Client Progress Report</span></a>
+      <a href="#" class="nav-link" data-page="tasks"><i class="fas fa-list-check"></i><span>Tasks</span></a>
       <a href="#" class="nav-link" data-page="admin" id="nav-admin" style="display:none"><i class="fas fa-shield-halved"></i><span>Admin</span></a>
     </nav>
     <div class="sb-foot"><button id="logout-btn" class="logout-btn"><i class="fas fa-right-from-bracket"></i><span>Sign out</span></button></div>
@@ -192,12 +193,33 @@
         <div id="fr-prev" class="fr-preview" hidden></div>
       </section>
 
-      <!-- ── Admin (Staff + Settings) ── -->
+      <!-- ── Tasks (MVP-2) ── -->
+      <section class="page" id="page-tasks">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+          <h1 class="pg-title" style="margin:0">Tasks</h1>
+          <button type="button" class="btn btn-sm" id="tasks-add-btn"><i class="fas fa-plus"></i> Add Task</button>
+        </div>
+        <div class="list-toolbar" style="margin-bottom:12px">
+          <select class="filter-select" id="tasks-filter-status">
+            <option value="">All statuses</option>
+            <option value="todo">To do</option>
+            <option value="in_progress">In progress</option>
+            <option value="done">Done</option>
+          </select>
+          <select class="filter-select" id="tasks-filter-client"><option value="">All patients</option></select>
+          <select class="filter-select" id="tasks-filter-assignee"><option value="">All assignees</option></select>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="tasks-list"></div></div>
+      </section>
+
+      <!-- ── Admin (Staff | Report Parameters | Ward & Beds | Diagnosis Options | Audit Logs) ── -->
       <section class="page" id="page-admin">
-        <div class="admin-tabs" style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px">
+        <div class="admin-tabs" style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px;flex-wrap:wrap">
           <button type="button" class="btn btn-sm admin-tab active" data-admin-tab="staff"><i class="fas fa-users"></i> Staff</button>
-          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="settings"><i class="fas fa-gear"></i> Settings</button>
-          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="audit"><i class="fas fa-clipboard-list"></i> Audit Log</button>
+          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="report-params"><i class="fas fa-list-check"></i> Report Parameters</button>
+          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="ward-beds"><i class="fas fa-bed"></i> Ward &amp; Beds</button>
+          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="diagnosis"><i class="fas fa-stethoscope"></i> Diagnosis Options</button>
+          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="audit"><i class="fas fa-clipboard-list"></i> Audit Logs</button>
         </div>
         <div id="admin-staff-wrap">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
@@ -206,19 +228,23 @@
           </div>
           <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="staff-table"></div></div>
         </div>
-        <div id="admin-settings-wrap" style="display:none">
-          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Settings</h2>
-          <p class="pg-sub" style="margin-bottom:16px">Parameters and options used across the app. Changes auto-save.</p>
-          <div id="settings-lists"></div>
-          <div class="settings-actions" style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" class="btn btn-outline btn-sm" id="export-config"><i class="fas fa-download"></i> Export</button>
-            <button type="button" class="btn btn-outline btn-sm" id="import-config-btn"><i class="fas fa-upload"></i> Import</button>
-            <button type="button" class="btn btn-outline btn-sm btn-danger" id="reset-config"><i class="fas fa-rotate-left"></i> Reset</button>
-            <input type="file" id="cfg-file" accept=".json" style="display:none">
-          </div>
+        <div id="admin-report-params-wrap" style="display:none">
+          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Report Parameters</h2>
+          <p class="pg-sub" style="margin-bottom:16px">Edit each section and click Save. Changes are not auto-saved.</p>
+          <div id="report-params-content"></div>
+        </div>
+        <div id="admin-ward-beds-wrap" style="display:none">
+          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Ward &amp; Beds</h2>
+          <p class="pg-sub" style="margin-bottom:16px">Ward names and room/bed numbers. Edit and click Save per section.</p>
+          <div id="ward-beds-content"></div>
+        </div>
+        <div id="admin-diagnosis-wrap" style="display:none">
+          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Diagnosis Options</h2>
+          <p class="pg-sub" style="margin-bottom:16px">ICD-11 diagnosis list used across the app. Edit and click Save.</p>
+          <div id="diagnosis-options-content"></div>
         </div>
         <div id="admin-audit-wrap" style="display:none">
-          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Audit Log</h2>
+          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Audit Logs</h2>
           <p class="pg-sub" style="margin-bottom:16px">Recent actions: report saves, client add/update/discharge.</p>
           <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="audit-table"></div></div>
           <button type="button" class="btn btn-outline btn-sm" id="audit-load-more" style="margin-top:8px;display:none">Load more</button>
@@ -229,8 +255,8 @@
   </div>
 </div>
 
-<!-- Modal overlay -->
-<div class="modal-overlay" id="modal-overlay"><div id="modal-container"></div></div>
+<!-- Modal overlay: direct child of body so it is never clipped or hidden by #app-shell -->
+<div class="modal-overlay" id="modal-overlay" aria-hidden="true"><div id="modal-container"></div></div>
 
 <!-- Toast -->
 <div id="toast" data-show="false"></div>
@@ -263,6 +289,7 @@
 <script src="js/permissions.js"></script>
 <script src="js/rtdb.js"></script>
 <script src="js/components/modal.js"></script>
+<script src="js/components/report-modal.js"></script>
 <script src="js/components/notifications.js"></script>
 <script src="js/pages/dashboard.js"></script>
 <script src="js/pages/patients.js"></script>
@@ -271,6 +298,7 @@
 <script src="js/pages/team.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" crossorigin="anonymous"></script>
 <script src="js/pages/family-report.js"></script>
+<script src="js/pages/tasks.js"></script>
 <script src="js/pages/admin.js"></script>
 <script src="js/pages/settings.js"></script>
 <script src="js/app.js"></script>

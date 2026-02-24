@@ -8,21 +8,35 @@
   var overlay = document.getElementById('modal-overlay');
   var container = document.getElementById('modal-container');
   var _onClose = null;
+  var _closeTimer = null;
 
   function open(html, opts) {
     opts = opts || {};
+    if (!overlay || !container) {
+      try { console.error('CareTrack: modal overlay or container not found'); alert('Modal not available'); } catch (e) {}
+      return;
+    }
+    if (_closeTimer) { clearTimeout(_closeTimer); _closeTimer = null; }
+    if (overlay.parentNode !== document.body) {
+      document.body.appendChild(overlay);
+    }
     container.innerHTML = html;
     overlay.classList.add('visible');
+    overlay.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
     _onClose = opts.onClose || null;
     if (opts.onReady) setTimeout(opts.onReady, 30);
   }
 
   function close() {
-    overlay.classList.remove('visible');
+    if (overlay) {
+      overlay.classList.remove('visible');
+      overlay.setAttribute('aria-hidden', 'true');
+    }
     document.body.classList.remove('modal-open');
     if (_onClose) { _onClose(); _onClose = null; }
-    setTimeout(function () { container.innerHTML = ''; }, 250);
+    if (_closeTimer) clearTimeout(_closeTimer);
+    _closeTimer = setTimeout(function () { container.innerHTML = ''; _closeTimer = null; }, 250);
   }
 
   if (overlay) {

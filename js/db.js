@@ -52,6 +52,15 @@
     });
   }
 
+  /** Listen for profile changes (e.g. isActive). Returns unsubscribe. */
+  function listenUserProfile(uid, callback) {
+    return db.collection('userProfiles').doc(uid).onSnapshot(function (snap) {
+      var d = snap.exists ? snap.data() : null;
+      if (d) d.uid = uid;
+      callback(d);
+    });
+  }
+
   function setUserProfile(uid, data) {
     cacheClear('prof_' + uid);
     data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
@@ -174,6 +183,13 @@
   function deactivateStaff(uid) { return updateStaffProfile(uid, { isActive: false }); }
   function reactivateStaff(uid) { return updateStaffProfile(uid, { isActive: true }); }
 
+  /** Update current user's password (client SDK). Fails with requires-recent-login if session is stale. */
+  function updateCurrentUserPassword(newPassword) {
+    var user = auth.currentUser;
+    if (!user) return Promise.reject(new Error('Not signed in'));
+    return user.updatePassword(newPassword);
+  }
+
   /* ─── Clients ───────────────────────────────────────────────── */
   function getClients(force) {
     if (!force) { var c = cacheGet('clients'); if (c) return Promise.resolve(c); }
@@ -271,6 +287,7 @@
     var doc = {
       diagnosis: data.diagnosis || '',
       fromDate: data.fromDate || new Date().toISOString().slice(0, 10),
+      notes: data.notes || '',
       addedBy: user ? user.uid : '',
       addedByName: data.addedByName || '',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -378,37 +395,65 @@
     return db.collection('config').doc('org').set(data, { merge: true });
   }
 
-  /* ─── Risk escalation (Notify Psychiatrist) ──────────────────── */
-  function addRiskEscalation(clientId, clientName, requestedByName) {
-    var user = getCurrentUser();
-    var uid = user ? user.uid : '';
-    return db.collection('riskEscalations').add({
-      clientId: clientId,
-      clientName: clientName || '',
-      requestedBy: uid,
-      requestedByName: requestedByName || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      acknowledgedBy: null,
-      acknowledgedAt: null
+  /* ─── Tasks (MVP-2) ───────────────────────────────────────────── */
+  function getTasks() {
+    return db.collection('tasks').orderBy('createdAt', 'desc').limit(200).get().then(function (snap) {
+      return snap.docs.map(function (d) {
+        var o = d.data();
+        o.id = d.id;
+        if (o.dueDate && o.dueDate.toDate) o.dueDate = o.dueDate.toDate().toISOString().slice(0, 10);
+        if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
+        if (o.updatedAt && o.updatedAt.toDate) o.updatedAt = o.updatedAt.toDate().toISOString();
+        return o;
+      });
     });
   }
 
-  function getUnacknowledgedEscalations() {
-    return db.collection('riskEscalations')
-      .where('acknowledgedBy', '==', null)
-      .orderBy('createdAt', 'desc')
-      .limit(20)
-      .get()
-      .then(function (snap) {
-        return snap.docs.map(function (d) { var o = d.data(); o.id = d.id; if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString(); return o; });
-      });
+  function addTask(data) {
+    var user = getCurrentUser();
+    var title = (data.title || '').trim();
+    if (!title) return Promise.reject(new Error('Title is required'));
+    var doc = {
+      title: title,
+      dueDate: data.dueDate && String(data.dueDate).trim() ? String(data.dueDate).trim() : null,
+      status: data.status === 'in_progress' || data.status === 'done' ? data.status : 'todo',
+      notes: (data.notes || '').trim(),
+      clientId: data.clientId && String(data.clientId).trim() ? String(data.clientId).trim() : null,
+      clientName: (data.clientName || '').trim() || null,
+      assignedTo: data.assignedTo && String(data.assignedTo).trim() ? String(data.assignedTo).trim() : null,
+      assignedToName: (data.assignedToName || '').trim() || null,
+      createdBy: user ? user.uid : null,
+      createdByName: (data.createdByName || '').trim() || null,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    return db.collection('tasks').add(doc).then(function (ref) {
+      logAudit('task_add', 'task', ref.id, { clientId: doc.clientId }).catch(function () {});
+      return ref;
+    });
   }
 
-  function acknowledgeEscalation(id) {
+  function updateTask(id, data) {
     var user = getCurrentUser();
-    return db.collection('riskEscalations').doc(id).update({
-      acknowledgedBy: user ? user.uid : null,
-      acknowledgedAt: firebase.firestore.FieldValue.serverTimestamp()
+    var doc = {
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    if (data.title !== undefined) doc.title = (data.title || '').trim();
+    if (data.dueDate !== undefined) doc.dueDate = data.dueDate || null;
+    if (data.status !== undefined) doc.status = data.status || 'todo';
+    if (data.notes !== undefined) doc.notes = (data.notes || '').trim();
+    if (data.clientId !== undefined) doc.clientId = data.clientId || null;
+    if (data.clientName !== undefined) doc.clientName = data.clientName || null;
+    if (data.assignedTo !== undefined) doc.assignedTo = data.assignedTo || null;
+    if (data.assignedToName !== undefined) doc.assignedToName = data.assignedToName || null;
+    return db.collection('tasks').doc(id).update(doc).then(function () {
+      logAudit('task_update', 'task', id, null).catch(function () {});
+    });
+  }
+
+  function deleteTask(id) {
+    return db.collection('tasks').doc(id).delete().then(function () {
+      logAudit('task_delete', 'task', id, null).catch(function () {});
     });
   }
 
@@ -450,11 +495,13 @@
     signOut: signOut,
     getUserProfile: getUserProfile,
     setUserProfile: setUserProfile,
+    listenUserProfile: listenUserProfile,
     getAllStaff: getAllStaff,
     createStaffAccount: createStaffAccount,
     updateStaffProfile: updateStaffProfile,
     deactivateStaff: deactivateStaff,
     reactivateStaff: reactivateStaff,
+    updateCurrentUserPassword: updateCurrentUserPassword,
     getClients: getClients,
     getClient: getClient,
     addClient: addClient,
@@ -473,9 +520,10 @@
     setConfig: setConfig,
     getOrgConfig: getOrgConfig,
     setOrgConfig: setOrgConfig,
-    addRiskEscalation: addRiskEscalation,
-    getUnacknowledgedEscalations: getUnacknowledgedEscalations,
-    acknowledgeEscalation: acknowledgeEscalation,
+    getTasks: getTasks,
+    addTask: addTask,
+    updateTask: updateTask,
+    deleteTask: deleteTask,
     logAudit: logAudit,
     getAuditLog: getAuditLog,
     cacheClear: cacheClear

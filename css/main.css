@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════
-   NeuroRehab CareTrack — Main Stylesheet (full rewrite)
+   NeuroRehab CareTrack — Main Stylesheet
+   Fixed topbar + scrollable inner frame · Sidebar header = topbar height
    Navy sidebar · Teal primary · Clean cards · Responsive
    ═══════════════════════════════════════════════════════════════ */
 
@@ -187,7 +188,7 @@ img { max-width: 100%; }
 .app { display: flex; min-height: 100vh; min-width: 0; max-width: 100%; overflow-x: clip; }
 #app-shell[hidden] { display: none !important; }
 
-/* Sidebar */
+/* Sidebar — brand row matches topbar height for visual alignment */
 .sidebar {
   width: var(--sidebar-w); background: var(--navy); color: #cbd5e1;
   display: flex; flex-direction: column; position: fixed; top: 0; bottom: 0; left: 0;
@@ -195,12 +196,15 @@ img { max-width: 100%; }
   padding-top: var(--safe-top); padding-left: var(--safe-left);
 }
 .sb-brand {
-  display: flex; align-items: center; gap: 10px; padding: 18px 20px;
-  font-size: 1.1rem; font-weight: 700; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08);
+  display: flex; align-items: center; gap: 10px;
+  min-height: var(--topbar-h); height: var(--topbar-h); padding: 0 16px 0 20px;
+  font-size: 1rem; font-weight: 700; color: #fff;
+  border-bottom: 1px solid rgba(255,255,255,.08);
+  flex-shrink: 0;
 }
-.sb-brand-logo { height: 32px; width: auto; max-width: 36px; object-fit: contain; flex-shrink: 0; }
+.sb-brand-logo { height: 28px; width: auto; max-width: 32px; object-fit: contain; flex-shrink: 0; }
 .sb-brand-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sb-brand i { color: var(--primary); font-size: 1.3rem; }
+.sb-brand i { color: var(--primary); font-size: 1.2rem; }
 .sb-user {
   display: flex; align-items: center; gap: 10px; padding: 16px 20px;
   border-bottom: 1px solid rgba(255,255,255,.08);
@@ -242,21 +246,22 @@ img { max-width: 100%; }
 }
 .sb-overlay.visible { display: block; opacity: 1; }
 
-/* Main content area — push below notch so topbar is always clickable in PWA */
+/* Main area: fixed topbar + scrollable inner frame only */
 .main-wrap {
-  flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column; min-height: 100vh; min-width: 0; max-width: 100%; overflow-x: clip;
-  padding-top: var(--safe-top);
+  flex: 1; margin-left: var(--sidebar-w); display: flex; flex-direction: column;
+  min-height: 100vh; min-width: 0; max-width: 100%; overflow-x: clip;
 }
 
-/* Topbar — sits below safe area (main-wrap has padding-top) */
+/* Topbar — fixed at top of main area; only inner frame scrolls */
 .topbar {
-  min-height: var(--topbar-h); background: var(--card); border-bottom: 2px solid var(--border);
+  position: fixed; top: var(--safe-top); left: var(--sidebar-w); right: 0;
+  height: var(--topbar-h); z-index: 50;
+  background: var(--card); border-bottom: 1px solid var(--border);
   display: flex; align-items: center; padding: 0 24px; padding-left: calc(24px + var(--safe-left)); padding-right: calc(24px + var(--safe-right)); gap: 12px;
-  position: sticky; top: 0; z-index: 50;
   box-shadow: var(--shadow);
 }
-.menu-btn { display: none; background: none; border: none; font-size: 1.2rem; color: var(--text-2); }
-.tb-title { font-size: 1.05rem; font-weight: 700; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.menu-btn { display: none; background: none; border: none; font-size: 1.2rem; color: var(--text-2); padding: 8px; }
+.tb-title { font-size: 1.05rem; font-weight: 700; letter-spacing: -0.02em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
 .tb-right { display: flex; align-items: center; gap: 8px; }
 .notif-btn {
   position: relative; width: 36px; height: 36px; border-radius: 8px;
@@ -277,9 +282,9 @@ img { max-width: 100%; }
   background: var(--primary-bg); color: var(--primary);
 }
 
-/* Notification panel — below topbar */
+/* Notification panel — below fixed topbar */
 .notif-panel {
-  position: absolute; top: calc(var(--topbar-h) - 4px); right: calc(16px + var(--safe-right));
+  position: absolute; top: 100%; right: 16px; margin-top: 4px;
   width: 320px; max-width: calc(100vw - 32px); max-height: 400px; overflow-y: auto;
   background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-md);
   border: 1px solid var(--border); display: none; z-index: 60;
@@ -298,13 +303,14 @@ img { max-width: 100%; }
 .notif-sub { font-size: .78rem; color: var(--text-3); margin-top: 2px; }
 .notif-empty { padding: 24px; text-align: center; color: var(--text-3); font-size: .85rem; }
 
-/* ─── Main content ────────────────────────────────────────────── */
+/* ─── Main content (scrollable inner frame only) ────────────────── */
 .main-content {
-  flex: 1; padding: 24px; max-width: 1200px; width: 100%; min-width: 0; overflow-x: clip;
+  margin-top: calc(var(--safe-top) + var(--topbar-h));
+  flex: 1; min-height: 0; overflow-y: auto; overflow-x: clip;
+  padding: 24px; max-width: 1200px; width: 100%; min-width: 0;
   background: linear-gradient(180deg, var(--bg) 0%, var(--bg-subtle) 100%);
 }
 .main-content::before { display: none; }
-/* Sensible text wrap: break long words (e.g. URLs) only, avoid single-letter lines */
 .main-content { word-break: normal; overflow-wrap: break-word; }
 
 /* Pages */
@@ -346,6 +352,47 @@ img { max-width: 100%; }
 .collapsible-section.collapsed .collapsible-head i.fa-chevron-down { transform: rotate(-90deg); }
 .collapsible-body { padding: 14px; }
 .collapsible-section.collapsed .collapsible-body { display: none; }
+
+/* Multi-select dropdown */
+.multiselect-wrap { position: relative; }
+.multiselect-trigger {
+  position: relative;
+  width: 100%; min-height: 38px; padding: 8px 12px; padding-right: 32px;
+  background: var(--bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: .93rem; text-align: left; cursor: pointer; display: flex; align-items: center; flex-wrap: wrap; gap: 6px;
+  transition: border var(--transition);
+}
+.multiselect-trigger:hover { border-color: var(--text-3); }
+.multiselect-trigger:focus { border-color: var(--primary); outline: none; }
+.multiselect-trigger::after {
+  content: ''; position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  border: 5px solid transparent; border-top-color: var(--text-3);
+}
+.multiselect-wrap.open .multiselect-trigger::after { transform: translateY(-50%) rotate(180deg); }
+.multiselect-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+  background: var(--primary-bg); color: var(--primary); border-radius: 999px;
+  font-size: .8rem; font-weight: 500;
+}
+.multiselect-placeholder { color: var(--text-3); }
+.multiselect-panel {
+  position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; max-height: 220px; overflow-y: auto;
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md); z-index: 100; display: none; padding: 8px;
+}
+.multiselect-wrap.open .multiselect-panel { display: flex; flex-direction: column; }
+.multiselect-search {
+  flex-shrink: 0; margin-bottom: 8px; border-radius: var(--radius-sm);
+}
+.multiselect-options {
+  flex: 1; min-height: 0; overflow-y: auto; max-height: 180px;
+}
+.multiselect-panel label {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer;
+  font-size: .88rem; border-radius: var(--radius-sm); transition: background var(--transition);
+}
+.multiselect-panel label:hover { background: var(--grey-bg); }
+.multiselect-panel input[type="checkbox"] { width: 16px; height: 16px; flex-shrink: 0; }
 
 /* Dashboard — Risk Alerts & Recent Reports */
 .risk-alert-row {
@@ -436,6 +483,9 @@ img { max-width: 100%; }
 .status-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: .75rem; font-weight: 600; }
 .status-active { background: var(--green-bg); color: var(--green); }
 .status-discharged { background: var(--grey-bg); color: var(--grey); }
+.task-status-todo { background: var(--grey-bg); color: var(--grey); }
+.task-status-in_progress { background: var(--amber-bg); color: var(--amber); }
+.task-status-done { background: var(--green-bg); color: var(--green); }
 
 /* ─── Table ───────────────────────────────────────────────────── */
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; contain: layout; }
@@ -568,8 +618,8 @@ tr.clickable { cursor: pointer; }
 }
 
 /* ─── Chat (WhatsApp-style: channels pinned top, input fixed bottom) ── */
-.chat-layout { display: flex; gap: 16px; height: calc(100vh - var(--topbar-h) - 120px); min-height: 400px; }
-.chat-layout-wa { display: block; height: calc(100vh - var(--topbar-h) - 100px); min-height: 360px; }
+.chat-layout { display: flex; gap: 16px; height: calc(100vh - var(--safe-top) - var(--topbar-h) - 120px); min-height: 400px; }
+.chat-layout-wa { display: block; height: calc(100vh - var(--safe-top) - var(--topbar-h) - 100px); min-height: 360px; }
 .chat-layout-wa .chat-main {
   display: flex; flex-direction: column; height: 100%;
   background: var(--card); border-radius: var(--radius); border: 1px solid var(--border);
@@ -703,6 +753,30 @@ tr.clickable { cursor: pointer; }
 .diagnosis-history-list li:last-child { border-bottom: none; }
 .diagnosis-history-text { font-weight: 500; }
 .diagnosis-history-meta { font-size: .8rem; color: var(--text-3); }
+
+.diagnosis-consult-list { display: flex; flex-direction: column; gap: 14px; }
+.diagnosis-consult-card {
+  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: var(--card); display: flex; flex-direction: column; gap: 8px;
+}
+.diagnosis-consult-head {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: .85rem; color: var(--text-2);
+}
+.diagnosis-consult-date { display: inline-flex; align-items: center; gap: 6px; }
+.diagnosis-consult-by { color: var(--text-3); }
+.diagnosis-consult-diagnosis { font-size: .9rem; }
+.diagnosis-consult-notes {
+  font-size: .88rem; color: var(--text-2); line-height: 1.5;
+  padding: 10px 12px; background: var(--grey-bg); border-radius: var(--radius-sm); margin-top: 4px;
+}
+
+.status-consult-item { margin-bottom: 12px; }
+.status-consult-item:last-child { margin-bottom: 0; }
+.status-consult-note { font-size: .82rem; color: var(--text-2); margin: 6px 0 0 0; padding-left: 0; line-height: 1.45; }
+
+.modal-card-wide { max-width: 520px; }
+.modal-sub { font-size: .88rem; color: var(--text-3); margin-bottom: 16px; }
+
 .list-item {
   display: flex; align-items: center; gap: 6px; padding: 6px 0;
   border-bottom: 1px solid var(--border);
@@ -728,11 +802,22 @@ tr.clickable { cursor: pointer; }
 
 /* ─── Modal ───────────────────────────────────────────────────── */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200;
-  display: flex; align-items: center; justify-content: center; padding: 20px;
-  opacity: 0; pointer-events: none; transition: opacity .2s ease;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.5);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
 }
-.modal-overlay.visible { opacity: 1; pointer-events: auto; }
+.modal-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
 .modal-card {
   background: var(--card); border-radius: 14px; padding: 28px;
   width: 100%; max-width: 520px; box-shadow: var(--shadow-md);
@@ -825,6 +910,21 @@ tr.clickable { cursor: pointer; }
   display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
 }
 .latest-summary-body { font-size: .88rem; color: var(--text-2); margin: 0; line-height: 1.45; }
+.status-section-item .status-section-detail { margin-top: 6px; }
+.status-section-item .report-detail-table { margin-top: 4px; }
+.status-inline {
+  display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline;
+  font-size: .88rem; color: var(--text-2); line-height: 1.5;
+}
+.status-kv {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  padding: 4px 10px; border-radius: var(--radius-sm);
+  background: var(--grey-bg); color: var(--text);
+}
+.status-kv .status-meta { font-size: .78rem; color: var(--text-3); font-weight: normal; }
+.status-empty { margin: 0; padding: 6px 0; font-size: .85rem; color: var(--text-3); }
+.status-diagnosis-block { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.status-sub-hd { font-size: .85rem; font-weight: 600; color: var(--text-2); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 
 .load-more-btn {
   display: block; margin: 12px auto; padding: 8px 24px;
@@ -869,6 +969,7 @@ tr.clickable { cursor: pointer; }
   .sidebar.open { transform: translateX(0); }
   .sb-overlay.visible { display: block; }
   .main-wrap { margin-left: 0; }
+  .topbar { left: 0; }
   .menu-btn { display: flex; }
   .main-content { padding: 16px; }
   .topbar { padding: 0 12px; padding-left: calc(12px + var(--safe-left)); padding-right: calc(12px + var(--safe-right)); gap: 8px; }
@@ -899,6 +1000,6 @@ tr.clickable { cursor: pointer; }
   .sidebar, .topbar, .sb-overlay, .chat-compose, .modal-overlay, #toast,
   .btn, .list-toolbar, .tab-bar, .patient-actions { display: none !important; }
   .main-wrap { margin-left: 0; padding-top: 0; }
-  .main-content { padding: 0; max-width: none; }
+  .main-content { margin-top: 0; padding: 0; max-width: none; }
   .card { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
 }
