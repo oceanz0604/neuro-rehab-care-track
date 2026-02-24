@@ -17,6 +17,7 @@
     selectedClient: null,
     selectedClientData: null
   };
+  var _profileListenerUnsub = null;
 
   // Short topbar labels only; page content keeps the real heading (avoids duplicate titles)
   var PAGE_TITLES = {
@@ -26,6 +27,7 @@
     'patient-detail': 'Patient',
     comms: 'Chat',
     freport: 'Report',
+    tasks: 'Tasks',
     settings: 'Settings',
     admin: 'Admin'
   };
@@ -127,6 +129,10 @@
     ]).then(function (results) {
       state.clients = results[0] || [];
       state.recentReports = results[1] || [];
+      if (state.page === 'patient-detail' && state.selectedClient) {
+        var found = state.clients.filter(function (c) { return c.id === state.selectedClient; })[0];
+        if (found) state.selectedClientData = found;
+      }
       AppNotify.refresh(state.clients, state);
       renderCurrentPage();
     }).catch(function (err) {
@@ -137,10 +143,23 @@
 
   function loadConfig() {
     var defaults = (window.Pages && window.Pages.settings && window.Pages.settings.DEFAULTS) || {};
+    var icd11Diagnosis = (window.Pages && window.Pages.settings && window.Pages.settings.ICD11_DIAGNOSIS_OPTIONS) || [];
     return AppDB.getOrgConfig().then(function (cfg) {
       state.config = cfg || {};
       Object.keys(defaults).forEach(function (k) {
-        if (!state.config[k] || !Array.isArray(state.config[k])) state.config[k] = (defaults[k] || []).slice();
+        if (k === 'diagnosisOptions') {
+          var saved = state.config.diagnosisOptions && Array.isArray(state.config.diagnosisOptions) ? state.config.diagnosisOptions : [];
+          var merged = icd11Diagnosis.slice();
+          var inIcd11 = {};
+          icd11Diagnosis.forEach(function (s) { inIcd11[s] = true; });
+          saved.forEach(function (s) {
+            var v = (s || '').trim();
+            if (v && !inIcd11[v]) { inIcd11[v] = true; merged.push(v); }
+          });
+          state.config.diagnosisOptions = merged;
+        } else if (!state.config[k] || !Array.isArray(state.config[k])) {
+          state.config[k] = (defaults[k] || []).slice();
+        }
       });
     }).catch(function () {
       state.config = {};
@@ -379,6 +398,13 @@
     AppDB.onAuthStateChanged(function (user) {
       if (user) {
         state.user = user;
+        if (_profileListenerUnsub) { _profileListenerUnsub(); _profileListenerUnsub = null; }
+        _profileListenerUnsub = AppDB.listenUserProfile && AppDB.listenUserProfile(user.uid, function (profile) {
+          if (profile && profile.isActive === false) {
+            showLoginError('Your account has been deactivated. Contact your administrator.');
+            AppDB.signOut();
+          }
+        });
         AppDB.getUserProfile(user.uid).then(function (profile) {
           if (profile && profile.isActive === false) {
             showLoginError('Your account has been deactivated. Contact your administrator.');
@@ -398,6 +424,7 @@
           loadData().then(function () { navigate('dashboard'); });
         });
       } else {
+        if (_profileListenerUnsub) { _profileListenerUnsub(); _profileListenerUnsub = null; }
         state.user = null;
         state.profile = null;
         state.clients = [];

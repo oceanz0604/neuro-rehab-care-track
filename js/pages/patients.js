@@ -49,7 +49,7 @@
       return;
     }
 
-    var html = '<table><thead><tr><th>Name</th><th>Diagnosis</th><th>Admission</th><th>Planned Discharge</th><th>Risk</th><th>Status</th></tr></thead><tbody>';
+    var html = '<table><thead><tr><th>Name</th><th>Initial diagnosis</th><th>Admission</th><th>Planned Discharge</th><th>Risk</th><th>Status</th></tr></thead><tbody>';
     filtered.forEach(function (c) {
       var diagDisplay = c.diagnosis || (c.diagnoses && c.diagnoses.length ? c.diagnoses[0] : '—');
       if (c.diagnoses && c.diagnoses.length > 1) diagDisplay += ' <span class="text-muted">+' + (c.diagnoses.length - 1) + '</span>';
@@ -100,10 +100,8 @@
         '</div>' +
         '<div class="wizard-pane" id="ap-pane-2" data-step="2" style="display:none">' +
           '<div class="form-grid">' +
-            searchableFg('ap-diag', 'Primary diagnosis', 'Select or type') +
-            fg('ap-diag-extra', 'Additional diagnoses (comma-separated)', 'text', '', true) +
-            searchableFg('ap-therapist', 'Primary assigned staff', 'Select staff') +
-            fg('ap-doctors-extra', 'Also assigned to (comma-separated)', 'text', '', true) +
+            multiselectFg('ap-diag', 'Initial diagnosis') +
+            multiselectFg('ap-doctors', 'Assigned doctor(s)') +
             searchableFg('ap-ward', 'Ward', 'Select or type') +
             searchableFg('ap-room', 'Room / Bed', 'Select or type') +
           '</div>' +
@@ -151,8 +149,83 @@
         });
         document.getElementById('ap-save').addEventListener('click', saveNewPatient);
         bindSearchableDropdowns();
+        bindMultiselects();
       }
     });
+  }
+
+  function multiselectFg(id, label) {
+    return '<div class="fg fg-full"><label>' + label + '</label>' +
+      '<div class="multiselect-wrap" id="' + id + '-ms">' +
+      '<button type="button" class="multiselect-trigger fi" id="' + id + '-trigger">Select...</button>' +
+      '<div class="multiselect-panel" id="' + id + '-panel">' +
+      '<input type="text" class="multiselect-search fi" id="' + id + '-search" placeholder="Search..." autocomplete="off">' +
+      '<div class="multiselect-options" id="' + id + '-options"></div></div></div></div>';
+  }
+
+  function bindMultiselect(id, options, selected) {
+    var wrap = document.getElementById(id + '-ms');
+    var trigger = document.getElementById(id + '-trigger');
+    var panel = document.getElementById(id + '-panel');
+    var optionsContainer = document.getElementById(id + '-options');
+    var searchInp = document.getElementById(id + '-search');
+    if (!wrap || !trigger || !panel || !optionsContainer) return;
+    var selectedSet = {};
+    (selected || []).forEach(function (v) { selectedSet[v] = true; });
+    var opts = (options || []).map(function (o) { return (o || '').trim(); }).filter(Boolean);
+    optionsContainer.innerHTML = opts.map(function (val) {
+      var checked = selectedSet[val] ? ' checked' : '';
+      return '<label data-value="' + esc(val) + '"><input type="checkbox" value="' + esc(val) + '"' + checked + '>' + esc(val) + '</label>';
+    }).join('');
+    function filterOptions() {
+      var q = (searchInp && searchInp.value) ? searchInp.value.trim().toLowerCase() : '';
+      optionsContainer.querySelectorAll('label').forEach(function (label) {
+        var text = (label.getAttribute('data-value') || label.textContent || '').toLowerCase();
+        label.style.display = !q || text.indexOf(q) !== -1 ? '' : 'none';
+      });
+    }
+    if (searchInp) {
+      searchInp.addEventListener('input', filterOptions);
+      searchInp.addEventListener('focus', function (e) { e.stopPropagation(); });
+    }
+    function updateTrigger() {
+      var vals = getMultiselectValues(id);
+      if (vals.length === 0) { trigger.innerHTML = '<span class="multiselect-placeholder">Select...</span>'; return; }
+      trigger.innerHTML = vals.map(function (v) { return '<span class="multiselect-chip">' + esc(v) + '</span>'; }).join('');
+    }
+    updateTrigger();
+    optionsContainer.querySelectorAll('input[type=checkbox]').forEach(function (cb) {
+      cb.addEventListener('change', updateTrigger);
+    });
+    trigger.addEventListener('click', function () {
+      wrap.classList.toggle('open');
+      if (searchInp && wrap.classList.contains('open')) { searchInp.value = ''; filterOptions(); searchInp.focus(); }
+    });
+    document.addEventListener('click', function (e) {
+      if (!wrap.contains(e.target)) wrap.classList.remove('open');
+    });
+  }
+
+  function getMultiselectValues(id) {
+    var optionsContainer = document.getElementById(id + '-options');
+    if (!optionsContainer) return [];
+    var vals = [];
+    optionsContainer.querySelectorAll('input[type=checkbox]:checked').forEach(function (cb) { vals.push(cb.value); });
+    return vals;
+  }
+
+  function bindMultiselects() {
+    var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+    var cfg = state.config || {};
+    var diagnosisOptions = (cfg.diagnosisOptions && cfg.diagnosisOptions.length) ? cfg.diagnosisOptions
+      : (window.Pages && window.Pages.settings && window.Pages.settings.ICD11_DIAGNOSIS_OPTIONS) || [];
+    bindMultiselect('ap-diag', diagnosisOptions, []);
+    AppDB.getAllStaff().then(function (staff) {
+      var doctorOptions = staff.filter(function (s) { return s.isActive !== false; })
+        .map(function (s) { return s.displayName || s.email || ''; })
+        .filter(Boolean);
+      bindMultiselect('ap-doctors', doctorOptions, []);
+    }).catch(function () { bindMultiselect('ap-doctors', [], []); });
   }
 
   function searchableFg(inputId, label, placeholder) {
@@ -165,19 +238,8 @@
   function bindSearchableDropdowns() {
     var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
     var cfg = state.config || {};
-    var diagnosisOptions = cfg.diagnosisOptions || [];
     var wardOptions = cfg.wardNames || [];
     var roomOptions = cfg.roomBedNumbers || [];
-
-    AppDB.getAllStaff().then(function (staff) {
-      var therapistOptions = staff.filter(function (s) { return s.isActive !== false; })
-        .map(function (s) { return s.displayName || s.email || ''; })
-        .filter(Boolean);
-      bindOneSearchable('ap-therapist', therapistOptions);
-    }).catch(function () {
-      bindOneSearchable('ap-therapist', []);
-    });
-    bindOneSearchable('ap-diag', diagnosisOptions);
     bindOneSearchable('ap-ward', wardOptions);
     bindOneSearchable('ap-room', roomOptions);
   }
@@ -231,21 +293,15 @@
     var admissionDate = (document.getElementById('ap-admission') || {}).value || '';
     if (!name.trim()) { window.CareTrack.toast('Full name is required'); return; }
     if (!admissionDate) { window.CareTrack.toast('Admission date is required'); return; }
-    var primaryDiag = (document.getElementById('ap-diag') || {}).value || '';
-    var diagExtra = (document.getElementById('ap-diag-extra') || {}).value || '';
-    var diagnoses = primaryDiag ? [primaryDiag.trim()] : [];
-    diagExtra.split(',').forEach(function (s) { var t = s.trim(); if (t && diagnoses.indexOf(t) === -1) diagnoses.push(t); });
-    var primaryTherapist = (document.getElementById('ap-therapist') || {}).value || '';
-    var doctorsExtra = (document.getElementById('ap-doctors-extra') || {}).value || '';
-    var assignedDoctors = primaryTherapist ? [primaryTherapist.trim()] : [];
-    doctorsExtra.split(',').forEach(function (s) { var t = s.trim(); if (t && assignedDoctors.indexOf(t) === -1) assignedDoctors.push(t); });
+    var diagnoses = getMultiselectValues('ap-diag');
+    var assignedDoctors = getMultiselectValues('ap-doctors');
     var admissionDaysRaw = (document.getElementById('ap-admission-days') || {}).value || '';
     var admissionDays = admissionDaysRaw ? parseInt(admissionDaysRaw, 10) : null;
     var data = {
       name: name.trim(),
       dob: (document.getElementById('ap-dob') || {}).value || '',
       gender: (document.getElementById('ap-gender') || {}).value || '',
-      diagnosis: primaryDiag.trim() || (diagnoses[0] || ''),
+      diagnosis: diagnoses[0] || '',
       diagnoses: diagnoses,
       admissionDate: admissionDate,
       plannedDischargeDate: (document.getElementById('ap-planned-discharge') || {}).value || '',
@@ -253,7 +309,7 @@
       legalStatus: (document.getElementById('ap-legal') || {}).value || '',
       emergencyContact: (document.getElementById('ap-emergency') || {}).value || '',
       consent: (document.getElementById('ap-consent') || {}).value || '',
-      assignedTherapist: primaryTherapist.trim() || (assignedDoctors[0] || ''),
+      assignedTherapist: assignedDoctors[0] || '',
       assignedDoctors: assignedDoctors,
       ward: (document.getElementById('ap-ward') || {}).value || '',
       roomNumber: (document.getElementById('ap-room') || {}).value || '',

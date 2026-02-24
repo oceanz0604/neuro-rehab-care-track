@@ -28,13 +28,14 @@
     return (roles.map(function (r) { return roleLabel(r); })).join(', ');
   }
 
-  var _settingsInited = false;
-
   function render(state) {
     if (!state.profile || !(window.Permissions && window.Permissions.canAccessAdmin(state.profile))) {
       $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i><p>Admin access required</p></div>';
       $('admin-staff-wrap').style.display = '';
-      $('admin-settings-wrap').style.display = 'none';
+      $('admin-report-params-wrap').style.display = 'none';
+      $('admin-ward-beds-wrap').style.display = 'none';
+      $('admin-diagnosis-wrap').style.display = 'none';
+      $('admin-audit-wrap').style.display = 'none';
       return;
     }
     switchAdminTab('staff');
@@ -45,28 +46,36 @@
     }).catch(function () {
       $('staff-table').innerHTML = '<div class="alert alert-danger">Failed to load staff list.</div>';
     });
-    if (window.Pages.settings) {
-      window.Pages.settings.render(state);
-      if (!_settingsInited) {
-        _settingsInited = true;
-        window.Pages.settings.init(state);
-      }
-    }
+    if (window.Pages.settings) window.Pages.settings.init(state);
   }
 
   var _auditLastDoc = null;
 
   function switchAdminTab(tab) {
     var staffWrap = $('admin-staff-wrap');
-    var settingsWrap = $('admin-settings-wrap');
+    var reportParamsWrap = $('admin-report-params-wrap');
+    var wardBedsWrap = $('admin-ward-beds-wrap');
+    var diagnosisWrap = $('admin-diagnosis-wrap');
     var auditWrap = $('admin-audit-wrap');
     document.querySelectorAll('.admin-tab').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-admin-tab') === tab);
       b.classList.toggle('btn-outline', b.getAttribute('data-admin-tab') !== tab);
     });
     if (staffWrap) staffWrap.style.display = tab === 'staff' ? '' : 'none';
-    if (settingsWrap) settingsWrap.style.display = tab === 'settings' ? '' : 'none';
+    if (reportParamsWrap) reportParamsWrap.style.display = tab === 'report-params' ? '' : 'none';
+    if (wardBedsWrap) wardBedsWrap.style.display = tab === 'ward-beds' ? '' : 'none';
+    if (diagnosisWrap) diagnosisWrap.style.display = tab === 'diagnosis' ? '' : 'none';
     if (auditWrap) auditWrap.style.display = tab === 'audit' ? '' : 'none';
+    var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+    if (tab === 'report-params' && window.Pages.settings && window.Pages.settings.renderReportParameters) {
+      window.Pages.settings.renderReportParameters('report-params-content', state);
+    }
+    if (tab === 'ward-beds' && window.Pages.settings && window.Pages.settings.renderWardBeds) {
+      window.Pages.settings.renderWardBeds('ward-beds-content', state);
+    }
+    if (tab === 'diagnosis' && window.Pages.settings && window.Pages.settings.renderDiagnosisOptions) {
+      window.Pages.settings.renderDiagnosisOptions('diagnosis-options-content', state);
+    }
     if (tab === 'audit') loadAuditLog(false);
   }
 
@@ -134,7 +143,7 @@
       b.addEventListener('click', function () {
         var uid = b.getAttribute('data-deact');
         var s = findStaff(uid);
-        AppModal.confirm('Deactivate Staff', 'Deactivate <strong>' + esc(s ? s.displayName : '') + '</strong>? They will be unable to log in.', function () {
+        AppModal.confirm('Deactivate Staff', 'Deactivate <strong>' + esc(s ? s.displayName : '') + '</strong>? They will be unable to log in and their current session will end immediately.', function () {
           AppDB.deactivateStaff(uid).then(function () {
             window.CareTrack.toast('Staff deactivated');
             render(window.CareTrack.getState());
@@ -213,7 +222,9 @@
     var html =
       '<div class="modal-card"><h3 class="modal-title">Edit Staff</h3>' +
       '<div class="form-grid">' +
+        '<div class="fg fg-full"><label>Email</label><input id="es-email" type="email" class="fi" value="' + esc(s.email || '') + '" readonly style="background:var(--grey-bg);cursor:not-allowed"></div>' +
         '<div class="fg fg-full"><label>Full Name</label><input id="es-name" type="text" class="fi" value="' + esc(s.displayName || '') + '"></div>' +
+        '<div class="fg fg-full"><label>New password <span style="color:var(--text-3);font-weight:400">(leave blank to keep current)</span></label><input id="es-pw" type="password" class="fi" placeholder="Min 6 characters" minlength="6" autocomplete="new-password"></div>' +
         '<div class="fg fg-full"><label>Roles</label><div class="role-check-group">' + roleChecks + '</div></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px">' +
@@ -229,9 +240,36 @@
           document.querySelectorAll('.es-role-cb:checked').forEach(function (cb) { roles.push(cb.value); });
           if (!roles.length) roles = ['nurse'];
           var primaryRole = roles.indexOf('admin') !== -1 ? 'admin' : roles[0];
-          AppDB.updateStaffProfile(uid, { displayName: vv('es-name'), role: primaryRole, roles: roles })
-            .then(function () { AppModal.close(); window.CareTrack.toast('Staff updated'); render(window.CareTrack.getState()); })
-            .catch(function (e) { window.CareTrack.toast('Error: ' + e.message); });
+          var newPw = (document.getElementById('es-pw').value || '').trim();
+          var profileData = { displayName: vv('es-name'), role: primaryRole, roles: roles };
+          var currentUid = (AppDB.getCurrentUser && AppDB.getCurrentUser()) ? AppDB.getCurrentUser().uid : null;
+          var isSelf = currentUid === uid;
+
+          AppDB.updateStaffProfile(uid, profileData)
+            .then(function () {
+              if (newPw.length >= 6) {
+                if (isSelf && AppDB.updateCurrentUserPassword) {
+                  return AppDB.updateCurrentUserPassword(newPw).then(function () {
+                    AppModal.close();
+                    window.CareTrack.toast('Staff and password updated');
+                    render(window.CareTrack.getState());
+                  });
+                }
+                if (!isSelf) {
+                  window.CareTrack.toast('Profile updated. To set another user\'s password, use Firebase Console → Authentication.');
+                }
+              }
+              AppModal.close();
+              window.CareTrack.toast('Staff updated');
+              render(window.CareTrack.getState());
+            })
+            .catch(function (e) {
+              if (e.code === 'auth/requires-recent-login') {
+                window.CareTrack.toast('Re-sign in and try again to change password.');
+              } else {
+                window.CareTrack.toast('Error: ' + (e.message || 'Save failed'));
+              }
+            });
         });
       }
     });

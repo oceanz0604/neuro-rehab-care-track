@@ -13,7 +13,7 @@
       frTitle: 'Client Progress Report', frSub: 'Monthly — supportive language only',
       lblC: 'Client', lblM: 'Report month', lblL: 'Language', noc: 'Select a client to preview.',
       center: 'Neuro-Psychiatric Rehabilitation Centre', rTitle: 'Monthly Client Progress Report',
-      cLbl: 'Client', tLbl: 'Therapist', aLbl: 'Admitted', pTitle: 'Progress this month',
+      cLbl: 'Client', tLbl: 'Assigned doctor', aLbl: 'Admitted', pTitle: 'Progress this month',
       mTitle: 'Monthly progress', wTitle: 'Weekly trend summary',
       wCols: ['Area', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Change'],
       bars: ['Daily Living Skills', 'Therapy Engagement', 'Behavioral Stability', 'Safety Observations'],
@@ -46,7 +46,7 @@
       frTitle: 'कुटुंब प्रगती अहवाल', frSub: 'मासिक — सहाय्यक भाषा',
       lblC: 'रुग्ण निवडा', lblM: 'अहवाल महिना', lblL: 'भाषा', noc: 'वरून रुग्ण निवडा.',
       center: 'न्यूरो-मनोरुग्ण पुनर्वसन केंद्र', rTitle: 'मासिक कुटुंब प्रगती अहवाल',
-      cLbl: 'रुग्ण', tLbl: 'उपचारक', aLbl: 'प्रवेश', pTitle: 'या महिन्याची प्रगती',
+      cLbl: 'रुग्ण', tLbl: 'नियुक्त डॉक्टर', aLbl: 'प्रवेश', pTitle: 'या महिन्याची प्रगती',
       mTitle: 'मासिक प्रगती', wTitle: 'साप्ताहिक कल सारांश',
       wCols: ['क्षेत्र', 'आठवडा १', 'आठवडा २', 'आठवडा ३', 'आठवडा ४', 'बदल'],
       bars: ['दैनंदिन जीवन कौशल्ये', 'उपचार सहभाग', 'वर्तणूक स्थिरता', 'सुरक्षा निरीक्षण'],
@@ -126,7 +126,7 @@
         '</div>' +
         '<div id="fr-report-content" class="fr-report-content">' +
         '<div class="rh"><div class="rh-c">' + s.center + '</div><div class="rh-t">' + s.rTitle + '</div>' +
-        '<div class="rh-d">' + s.cLbl + ': <strong>' + esc(c.name) + '</strong> | ID: ' + c.id + ' | ' + s.tLbl + ': ' + (c.assignedTherapist || '—') + '</div>' +
+        '<div class="rh-d">' + s.cLbl + ': <strong>' + esc(c.name) + '</strong> | ID: ' + c.id + ' | ' + s.tLbl + ': ' + ((c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—') + '</div>' +
         '<div class="rh-s">' + mStr + ' | ' + s.aLbl + ': ' + (c.admissionDate || '—') + '</div></div>' +
         '<div class="alert alert-warn">' + s.disc + '</div>' +
         noteHtml +

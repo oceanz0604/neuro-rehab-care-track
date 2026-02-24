@@ -44,10 +44,9 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Risk escalations (Notify Psychiatrist): any auth can create and read; any auth can update (acknowledge)
-    match /riskEscalations/{docId} {
-      allow read, create: if isAuth();
-      allow update: if isAuth();
+    // Tasks (MVP-2): any authenticated user can read and write
+    match /tasks/{taskId} {
+      allow read, write: if isAuth();
     }
 
     // Audit log: any auth can create; only admin can read

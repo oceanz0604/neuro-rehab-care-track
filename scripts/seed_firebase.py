@@ -163,19 +163,7 @@ def main():
             })
     print("Added reports for all clients x sections")
 
-    # --- 6) Optional: one risk escalation ---
-    db.collection("riskEscalations").add({
-        "clientId": client_ids[0],
-        "clientName": clients_data[0]["name"],
-        "requestedBy": nurse_uid or "",
-        "requestedByName": "Nurse Jane",
-        "createdAt": SERVER_TIMESTAMP,
-        "acknowledgedBy": None,
-        "acknowledgedAt": None,
-    })
-    print("Added 1 risk escalation (unacknowledged)")
-
-    # --- 7) RTDB chat (sample messages via REST API) ---
+    # --- 6) RTDB chat (sample messages via REST API) ---
     try:
         import requests
         from google.oauth2 import service_account

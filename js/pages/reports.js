@@ -60,123 +60,23 @@
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
-  function formatPayloadForModal(section, p) {
-    var lines = [];
-    if (section === 'psychiatric' || section === 'behavioral') {
-      var r = p.ratings || {};
-      Object.keys(r).sort().forEach(function (k) { lines.push('<tr><td>' + esc(k) + '</td><td>' + r[k] + '/5</td></tr>'); });
-    } else if (section === 'adl' || section === 'risk') {
-      var l = p.levels || {};
-      Object.keys(l).sort().forEach(function (k) { lines.push('<tr><td>' + esc(k) + '</td><td>' + esc(l[k]) + '</td></tr>'); });
-    } else if (section === 'therapeutic') {
-      var a = p.activities || {};
-      Object.keys(a).forEach(function (name) {
-        var act = a[name] || {};
-        lines.push('<tr><td>' + esc(name) + '</td><td>' + esc(act.attendance || '—') + ' / ' + esc(act.engagement || '—') + '</td></tr>');
-      });
-    } else if (section === 'medication') {
-      var medKeys = ['medicationGiven', 'compliance', 'sideEffects', 'prnGiven', 'prnReason', 'labDue', 'bp', 'pulse', 'temp', 'weight'];
-      medKeys.forEach(function (k) {
-        var v = p[k];
-        if (v === undefined || v === '') return;
-        var label = k.replace(/([A-Z])/g, ' $1').replace(/^./, function (s) { return s.toUpperCase(); });
-        lines.push('<tr><td>' + esc(label) + '</td><td>' + esc(v) + '</td></tr>');
-      });
-    }
-    if (p.restraintUsed) lines.push('<tr><td>Restraint used</td><td>' + esc(p.restraintUsed) + '</td></tr>');
-    if (p.restraintJustification) lines.push('<tr><td>Restraint justification</td><td>' + esc(p.restraintJustification) + '</td></tr>');
-    if (p.interventionTaken) lines.push('<tr><td>Intervention taken</td><td>' + esc(p.interventionTaken) + '</td></tr>');
-    if (p.notes) lines.push('<tr><td colspan="2"><strong>Notes</strong></td></tr><tr><td colspan="2">' + esc(p.notes) + '</td></tr>');
-    return lines.length ? '<table class="report-detail-table"><tbody>' + lines.join('') + '</tbody></table>' : '<p>No details recorded.</p>';
-  }
-
   function showReportDetailModal(r) {
-    var section = r.section || '';
-    var dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-    var payloadHtml = formatPayloadForModal(section, r.payload || {});
-    var profile = (window.CareTrack && window.CareTrack.getState && window.CareTrack.getState().profile) || {};
+    if (!window.ReportModal) return;
+    var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+    var profile = (state && state.profile) || {};
     var canEdit = window.Permissions && window.Permissions.canEditReport(profile);
-    var editBtnHtml = canEdit ? '<button type="button" class="btn btn-outline" id="report-detail-edit">Edit Report</button>' : '';
-    var html =
-      '<div class="modal-card report-detail-modal">' +
-        '<h3 class="modal-title"><span class="risk-badge risk-' + sectionColor(section) + '">' + capitalize(section) + '</span> Report</h3>' +
-        '<div class="report-detail-meta">' +
-          '<p><strong>Patient</strong> <a href="#" id="report-detail-patient-link">' + esc(r.clientName || '—') + '</a></p>' +
-          '<p><strong>Submitted by</strong> ' + esc(r.submittedByName || '—') + '</p>' +
-          '<p><strong>Date & time</strong> ' + dt + '</p>' +
-        '</div>' +
-        '<div class="report-detail-body">' + payloadHtml + '</div>' +
-        '<div class="modal-actions" style="margin-top:16px;flex-wrap:wrap;gap:8px">' +
-          '<button type="button" class="btn" id="report-detail-close">Close</button>' +
-          '<button type="button" class="btn btn-outline" id="report-detail-open-patient">Open Patient</button>' +
-          editBtnHtml +
-        '</div>' +
-      '</div>';
-    AppModal.open(html, {
-      onReady: function () {
-        document.getElementById('report-detail-close').addEventListener('click', AppModal.close);
-        var openBtn = document.getElementById('report-detail-open-patient');
-        if (openBtn && r.clientId && window.CareTrack) {
-          openBtn.addEventListener('click', function () { AppModal.close(); window.CareTrack.openPatient(r.clientId); });
-        } else if (openBtn) openBtn.style.display = 'none';
-        var patientLink = document.getElementById('report-detail-patient-link');
-        if (patientLink && r.clientId && window.CareTrack) {
-          patientLink.addEventListener('click', function (e) { e.preventDefault(); AppModal.close(); window.CareTrack.openPatient(r.clientId); });
-        }
-        var editBtn = document.getElementById('report-detail-edit');
-        if (editBtn) editBtn.addEventListener('click', function () { AppModal.close(); showEditReportModal(r); });
-      }
-    });
-  }
-
-  function showEditReportModal(r) {
-    var section = r.section || '';
-    var p = r.payload || {};
-    var notes = p.notes || '';
-    var profile = (window.CareTrack && window.CareTrack.getState && window.CareTrack.getState().profile) || {};
-    var canEdit = window.Permissions && window.Permissions.canEditReport(profile);
-    var payloadHtml = formatPayloadForModal(section, p);
-    var deleteBtnHtml = canEdit ? '<button type="button" class="btn btn-danger" id="report-edit-delete">Delete Report</button>' : '';
-    var html =
-      '<div class="modal-card report-detail-modal">' +
-        '<h3 class="modal-title">Edit Report — <span class="risk-badge risk-' + sectionColor(section) + '">' + capitalize(section) + '</span></h3>' +
-        '<div class="report-detail-meta">' +
-          '<p><strong>Patient</strong> ' + esc(r.clientName || '—') + '</p>' +
-          '<p><strong>Submitted by</strong> ' + esc(r.submittedByName || '—') + '</p>' +
-        '</div>' +
-        '<div class="report-detail-body">' + payloadHtml + '</div>' +
-        '<div class="fg fg-full" style="margin-top:12px"><label>Notes</label><textarea id="report-edit-notes" class="fi" rows="3">' + esc(notes) + '</textarea></div>' +
-        '<div class="modal-actions" style="margin-top:16px;flex-wrap:wrap;gap:8px">' +
-          '<button type="button" class="btn btn-ghost" id="report-edit-cancel">Cancel</button>' +
-          deleteBtnHtml +
-          '<button type="button" class="btn" id="report-edit-save">Save</button>' +
-        '</div>' +
-      '</div>';
-    AppModal.open(html, {
-      onReady: function () {
-        document.getElementById('report-edit-cancel').addEventListener('click', AppModal.close);
-        document.getElementById('report-edit-save').addEventListener('click', function () {
-          var newNotes = (document.getElementById('report-edit-notes') || {}).value || '';
-          var payload = Object.assign({}, r.payload || {}, { notes: newNotes });
-          AppDB.updateReport(r.id, { payload: payload, updatedByName: profile.displayName || '' }).then(function () {
-            AppModal.close();
-            window.CareTrack.toast('Report updated');
-            window.CareTrack.refreshData();
-            if (window.Pages.reports && window.Pages.reports.render) window.Pages.reports.render(window.CareTrack.getState());
-          }).catch(function (e) { window.CareTrack.toast('Error: ' + (e && e.message)); });
-        });
-        var delBtn = document.getElementById('report-edit-delete');
-        if (delBtn && canEdit) delBtn.addEventListener('click', function () {
-          if (!window.AppModal || !AppModal.confirm) { AppDB.deleteReport(r.id).then(function () { AppModal.close(); window.CareTrack.refreshData(); }); return; }
-          AppModal.confirm('Delete Report', 'Are you sure you want to delete this ' + (section || '') + ' report? This cannot be undone.', function () {
-            AppDB.deleteReport(r.id).then(function () {
-              AppModal.close();
-              window.CareTrack.toast('Report deleted');
-              window.CareTrack.refreshData();
-              if (window.Pages.reports && window.Pages.reports.render) window.Pages.reports.render(window.CareTrack.getState());
-            }).catch(function (e) { window.CareTrack.toast('Error: ' + (e && e.message)); });
-          }, 'Delete');
-        });
+    window.ReportModal.open(r, {
+      canEdit: canEdit,
+      showPatientLink: true,
+      onSave: function () {
+        var s = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+        if (window.Pages.reports && window.Pages.reports.render) window.Pages.reports.render(s);
+        if (window.Pages.patientDetail && window.Pages.patientDetail.refreshHistory) window.Pages.patientDetail.refreshHistory();
+      },
+      onDelete: function () {
+        var s = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+        if (window.Pages.reports && window.Pages.reports.render) window.Pages.reports.render(s);
+        if (window.Pages.patientDetail && window.Pages.patientDetail.refreshHistory) window.Pages.patientDetail.refreshHistory();
       }
     });
   }

@@ -3,7 +3,7 @@
 Seeds the Neuro Rehab Care Track Firebase project with:
 
 - **Auth**: 4 users (admin, nurse, doctor, therapist)
-- **Firestore**: `userProfiles`, `config/org`, `clients`, `diagnosisHistory`, `reports`, `riskEscalations`
+- **Firestore**: `userProfiles`, `config/org`, `clients`, `diagnosisHistory`, `reports`
 - **RTDB** (optional): sample chat messages
 
 ## Setup

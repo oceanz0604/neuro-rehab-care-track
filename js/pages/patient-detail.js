@@ -48,11 +48,12 @@
     if (canEdit) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-edit-btn"><i class="fas fa-pen"></i> Edit</button>';
     if (c.status === 'active' && canDischarge) actions += '<button type="button" class="btn btn-danger btn-sm" id="pd-discharge-btn"><i class="fas fa-right-from-bracket"></i> Discharge</button>';
     actions += '<button type="button" class="btn btn-ghost btn-sm" id="pd-back-btn"><i class="fas fa-arrow-left"></i> Back</button>';
+    var assignedDisplay = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—';
     var meta = '<span><i class="fas fa-venus-mars"></i> ' + (c.gender || '—') + '</span>' +
       '<span><i class="fas fa-calendar"></i> Adm: ' + (c.admissionDate || '—') + '</span>' +
       (c.plannedDischargeDate ? '<span><i class="fas fa-calendar-check"></i> Planned discharge: ' + esc(c.plannedDischargeDate) + '</span>' : '') +
       (c.status === 'discharged' && c.dischargeDate ? '<span><i class="fas fa-right-from-bracket"></i> Final discharge: ' + esc(c.dischargeDate) + '</span>' : '') +
-      '<span><i class="fas fa-stethoscope"></i> ' + (c.assignedTherapist || '—') + '</span>' +
+      '<span><i class="fas fa-user-doctor"></i> ' + esc(assignedDisplay) + '</span>' +
       '<span><i class="fas fa-bed"></i> ' + (c.ward || '—') + ' / ' + (c.roomNumber || '—') + '</span>' +
       '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + ' risk</span>' +
       '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>';
@@ -97,12 +98,12 @@
       fgv('ep-name', 'Full Name', 'text', c.name) +
       fgv('ep-dob', 'Date of Birth', 'date', c.dob) +
       fgs('ep-gender', 'Gender', ['', 'Male', 'Female', 'Other'], c.gender) +
-      fgv('ep-diag', 'Diagnosis', 'text', c.diagnosis) +
+      multiselectFg('ep-diag', 'Initial diagnosis') +
       fgv('ep-planned-discharge', 'Planned Discharge Date', 'date', c.plannedDischargeDate) +
       fgv('ep-legal', 'Legal Status', 'text', c.legalStatus) +
       fgv('ep-emergency', 'Emergency Contact', 'text', c.emergencyContact) +
       fgv('ep-consent', 'Consent', 'text', c.consent) +
-      fgv('ep-therapist', 'Therapist', 'text', c.assignedTherapist) +
+      multiselectFg('ep-doctors', 'Assigned doctor(s)') +
       fgv('ep-ward', 'Ward', 'text', c.ward) +
       fgv('ep-room', 'Room', 'text', c.roomNumber) +
       fgs('ep-risk', 'Risk Level', ['none', 'low', 'medium', 'high'], c.currentRisk) +
@@ -112,13 +113,38 @@
 
     AppModal.open(html, {
       onReady: function () {
+        var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+        var cfg = state.config || {};
+        var diagnosisOptions = cfg.diagnosisOptions || [];
+        var selectedDiag = (c.diagnoses && c.diagnoses.length ? c.diagnoses : (c.diagnosis ? [c.diagnosis] : []));
+        var diagOpts = diagnosisOptions.slice();
+        selectedDiag.forEach(function (d) { if (d && diagOpts.indexOf(d) === -1) diagOpts.push(d); });
+        bindMultiselect('ep-diag', diagOpts, selectedDiag);
+        AppDB.getAllStaff().then(function (staff) {
+          var doctorOptions = staff.filter(function (s) { return s.isActive !== false; })
+            .map(function (s) { return s.displayName || s.email || ''; })
+            .filter(Boolean);
+          var selectedDoctors = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors : (c.assignedTherapist ? [c.assignedTherapist] : []));
+          selectedDoctors.forEach(function (d) { if (d && doctorOptions.indexOf(d) === -1) doctorOptions.push(d); });
+          bindMultiselect('ep-doctors', doctorOptions, selectedDoctors);
+        }).catch(function () {
+          var selectedDoctors = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors : (c.assignedTherapist ? [c.assignedTherapist] : []));
+          bindMultiselect('ep-doctors', selectedDoctors.length ? selectedDoctors : [], selectedDoctors);
+        });
+
         document.getElementById('ep-cancel').addEventListener('click', AppModal.close);
         document.getElementById('ep-save').addEventListener('click', function () {
+          var diagnoses = getMultiselectValues('ep-diag');
+          var assignedDoctors = getMultiselectValues('ep-doctors');
           var data = {
             name: v('ep-name'), dob: v('ep-dob'), gender: v('ep-gender'),
-            diagnosis: v('ep-diag'), plannedDischargeDate: v('ep-planned-discharge') || null,
+            plannedDischargeDate: v('ep-planned-discharge') || null,
             legalStatus: v('ep-legal'), emergencyContact: v('ep-emergency'), consent: v('ep-consent'),
-            assignedTherapist: v('ep-therapist'), ward: v('ep-ward'), roomNumber: v('ep-room'), currentRisk: v('ep-risk')
+            ward: v('ep-ward'), roomNumber: v('ep-room'), currentRisk: v('ep-risk'),
+            diagnoses: diagnoses,
+            diagnosis: diagnoses[0] || '',
+            assignedDoctors: assignedDoctors,
+            assignedTherapist: assignedDoctors[0] || ''
           };
           if (!data.name) { window.CareTrack.toast('Name required'); return; }
           AppDB.updateClient(_client.id, data).then(function () {
@@ -130,6 +156,60 @@
         });
       }
     });
+  }
+
+  function multiselectFg(id, label) {
+    return '<div class="fg fg-full"><label>' + label + '</label>' +
+      '<div class="multiselect-wrap" id="' + id + '-ms">' +
+      '<button type="button" class="multiselect-trigger fi" id="' + id + '-trigger">Select...</button>' +
+      '<div class="multiselect-panel" id="' + id + '-panel">' +
+      '<input type="text" class="multiselect-search fi" id="' + id + '-search" placeholder="Search..." autocomplete="off">' +
+      '<div class="multiselect-options" id="' + id + '-options"></div></div></div></div>';
+  }
+  function bindMultiselect(id, options, selected) {
+    var wrap = document.getElementById(id + '-ms');
+    var trigger = document.getElementById(id + '-trigger');
+    var panel = document.getElementById(id + '-panel');
+    var optionsContainer = document.getElementById(id + '-options');
+    var searchInp = document.getElementById(id + '-search');
+    if (!wrap || !trigger || !panel || !optionsContainer) return;
+    var selectedSet = {};
+    (selected || []).forEach(function (v) { selectedSet[v] = true; });
+    var opts = (options || []).map(function (o) { return (o || '').trim(); }).filter(Boolean);
+    optionsContainer.innerHTML = opts.map(function (val) {
+      var checked = selectedSet[val] ? ' checked' : '';
+      return '<label data-value="' + esc(val) + '"><input type="checkbox" value="' + esc(val) + '"' + checked + '>' + esc(val) + '</label>';
+    }).join('');
+    function filterOptions() {
+      var q = (searchInp && searchInp.value) ? searchInp.value.trim().toLowerCase() : '';
+      optionsContainer.querySelectorAll('label').forEach(function (label) {
+        var text = (label.getAttribute('data-value') || label.textContent || '').toLowerCase();
+        label.style.display = !q || text.indexOf(q) !== -1 ? '' : 'none';
+      });
+    }
+    if (searchInp) {
+      searchInp.addEventListener('input', filterOptions);
+      searchInp.addEventListener('focus', function (e) { e.stopPropagation(); });
+    }
+    function updateTrigger() {
+      var vals = getMultiselectValues(id);
+      if (vals.length === 0) { trigger.innerHTML = '<span class="multiselect-placeholder">Select...</span>'; return; }
+      trigger.innerHTML = vals.map(function (v) { return '<span class="multiselect-chip">' + esc(v) + '</span>'; }).join('');
+    }
+    updateTrigger();
+    optionsContainer.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.addEventListener('change', updateTrigger); });
+    trigger.addEventListener('click', function () {
+      wrap.classList.toggle('open');
+      if (searchInp && wrap.classList.contains('open')) { searchInp.value = ''; filterOptions(); searchInp.focus(); }
+    });
+    document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) wrap.classList.remove('open'); });
+  }
+  function getMultiselectValues(id) {
+    var optionsContainer = document.getElementById(id + '-options');
+    if (!optionsContainer) return [];
+    var vals = [];
+    optionsContainer.querySelectorAll('input[type=checkbox]:checked').forEach(function (cb) { vals.push(cb.value); });
+    return vals;
   }
 
   function v(id) { return (document.getElementById(id) || {}).value || ''; }
@@ -176,24 +256,22 @@
     var c = _client;
     var basicHtml = '<div class="form-grid">' +
       info('Name', c.name) + info('DOB', c.dob) + info('Gender', c.gender) +
-      info('Diagnosis', (c.diagnoses && c.diagnoses.length ? c.diagnoses.join(', ') : c.diagnosis) || '—') +
+      info('Initial diagnosis', (c.diagnoses && c.diagnoses.length ? c.diagnoses.join(', ') : c.diagnosis) || '—') +
       info('Admission', c.admissionDate) +
       info('Planned Discharge', c.plannedDischargeDate || '—') +
       (c.status === 'discharged' && c.dischargeDate ? info('Final Discharge', c.dischargeDate) : '') +
-      info('Assigned', (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—') +
+      info('Assigned doctor(s)', (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—') +
       info('Ward', c.ward) + info('Room', c.roomNumber) +
       info('Risk', '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + '</span>') +
       info('Status', '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>') +
       '</div>';
     el.innerHTML =
-      collapsible('pd-overview-basic', 'Basic Information', basicHtml, true) +
-      collapsible('pd-overview-reports', 'Reports today &amp; yesterday', '<div id="pd-today-yesterday-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', true) +
-      collapsible('pd-overview-notes', 'Notes / Observations', '<div id="pd-observations-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', true) +
-      collapsible('pd-overview-trend', 'Reports (last 4 weeks)', '<div id="pd-trend-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', true);
+      collapsible('pd-overview-basic', 'Basic Information', basicHtml, false) +
+      collapsible('pd-overview-status', 'Status', '<div id="pd-status-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', true) +
+      collapsible('pd-overview-reports', 'Reports today &amp; yesterday', '<div id="pd-today-yesterday-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', false);
     bindCollapsibles(el);
+    loadOverviewStatus();
     loadTodayYesterdayReports();
-    loadOverviewObservations();
-    loadOverviewTrend();
   }
 
   function loadTodayYesterdayReports() {
@@ -249,14 +327,76 @@
     }).catch(function () { if (el) el.innerHTML = '<p class="empty-state" style="margin:0">Could not load.</p>'; });
   }
 
+  function loadOverviewStatus() {
+    var el = document.getElementById('pd-status-body');
+    if (!el || !_client) return;
+    var sections = ['psychiatric', 'behavioral', 'medication', 'adl', 'therapeutic', 'risk'];
+
+    function diagnosisBlock(entries) {
+      if (!entries || !entries.length) return '<div class="status-diagnosis-block"><p class="status-empty">No consultation notes yet.</p></div>';
+      var html = '<div class="status-diagnosis-block"><div class="status-sub-hd"><i class="fas fa-stethoscope"></i> Consultation notes</div>';
+      entries.forEach(function (e) {
+        var dateStr = e.fromDate ? new Date(e.fromDate + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+        var byStr = e.addedByName ? ' · ' + esc(e.addedByName) : '';
+        html += '<div class="status-consult-item">';
+        html += '<span class="status-kv">' + esc(e.diagnosis || '—') + ' <span class="status-meta">' + dateStr + byStr + '</span></span>';
+        if (e.notes && e.notes.trim()) html += '<p class="status-consult-note">' + esc(e.notes) + '</p>';
+        html += '</div>';
+      });
+      html += '</div>';
+      return html;
+    }
+
+    function renderStatus(bodyEl, bySection, diagnosisEntries) {
+      var html = diagnosisBlock(diagnosisEntries || []);
+      html += sections.map(function (sec) {
+        var item = bySection[sec];
+        var dt = '—', sub = '—', bodyHtml = '<p class="status-empty">No report yet.</p>';
+        if (item && item.report) {
+          var r = item.report;
+          dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+          sub = r.submittedByName || '—';
+          bodyHtml = formatPayloadHorizontal(sec, r.payload || {});
+        }
+        return '<div class="latest-summary-item status-section-item">' +
+          '<div class="latest-summary-hd"><span class="risk-badge risk-' + sectionColor(sec) + '">' + capitalize(sec) + '</span>' +
+          '<span style="font-size:.8rem;color:var(--text-3)">' + dt + ' · ' + esc(sub) + '</span></div>' +
+          '<div class="status-section-detail">' + bodyHtml + '</div></div>';
+      }).join('');
+      bodyEl.innerHTML = html;
+    }
+
+    function finish(bySection, diagnosisEntries) {
+      renderStatus(el, bySection, diagnosisEntries);
+    }
+
+    var reportsPromise = _cachedReports100.clientId === _client.id && _cachedReports100.docs.length > 0
+      ? Promise.resolve(_cachedReports100.docs)
+      : AppDB.getClientReports(_client.id, null, 100, null).then(function (res) {
+          _cachedReports100 = { clientId: _client.id, docs: res.docs || [] };
+          return _cachedReports100.docs;
+        });
+    var diagnosisPromise = AppDB.getClientDiagnosisHistory(_client.id).catch(function () { return []; });
+
+    Promise.all([reportsPromise, diagnosisPromise]).then(function (results) {
+      var docs = results[0] || [];
+      var diagnosisEntries = results[1] || [];
+      finish(getLatestReportPerSection(docs), diagnosisEntries);
+    }).catch(function () {
+      if (el) el.innerHTML = '<p class="empty-state" style="margin:0">Could not load status.</p>';
+    });
+  }
+
   function renderDiagnosisTab(el) {
     var profile = (window.CareTrack && window.CareTrack.getState().profile) || {};
     var canEdit = window.Permissions && window.Permissions.canEditPatient(profile);
     el.innerHTML = '<div class="card">' +
       '<div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' +
-      '<span><i class="fas fa-stethoscope"></i> Diagnosis</span>' +
-      (canEdit ? '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-btn"><i class="fas fa-plus"></i> Add entry</button>' : '') +
-      '</div><div id="pd-diagnosis-history-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>';
+      '<span><i class="fas fa-stethoscope"></i> Consultation notes</span>' +
+      (canEdit ? '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-btn"><i class="fas fa-plus"></i> Add note</button>' : '') +
+      '</div>' +
+      '<p class="pg-sub" style="margin-top:-8px;margin-bottom:12px">Diagnosis and clinical findings from each visit.</p>' +
+      '<div id="pd-diagnosis-history-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>';
     loadDiagnosisHistory();
     var addBtn = document.getElementById('pd-add-diagnosis-btn');
     if (addBtn) addBtn.addEventListener('click', showAddDiagnosisModal);
@@ -298,11 +438,6 @@
             btn.classList.add('selected');
             _reportDirty[s.key] = true; if (saveBtn) saveBtn.disabled = false;
           });
-        });
-        var notifyBtn = card.querySelector('.ct-notify-psych');
-        if (notifyBtn) notifyBtn.addEventListener('click', function () {
-          var profile = (state && state.profile) || {};
-          AppDB.addRiskEscalation(_client.id, _client.name, profile.displayName || '').then(function () { window.CareTrack.toast('Psychiatrist notified'); });
         });
         function setDirty() { _reportDirty[s.key] = true; if (saveBtn) saveBtn.disabled = false; }
         card.querySelectorAll('input, select, textarea').forEach(function (inp) {
@@ -358,15 +493,21 @@
     if (!el || !_client) return;
     AppDB.getClientDiagnosisHistory(_client.id).then(function (entries) {
       if (!entries.length) {
-        el.innerHTML = '<p class="empty-state" style="padding:16px;margin:0">No diagnosis history recorded.</p>';
+        el.innerHTML = '<p class="empty-state" style="padding:16px;margin:0">No consultation notes yet. Add an entry after a visit.</p>';
         return;
       }
-      el.innerHTML = '<ul class="diagnosis-history-list">' + entries.map(function (e) {
-        var fromStr = e.fromDate || '—';
-        var addedStr = e.addedByName ? ' by ' + esc(e.addedByName) : '';
-        return '<li><span class="diagnosis-history-text">' + esc(e.diagnosis || '—') + '</span>' +
-          '<span class="diagnosis-history-meta">From ' + fromStr + addedStr + '</span></li>';
-      }).join('') + '</ul>';
+      el.innerHTML = '<div class="diagnosis-consult-list">' + entries.map(function (e) {
+        var dateStr = e.fromDate ? new Date(e.fromDate + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+        var addedStr = e.addedByName ? esc(e.addedByName) : '—';
+        var notesHtml = (e.notes && e.notes.trim()) ? '<div class="diagnosis-consult-notes">' + esc(e.notes) + '</div>' : '';
+        return '<div class="diagnosis-consult-card">' +
+          '<div class="diagnosis-consult-head">' +
+          '<span class="diagnosis-consult-date"><i class="fas fa-calendar-check"></i> ' + dateStr + '</span>' +
+          '<span class="diagnosis-consult-by">Seen by ' + addedStr + '</span></div>' +
+          '<div class="diagnosis-consult-diagnosis"><strong>Diagnosis:</strong> ' + esc(e.diagnosis || '—') + '</div>' +
+          notesHtml +
+          '</div>';
+      }).join('') + '</div>';
     }).catch(function () {
       if (el) el.innerHTML = '<p class="empty-state" style="padding:16px;margin:0">Could not load history.</p>';
     });
@@ -374,104 +515,44 @@
 
   function showAddDiagnosisModal() {
     if (!_client) return;
-    var html = '<div class="modal-card"><h3 class="modal-title">Add Diagnosis Entry</h3>' +
+    var html = '<div class="modal-card modal-card-wide"><h3 class="modal-title">Add consultation note</h3>' +
+      '<p class="modal-sub">Record diagnosis and clinical findings from this visit.</p>' +
       '<div class="form-grid">' +
-      '<div class="fg fg-full"><label>Diagnosis</label><input id="dh-diagnosis" type="text" class="fi" value="' + esc(_client.diagnosis || '') + '" placeholder="e.g. Schizophrenia"></div>' +
-      '<div class="fg"><label>From date</label><input id="dh-from" type="date" class="fi" value="' + (new Date().toISOString().slice(0, 10)) + '"></div>' +
+      '<div class="fg"><label>Date of visit</label><input id="dh-from" type="date" class="fi" value="' + (new Date().toISOString().slice(0, 10)) + '"></div>' +
+      multiselectFg('dh-diag', 'Diagnosis (select one or more)') +
+      '<div class="fg fg-full"><label>Clinical notes / Findings from visit</label><textarea id="dh-notes" class="fi" rows="4" placeholder="What did you observe? Mental state, behaviour, progress, concerns..."></textarea></div>' +
       '</div><div class="modal-actions" style="margin-top:18px">' +
       '<button type="button" class="btn btn-ghost" id="dh-cancel">Cancel</button>' +
-      '<button type="button" class="btn" id="dh-save">Add</button></div></div>';
+      '<button type="button" class="btn" id="dh-save">Save entry</button></div></div>';
     AppModal.open(html, {
       onReady: function () {
+        var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+        var cfg = state.config || {};
+        var diagnosisOptions = (cfg.diagnosisOptions && cfg.diagnosisOptions.length) ? cfg.diagnosisOptions
+          : (window.Pages && window.Pages.settings && window.Pages.settings.ICD11_DIAGNOSIS_OPTIONS) || [];
+        var existingDiag = (_client.diagnoses && _client.diagnoses.length) ? _client.diagnoses : (_client.diagnosis ? [_client.diagnosis] : []);
+        var diagOpts = diagnosisOptions.slice();
+        existingDiag.forEach(function (d) { if (d && diagOpts.indexOf(d) === -1) diagOpts.push(d); });
+        bindMultiselect('dh-diag', diagOpts, existingDiag);
+
         document.getElementById('dh-cancel').addEventListener('click', AppModal.close);
         document.getElementById('dh-save').addEventListener('click', function () {
-          var diagnosis = (document.getElementById('dh-diagnosis') || {}).value || '';
+          var selected = getMultiselectValues('dh-diag');
+          var diagnosis = selected.join(', ');
           var fromDate = (document.getElementById('dh-from') || {}).value || '';
-          if (!diagnosis.trim()) { window.CareTrack.toast('Enter diagnosis'); return; }
-          var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
-          var profile = state.profile || {};
-          AppDB.addClientDiagnosisEntry(_client.id, { diagnosis: diagnosis.trim(), fromDate: fromDate, addedByName: profile.displayName || '' }).then(function () {
-            AppModal.close();
-            window.CareTrack.toast('Diagnosis entry added');
-            loadDiagnosisHistory();
-            window.CareTrack.refreshData();
+          var notes = (document.getElementById('dh-notes') || {}).value || '';
+          if (!diagnosis.trim()) { window.CareTrack.toast('Select at least one diagnosis'); return; }
+          var profile = (state && state.profile) || {};
+          AppDB.addClientDiagnosisEntry(_client.id, { diagnosis: diagnosis.trim(), fromDate: fromDate, notes: notes.trim(), addedByName: profile.displayName || '' }).then(function () {
+            return AppDB.updateClient(_client.id, { diagnoses: selected, diagnosis: selected[0] || '' }).then(function () {
+              AppModal.close();
+              window.CareTrack.toast('Consultation note saved');
+              loadDiagnosisHistory();
+              return window.CareTrack.refreshData();
+            });
           }).catch(function (e) { window.CareTrack.toast('Error: ' + e.message); });
         });
       }
-    });
-  }
-
-  function loadOverviewTrend() {
-    var el = document.getElementById('pd-trend-body');
-    if (!el || !_client) return;
-    var cutoff = Date.now() - 28 * 24 * 60 * 60 * 1000;
-    function useDocs(docs) {
-      docs = (docs || []).filter(function (r) {
-        var t = r.createdAt;
-        if (!t) return false;
-        var ms = typeof t === 'string' ? new Date(t).getTime() : (t && t.getTime ? t.getTime() : 0);
-        return ms >= cutoff;
-      });
-      function getWeekKey(d) {
-        var day = d.getDay();
-        var toMonday = day === 0 ? -6 : 1 - day;
-        var mon = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        mon.setDate(mon.getDate() + toMonday);
-        return mon.getTime();
-      }
-      function weekRangeLabel(weekStartMs) {
-        var mon = new Date(weekStartMs);
-        var sun = new Date(weekStartMs);
-        sun.setDate(sun.getDate() + 6);
-        if (mon.getMonth() === sun.getMonth()) {
-          return mon.getDate() + '–' + sun.getDate() + ' ' + mon.toLocaleDateString('en-IN', { month: 'short' });
-        }
-        return mon.getDate() + ' ' + mon.toLocaleDateString('en-IN', { month: 'short' }) + ' – ' + sun.getDate() + ' ' + sun.toLocaleDateString('en-IN', { month: 'short' });
-      }
-      var byWeek = {};
-      docs.forEach(function (r) {
-        var t = r.createdAt;
-        var d = typeof t === 'string' ? new Date(t) : (t || new Date());
-        var key = getWeekKey(d);
-        if (!byWeek[key]) byWeek[key] = 0;
-        byWeek[key]++;
-      });
-      var now = new Date();
-      var thisMonday = getWeekKey(now);
-      var oneWeekMs = 7 * 24 * 60 * 60 * 1000;
-      var keys = [];
-      for (var i = 3; i >= 0; i--) {
-        keys.push(thisMonday - i * oneWeekMs);
-      }
-      var maxCount = 0;
-      keys.forEach(function (k) { maxCount = Math.max(maxCount, byWeek[k] || 0); });
-      maxCount = Math.max(maxCount, 1);
-      var scaleMax = Math.max(maxCount, 4);
-      var html = '<div class="trend-chart" role="img" aria-label="Report count by week">' +
-        '<div class="trend-scale"><span>0</span><span class="trend-scale-max">max ' + scaleMax + '</span></div>';
-      keys.forEach(function (k) {
-        var count = byWeek[k] || 0;
-        var label = weekRangeLabel(k);
-        var pct = scaleMax > 0 ? Math.min(100, Math.round(100 * count / scaleMax)) : 0;
-        html += '<div class="trend-row">' +
-          '<span class="trend-label" title="' + esc(label) + '">' + label + '</span>' +
-          '<div class="trend-bar-wrap"><div class="trend-bar" style="width:' + pct + '%"></div></div>' +
-          '<span class="trend-value">' + count + '</span>' +
-        '</div>';
-      });
-      html += '</div>';
-      el.innerHTML = html;
-    }
-    if (_cachedReports100.clientId === _client.id && _cachedReports100.docs.length > 0) {
-      useDocs(_cachedReports100.docs);
-      return;
-    }
-    AppDB.getClientReports(_client.id, null, 100, null).then(function (result) {
-      var docs = result.docs || [];
-      _cachedReports100 = { clientId: _client.id, docs: docs };
-      useDocs(docs);
-    }).catch(function () {
-      if (el) el.innerHTML = '<p class="trend-empty">Could not load trend.</p>';
     });
   }
 
@@ -498,12 +579,8 @@
         html += buildADLForm(params, payload);
       } else if (section === 'therapeutic') {
         html += buildTherapeuticForm(params, payload);
-      } else       if (section === 'risk') {
+      } else if (section === 'risk') {
         html += buildRiskForm(params, payload);
-        var highestRisk = computeHighestRisk(payload.levels || {});
-        if (highestRisk === 'medium' || highestRisk === 'high') {
-          html += '<div class="fg fg-full" style="margin-top:12px"><button type="button" class="btn btn-outline btn-sm" id="ct-notify-psych"><i class="fas fa-bell"></i> Notify Psychiatrist</button></div>';
-        }
       } else if (section === 'medication') {
         html += buildMedicationForm(payload);
       } else {
@@ -526,11 +603,8 @@
       var html = '<div class="card" id="ct-card"><div class="card-hd"><i class="fas fa-pen-to-square"></i> ' + capitalize(section) + ' Assessment</div>';
       if (section === 'adl') html += buildADLForm(params, payload);
       else if (section === 'therapeutic') html += buildTherapeuticForm(params, payload);
-      else if (section === 'risk') {
-        html += buildRiskForm(params, payload);
-        var clientRisk = (_client && _client.currentRisk) || '';
-        if (clientRisk === 'medium' || clientRisk === 'high') html += '<div class="fg fg-full" style="margin-top:12px"><button type="button" class="btn btn-outline btn-sm ct-notify-psych"><i class="fas fa-bell"></i> Notify Psychiatrist</button></div>';
-      } else if (section === 'medication') html += buildMedicationForm(payload);
+      else if (section === 'risk') html += buildRiskForm(params, payload);
+      else if (section === 'medication') html += buildMedicationForm(payload);
       else html += buildRatingForm(params, payload);
       html += '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3"></textarea></div>';
       var profile = (state && state.profile) || {};
@@ -545,12 +619,7 @@
   function getSectionFormHtml(section, params, payload) {
     if (section === 'adl') return buildADLForm(params, payload);
     if (section === 'therapeutic') return buildTherapeuticForm(params, payload);
-    if (section === 'risk') {
-      var h = buildRiskForm(params, payload);
-      if ((_client && _client.currentRisk) === 'medium' || (_client && _client.currentRisk) === 'high')
-        h += '<div class="fg fg-full" style="margin-top:12px"><button type="button" class="btn btn-outline btn-sm ct-notify-psych"><i class="fas fa-bell"></i> Notify Psychiatrist</button></div>';
-      return h;
-    }
+    if (section === 'risk') return buildRiskForm(params, payload);
     if (section === 'medication') return buildMedicationForm(payload);
     return buildRatingForm(params, payload);
   }
@@ -660,14 +729,6 @@
         card.querySelectorAll('.rating-btn[data-param="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
       });
-    });
-
-    var notifyBtn = card.querySelector('.ct-notify-psych');
-    if (notifyBtn) notifyBtn.addEventListener('click', function () {
-      var profile = (state && state.profile) || {};
-      AppDB.addRiskEscalation(_client.id, _client.name, profile.displayName || '').then(function () {
-        window.CareTrack.toast('Psychiatrist notified');
-      }).catch(function (e) { window.CareTrack.toast('Failed: ' + (e && e.message)); });
     });
 
     var saveBtn = card.querySelector('.ct-save') || document.getElementById('ct-save');
@@ -828,33 +889,41 @@
     moreBtn.style.display = docs.length >= 20 ? 'block' : 'none';
     if (totalEl) totalEl.textContent = _historyDocs.length + ' report' + (_historyDocs.length !== 1 ? 's' : '');
 
+    var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+    var profile = (state && state.profile) || {};
+    var canEditReport = window.Permissions && window.Permissions.canEditReport(profile);
     list.querySelectorAll('.report-entry[data-report-index]').forEach(function (el) {
       function openReportModal() {
         var idx = parseInt(el.getAttribute('data-report-index'), 10);
         var r = _historyDocs[idx];
-        if (!r) return;
-        showReportDetailModal(r);
+        if (!r || !window.ReportModal) return;
+        window.ReportModal.open(r, {
+          canEdit: canEditReport,
+          showPatientLink: false,
+          onSave: refreshHistory,
+          onDelete: refreshHistory
+        });
       }
       el.addEventListener('click', openReportModal);
       el.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openReportModal(); } });
     });
   }
 
-  function formatPayloadForModal(section, p) {
-    var lines = [];
+  function formatPayloadHorizontal(section, p) {
+    var items = [];
     if (section === 'psychiatric' || section === 'behavioral') {
       var r = p.ratings || {};
-      Object.keys(r).sort().forEach(function (k) { lines.push('<tr><td>' + esc(k) + '</td><td>' + r[k] + '/5</td></tr>'); });
+      Object.keys(r).sort().forEach(function (k) { items.push('<span class="status-kv">' + esc(k) + ': ' + r[k] + '/5</span>'); });
     } else if (section === 'adl' || section === 'risk') {
       var l = p.levels || {};
-      Object.keys(l).sort().forEach(function (k) { lines.push('<tr><td>' + esc(k) + '</td><td>' + esc(l[k]) + '</td></tr>'); });
+      Object.keys(l).sort().forEach(function (k) { items.push('<span class="status-kv">' + esc(k) + ': ' + esc(l[k]) + '</span>'); });
     } else if (section === 'therapeutic') {
       var a = p.activities || {};
       Object.keys(a).forEach(function (name) {
         var act = a[name] || {};
         var att = act.attendance || '—';
         var eng = act.engagement || '—';
-        lines.push('<tr><td>' + esc(name) + '</td><td>' + esc(att) + ' / ' + esc(eng) + '</td></tr>');
+        items.push('<span class="status-kv">' + esc(name) + ': ' + esc(att) + ' / ' + esc(eng) + '</span>');
       });
     } else if (section === 'medication') {
       var medKeys = ['medicationGiven', 'compliance', 'sideEffects', 'prnGiven', 'prnReason', 'labDue', 'bp', 'pulse', 'temp', 'weight'];
@@ -862,37 +931,14 @@
         var v = p[k];
         if (v === undefined || v === '') return;
         var label = k.replace(/([A-Z])/g, ' $1').replace(/^./, function (s) { return s.toUpperCase(); });
-        lines.push('<tr><td>' + esc(label) + '</td><td>' + esc(v) + '</td></tr>');
+        items.push('<span class="status-kv">' + esc(label) + ': ' + esc(v) + '</span>');
       });
     }
-    if (p.restraintUsed) lines.push('<tr><td>Restraint used</td><td>' + esc(p.restraintUsed) + '</td></tr>');
-    if (p.restraintJustification) lines.push('<tr><td>Restraint justification</td><td>' + esc(p.restraintJustification) + '</td></tr>');
-    if (p.interventionTaken) lines.push('<tr><td>Intervention taken</td><td>' + esc(p.interventionTaken) + '</td></tr>');
-    if (p.notes) lines.push('<tr><td colspan="2"><strong>Notes</strong></td></tr><tr><td colspan="2">' + esc(p.notes) + '</td></tr>');
-    return lines.length ? '<table class="report-detail-table"><tbody>' + lines.join('') + '</tbody></table>' : '<p>No details recorded.</p>';
-  }
-
-  function showReportDetailModal(r) {
-    var section = r.section || '';
-    var dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-    var payloadHtml = formatPayloadForModal(section, r.payload || {});
-    var html =
-      '<div class="modal-card report-detail-modal">' +
-        '<h3 class="modal-title"><span class="risk-badge risk-' + sectionColor(section) + '">' + capitalize(section) + '</span> Report</h3>' +
-        '<div class="report-detail-meta">' +
-          '<p><strong>Submitted by</strong> ' + esc(r.submittedByName || '—') + '</p>' +
-          '<p><strong>Date & time</strong> ' + dt + '</p>' +
-        '</div>' +
-        '<div class="report-detail-body">' + payloadHtml + '</div>' +
-        '<div class="modal-actions" style="margin-top:16px">' +
-          '<button type="button" class="btn" id="report-detail-close">Close</button>' +
-        '</div>' +
-      '</div>';
-    AppModal.open(html, {
-      onReady: function () {
-        document.getElementById('report-detail-close').addEventListener('click', AppModal.close);
-      }
-    });
+    if (p.restraintUsed) items.push('<span class="status-kv">Restraint: ' + esc(p.restraintUsed) + '</span>');
+    if (p.restraintJustification) items.push('<span class="status-kv">Restraint justification: ' + esc(p.restraintJustification) + '</span>');
+    if (p.interventionTaken) items.push('<span class="status-kv">Intervention: ' + esc(p.interventionTaken) + '</span>');
+    if (p.notes) items.push('<span class="status-kv">Notes: ' + esc(p.notes) + '</span>');
+    return items.length ? '<div class="status-inline">' + items.join('') + '</div>' : '<p class="status-empty">No details recorded.</p>';
   }
 
   function getLatestReportPerSection(docs) {
@@ -945,13 +991,16 @@
         onReady: function () {
           document.getElementById('pd-summary-close').addEventListener('click', AppModal.close);
           var viewBtns = document.querySelectorAll('.pd-summary-view');
+          var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+          var profile = (state && state.profile) || {};
+          var canEditReport = window.Permissions && window.Permissions.canEditReport(profile);
           viewBtns.forEach(function (btn) {
             var sec = btn.getAttribute('data-section');
             var item = bySection[sec];
-            if (item && item.report) {
+            if (item && item.report && window.ReportModal) {
               btn.addEventListener('click', function () {
                 AppModal.close();
-                showReportDetailModal(item.report);
+                window.ReportModal.open(item.report, { canEdit: canEditReport, showPatientLink: false, onSave: refreshHistory, onDelete: refreshHistory });
               });
             }
           });
@@ -1068,6 +1117,10 @@
     _latestReports = {};
   }
 
+  function refreshHistory() {
+    if (_client && document.getElementById('hist-list')) loadHistory(false);
+  }
+
   window.Pages = window.Pages || {};
-  window.Pages.patientDetail = { render: render, init: init, destroy: destroy };
+  window.Pages.patientDetail = { render: render, init: init, destroy: destroy, refreshHistory: refreshHistory };
 })();

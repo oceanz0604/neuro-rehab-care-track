@@ -1,12 +1,78 @@
 /**
- * Settings page — Firestore-persisted parameter lists with 2s debounced auto-save.
+ * Settings — Report Parameters, Ward & Beds, Diagnosis Options.
+ * Rendered per admin tab. No auto-save; each section has its own Save button.
  */
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var _inited = false;
-  var _saveTimer = null;
-  var DEBOUNCE = 2000;
+
+  /** ICD-11 Mental, behavioural or neurodevelopmental disorders (with codes). Merged with org config at load. */
+  var ICD11_DIAGNOSIS_OPTIONS = [
+    '6A20 - Schizophrenia',
+    '6A21 - Schizoaffective disorder',
+    '6A22 - Acute and transient psychotic disorder',
+    '6A2Y - Other specified primary psychotic disorders',
+    '6A60 - Bipolar type I disorder',
+    '6A61 - Bipolar type II disorder',
+    '6A62 - Cyclothymic disorder',
+    '6A70 - Single episode depressive disorder',
+    '6A71 - Recurrent depressive disorder',
+    '6A72 - Dysthymic disorder',
+    '6A73 - Mixed depressive and anxiety disorder',
+    '6B00 - Generalised anxiety disorder',
+    '6B01 - Panic disorder',
+    '6B02 - Agoraphobia',
+    '6B03 - Social anxiety disorder',
+    '6B04 - Specific phobia',
+    '6B05 - Separation anxiety disorder',
+    '6B20 - Obsessive-compulsive disorder',
+    '6B21 - Body dysmorphic disorder',
+    '6B22 - Olfactory reference disorder',
+    '6B23 - Hypochondriasis',
+    '6B40 - Post-traumatic stress disorder',
+    '6B41 - Complex post-traumatic stress disorder',
+    '6B43 - Adjustment disorder',
+    '6B45 - Prolonged grief disorder',
+    '6B30 - Dissociative neurological symptom disorder',
+    '6B31 - Dissociative amnesia',
+    '6B32 - Trance disorder',
+    '6B80 - Anorexia nervosa',
+    '6B81 - Bulimia nervosa',
+    '6B82 - Binge eating disorder',
+    '6B83 - Avoidant-restrictive food intake disorder',
+    '6C20 - Disorders of bodily distress',
+    '6C21 - Body integrity dysphoria',
+    '6C40.0 - Disorder due to alcohol use',
+    '6C40.1 - Disorder due to cannabis use',
+    '6C40.2 - Disorder due to opioid use',
+    '6C40.3 - Disorder due to sedative use',
+    '6C40.4 - Disorder due to stimulant use',
+    '6C50 - Gaming disorder',
+    '6C51 - Gambling disorder',
+    '6C70 - Impulse control disorder',
+    '6C71 - Intermittent explosive disorder',
+    '6C72 - Kleptomania',
+    '6C73 - Pyromania',
+    '6C90 - Oppositional defiant disorder',
+    '6C91 - Conduct disorder',
+    '6C92 - Conduct-dissocial disorder',
+    '6D10.0 - Personality disorder (mild)',
+    '6D10.1 - Personality disorder (moderate)',
+    '6D10.2 - Personality disorder (severe)',
+    '6D10.3 - Borderline pattern',
+    '6D10.4 - Antisocial pattern',
+    '6D10.5 - Dissocial pattern',
+    '6D10.6 - Anankastic pattern',
+    '6D10.7 - Avoidant pattern',
+    '6D10.8 - Schizotypal pattern',
+    '6D70 - Mild neurocognitive disorder',
+    '6D71 - Major neurocognitive disorder',
+    '6D70.0 - Delirium',
+    '6E20 - Mental or behavioural disorders associated with pregnancy, childbirth or the puerperium',
+    '6E8Z - Other specified mental disorder',
+    '6E8Y - Unspecified mental disorder'
+  ];
 
   var DEFAULTS = {
     PSY: ['Orientation', 'Mood & Affect', 'Thought Content', 'Thought Process', 'Perceptual Disturbances', 'Insight', 'Judgment', 'Psychomotor Activity', 'Sleep Pattern', 'Appetite'],
@@ -14,157 +80,182 @@
     ADL: ['Personal Hygiene', 'Dressing', 'Toileting', 'Feeding', 'Mobility', 'Room Maintenance', 'Laundry', 'Money Handling', 'Time Management', 'Phone Use'],
     THER: ['Occupational Therapy', 'Group Therapy', 'Individual Counseling', 'Yoga/Exercise', 'Art/Music/Dance', 'Vocational Training', 'Life Skills', 'Recreation', 'Psychoeducation', 'Cognitive Remediation'],
     RISK: ['Suicidal Ideation', 'Aggression/Violence', 'Absconding Risk', 'Substance Relapse', 'Falls/Physical Safety', 'Vulnerability', 'Medication Safety'],
-    diagnosisOptions: ['Schizophrenia', 'Bipolar Disorder', 'Major Depressive Disorder', 'Anxiety Disorder', 'Personality Disorder', 'Substance Use Disorder', 'Cognitive Disorder', 'Other'],
+    diagnosisOptions: ICD11_DIAGNOSIS_OPTIONS.slice(),
     wardNames: ['Ward A', 'Ward B', 'Ward C', 'General Ward', 'High Dependency', 'Step-down'],
     roomBedNumbers: ['A/101', 'A/102', 'A/103', 'B/201', 'B/202', 'C/301', 'C/302', 'GD/1', 'GD/2', 'HD/1', 'SD/1']
   };
 
-  var SECTIONS = [
-    { key: 'PSY', icon: 'fa-brain',           title: 'Psychiatric — Mental state parameters' },
-    { key: 'BEH', icon: 'fa-comments',        title: 'Behavioral — Observation parameters' },
-    { key: 'ADL', icon: 'fa-hands-helping',   title: 'ADL — Daily living domains' },
-    { key: 'THER', icon: 'fa-dumbbell',       title: 'Therapeutic — Activity types' },
-    { key: 'RISK', icon: 'fa-shield-halved', title: 'Risk — Assessment domains' },
-    { key: 'diagnosisOptions', icon: 'fa-stethoscope', title: 'Diagnosis options' },
+  var REPORT_SECTIONS = [
+    { key: 'PSY', icon: 'fa-brain', title: 'Psychiatric — Mental state parameters' },
+    { key: 'BEH', icon: 'fa-comments', title: 'Behavioral — Observation parameters' },
+    { key: 'ADL', icon: 'fa-hands-helping', title: 'ADL — Daily living domains' },
+    { key: 'THER', icon: 'fa-dumbbell', title: 'Therapeutic — Activity types' },
+    { key: 'RISK', icon: 'fa-shield-halved', title: 'Risk — Assessment domains' }
+  ];
+
+  var WARD_BEDS_SECTIONS = [
     { key: 'wardNames', icon: 'fa-building', title: 'Ward names' },
     { key: 'roomBedNumbers', icon: 'fa-bed', title: 'Room / Bed numbers' }
   ];
 
   function getConfig(state) { return state.config || {}; }
-  function setConfigKey(state, key, arr) {
-    if (!state.config) state.config = {};
-    state.config[key] = arr;
-    scheduleSave(state);
+
+  function getSectionItemsFromDOM(sectionKey) {
+    var el = document.getElementById('set-list-' + sectionKey);
+    if (!el) return [];
+    return Array.prototype.map.call(el.querySelectorAll('.li-txt'), function (inp) { return (inp.value || '').trim(); });
   }
 
-  function scheduleSave(state) {
-    clearTimeout(_saveTimer);
-    _saveTimer = setTimeout(function () {
-      AppDB.setOrgConfig(state.config).then(function () {
-        window.CareTrack.toast('Settings saved');
-      }).catch(function () {
-        window.CareTrack.toast('Save failed');
-      });
-    }, DEBOUNCE);
-  }
-
-  function render(state) {
-    var cfg = getConfig(state);
-    $('settings-lists').innerHTML = SECTIONS.map(function (sec) {
-      var items = cfg[sec.key] || DEFAULTS[sec.key] || [];
-      return '<div class="card">' +
-        '<div class="set-hdr"><span class="set-title"><i class="fas ' + sec.icon + '"></i> ' + sec.title + '</span><span class="set-badge">' + items.length + '</span></div>' +
-        '<div class="set-desc">Edit, reorder, or remove items.</div>' +
-        '<div id="set-list-' + sec.key + '"></div>' +
-        '<div class="add-row"><input class="add-inp" id="set-inp-' + sec.key + '" placeholder="New item…">' +
-        '<button type="button" class="btn btn-sm" data-add="' + sec.key + '">+ Add</button></div></div>';
-    }).join('');
-
-    SECTIONS.forEach(function (sec) { renderList(sec.key, state); });
-
-    $('settings-lists').querySelectorAll('[data-add]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var key = b.getAttribute('data-add');
-        var inp = $('set-inp-' + key);
-        var val = (inp.value || '').trim();
-        if (!val) { window.CareTrack.toast('Enter item name'); return; }
-        var cfg = getConfig(state);
-        var arr = (cfg[key] || DEFAULTS[key] || []).slice();
-        arr.push(val);
-        setConfigKey(state, key, arr);
-        inp.value = '';
-        renderList(key, state);
-      });
+  function saveSection(sectionKey, state, callback, itemsOverride) {
+    var items = itemsOverride != null ? itemsOverride : getSectionItemsFromDOM(sectionKey);
+    AppDB.getOrgConfig(true).then(function (cfg) {
+      var next = cfg || {};
+      next[sectionKey] = items;
+      return AppDB.setOrgConfig(next);
+    }).then(function () {
+      if (!state.config) state.config = {};
+      state.config[sectionKey] = items;
+      if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Saved');
+      if (callback) callback();
+    }).catch(function () {
+      if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Save failed');
     });
   }
 
-  function renderList(key, state) {
+  function renderOneSection(parentEl, sec, state, defaults) {
     var cfg = getConfig(state);
-    var items = cfg[key] || DEFAULTS[key] || [];
-    var el = $('set-list-' + key);
-    if (!el) return;
+    var items = (cfg[sec.key] || defaults[sec.key] || []).slice();
+    var sectionId = 'admin-sec-' + sec.key;
+    var html = '<div class="collapsible-section" id="' + sectionId + '">' +
+      '<button type="button" class="collapsible-head" aria-expanded="true" data-toggle-collapse="' + sectionId + '">' +
+        '<i class="fas fa-chevron-down"></i><span><i class="fas ' + sec.icon + '"></i> ' + sec.title + '</span><span class="set-badge">' + items.length + '</span>' +
+      '</button>' +
+      '<div class="collapsible-body">' +
+        '<div id="set-list-' + sec.key + '"></div>' +
+        '<div class="add-row"><input class="add-inp" id="set-inp-' + sec.key + '" placeholder="New item (type and click Save to add)…">' +
+        '<button type="button" class="btn btn-sm" data-save="' + sec.key + '" style="margin-left:auto">Save</button></div>' +
+      '</div></div>';
+    parentEl.insertAdjacentHTML('beforeend', html);
 
-    el.innerHTML = items.map(function (item, i) {
+    var listEl = document.getElementById('set-list-' + sec.key);
+    listEl.innerHTML = items.map(function (item, i) {
       var safe = (item || '').replace(/"/g, '&quot;');
       return '<div class="list-item">' +
-        '<input class="li-txt" value="' + safe + '" data-key="' + key + '" data-i="' + i + '">' +
-        '<button type="button" class="li-up" data-key="' + key + '" data-i="' + i + '">&#8593;</button>' +
-        '<button type="button" class="li-dn" data-key="' + key + '" data-i="' + i + '">&#8595;</button>' +
-        '<button type="button" class="li-del" data-key="' + key + '" data-i="' + i + '">&times;</button>' +
+        '<input class="li-txt" value="' + safe + '" data-key="' + sec.key + '" data-i="' + i + '">' +
+        '<button type="button" class="li-up" data-key="' + sec.key + '" data-i="' + i + '">&#8593;</button>' +
+        '<button type="button" class="li-dn" data-key="' + sec.key + '" data-i="' + i + '">&#8595;</button>' +
+        '<button type="button" class="li-del" data-key="' + sec.key + '" data-i="' + i + '">&times;</button>' +
       '</div>';
     }).join('') || '<p style="color:var(--text-3);font-size:.85rem">No items.</p>';
 
-    el.querySelectorAll('.li-txt').forEach(function (inp) {
-      inp.addEventListener('blur', function () {
-        var arr = (getConfig(state)[key] || DEFAULTS[key] || []).slice();
-        if (inp.value.trim()) { arr[parseInt(inp.getAttribute('data-i'), 10)] = inp.value.trim(); setConfigKey(state, key, arr); }
-      });
+    parentEl.querySelector('[data-toggle-collapse="' + sectionId + '"]').addEventListener('click', function () {
+      document.getElementById(sectionId).classList.toggle('collapsed');
     });
-    el.querySelectorAll('.li-up, .li-dn').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var arr = (getConfig(state)[key] || DEFAULTS[key] || []).slice();
+
+    parentEl.querySelector('[data-save="' + sec.key + '"]').addEventListener('click', function () {
+      var btn = parentEl.querySelector('[data-save="' + sec.key + '"]');
+      var inp = document.getElementById('set-inp-' + sec.key);
+      var newVal = (inp && inp.value) ? inp.value.trim() : '';
+      var items = getSectionItemsFromDOM(sec.key);
+      if (newVal) items = items.concat([newVal]);
+      btn.disabled = true;
+      saveSection(sec.key, state, function () {
+        btn.disabled = false;
+        if (inp) inp.value = '';
+        if (newVal) {
+          var p = listEl.querySelector('p');
+          if (p) p.remove();
+          var div = document.createElement('div');
+          div.className = 'list-item';
+          div.innerHTML = '<input class="li-txt" value="' + (newVal.replace(/"/g, '&quot;')) + '" data-key="' + sec.key + '" data-i="-1">' +
+            '<button type="button" class="li-up" data-key="' + sec.key + '">&#8593;</button>' +
+            '<button type="button" class="li-dn" data-key="' + sec.key + '">&#8595;</button>' +
+            '<button type="button" class="li-del" data-key="' + sec.key + '">&times;</button>';
+          listEl.appendChild(div);
+          bindListButtons(listEl, sec.key, state, defaults);
+        }
+      }, items);
+    });
+
+    bindListButtons(listEl, sec.key, state, defaults);
+  }
+
+  function bindListButtons(listEl, key, state, defaults) {
+    if (!listEl) return;
+    listEl.querySelectorAll('.li-up, .li-dn').forEach(function (b) {
+      b.onclick = function () {
+        var items = getSectionItemsFromDOM(key);
         var i = parseInt(b.getAttribute('data-i'), 10);
+        if (i < 0) i = items.length - 1;
         var j = b.classList.contains('li-up') ? i - 1 : i + 1;
-        if (j < 0 || j >= arr.length) return;
-        var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
-        setConfigKey(state, key, arr);
-        renderList(key, state);
-      });
+        if (j < 0 || j >= items.length) return;
+        var tmp = items[i]; items[i] = items[j]; items[j] = tmp;
+        var parent = listEl.parentElement;
+        listEl.innerHTML = items.map(function (item, idx) {
+          var safe = (item || '').replace(/"/g, '&quot;');
+          return '<div class="list-item">' +
+            '<input class="li-txt" value="' + safe + '" data-key="' + key + '" data-i="' + idx + '">' +
+            '<button type="button" class="li-up" data-key="' + key + '" data-i="' + idx + '">&#8593;</button>' +
+            '<button type="button" class="li-dn" data-key="' + key + '" data-i="' + idx + '">&#8595;</button>' +
+            '<button type="button" class="li-del" data-key="' + key + '" data-i="' + idx + '">&times;</button></div>';
+        }).join('');
+        bindListButtons(listEl, key, state, defaults);
+      };
     });
-    el.querySelectorAll('.li-del').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var arr = (getConfig(state)[key] || DEFAULTS[key] || []).slice();
-        if (arr.length <= 1) { window.CareTrack.toast('Keep at least one'); return; }
-        arr.splice(parseInt(b.getAttribute('data-i'), 10), 1);
-        setConfigKey(state, key, arr);
-        renderList(key, state);
-      });
+    listEl.querySelectorAll('.li-del').forEach(function (b) {
+      b.onclick = function () {
+        var items = getSectionItemsFromDOM(key);
+        if (items.length <= 1) { if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Keep at least one'); return; }
+        var i = parseInt(b.getAttribute('data-i'), 10);
+        if (i < 0) i = items.length - 1;
+        items.splice(i, 1);
+        listEl.innerHTML = items.map(function (item, idx) {
+          var safe = (item || '').replace(/"/g, '&quot;');
+          return '<div class="list-item">' +
+            '<input class="li-txt" value="' + safe + '" data-key="' + key + '" data-i="' + idx + '">' +
+            '<button type="button" class="li-up" data-key="' + key + '" data-i="' + idx + '">&#8593;</button>' +
+            '<button type="button" class="li-dn" data-key="' + key + '" data-i="' + idx + '">&#8595;</button>' +
+            '<button type="button" class="li-del" data-key="' + key + '" data-i="' + idx + '">&times;</button></div>';
+        }).join('') || '<p style="color:var(--text-3);font-size:.85rem">No items.</p>';
+        bindListButtons(listEl, key, state, defaults);
+      };
     });
+  }
+
+  function renderReportParameters(containerId, state) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    REPORT_SECTIONS.forEach(function (sec) { renderOneSection(el, sec, state, DEFAULTS); });
+  }
+
+  function renderWardBeds(containerId, state) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    WARD_BEDS_SECTIONS.forEach(function (sec) { renderOneSection(el, sec, state, DEFAULTS); });
+  }
+
+  function renderDiagnosisOptions(containerId, state) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    var sec = { key: 'diagnosisOptions', icon: 'fa-stethoscope', title: 'Diagnosis diseases (ICD-11)' };
+    renderOneSection(el, sec, state, DEFAULTS);
   }
 
   function init(state) {
-    if (_inited) return; _inited = true;
-
-    $('export-config').addEventListener('click', function () {
-      var cfg = getConfig(state);
-      var blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
-      var a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'NeuroRehab_Config.json';
-      a.click();
-      window.CareTrack.toast('Exported');
-    });
-
-    $('import-config-btn').addEventListener('click', function () { $('cfg-file').click(); });
-    $('cfg-file').addEventListener('change', function (e) {
-      var file = e.target && e.target.files && e.target.files[0];
-      if (!file) return;
-      var reader = new FileReader();
-      reader.onload = function () {
-        try {
-          var cfg = JSON.parse(reader.result);
-          SECTIONS.forEach(function (sec) {
-            if (cfg[sec.key] && Array.isArray(cfg[sec.key]) && cfg[sec.key].length) {
-              setConfigKey(state, sec.key, cfg[sec.key]);
-            }
-          });
-          render(state);
-          window.CareTrack.toast('Imported');
-        } catch (_) { window.CareTrack.toast('Invalid config file'); }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
-    });
-
-    $('reset-config').addEventListener('click', function () {
-      AppModal.confirm('Reset Settings', 'Reset all parameter lists to defaults?', function () {
-        SECTIONS.forEach(function (sec) { setConfigKey(state, sec.key, DEFAULTS[sec.key].slice()); });
-        render(state);
-        window.CareTrack.toast('Reset to defaults');
-      });
-    });
+    if (_inited) return;
+    _inited = true;
   }
 
   window.Pages = window.Pages || {};
-  window.Pages.settings = { render: render, init: init, DEFAULTS: DEFAULTS };
+  window.Pages.settings = {
+    renderReportParameters: renderReportParameters,
+    renderWardBeds: renderWardBeds,
+    renderDiagnosisOptions: renderDiagnosisOptions,
+    init: init,
+    DEFAULTS: DEFAULTS,
+    ICD11_DIAGNOSIS_OPTIONS: ICD11_DIAGNOSIS_OPTIONS
+  };
 })();
