@@ -1,5 +1,5 @@
 /**
- * Tasks page (MVP-2) — list, filter, add/edit/delete tasks.
+ * Tasks page (MVP-2) -- list, filter, add/edit/delete tasks.
  */
 (function () {
   'use strict';
@@ -92,10 +92,10 @@
     filtered.forEach(function (t) {
       var statusLabel = (STATUS_OPTIONS.filter(function (s) { return s.value === t.status; })[0] || {}).label || t.status;
       html += '<tr data-task-id="' + esc(t.id) + '">' +
-        '<td><strong>' + esc(t.title || '—') + '</strong>' + (t.notes ? ' <span class="text-muted" title="' + esc(t.notes) + '">…</span>' : '') + '</td>' +
-        '<td>' + esc(t.clientName || '—') + '</td>' +
-        '<td>' + esc(t.assignedToName || '—') + '</td>' +
-        '<td>' + (t.dueDate || '—') + '</td>' +
+        '<td><strong>' + esc(t.title || '--') + '</strong>' + (t.notes ? ' <span class="text-muted" title="' + esc(t.notes) + '">...</span>' : '') + '</td>' +
+        '<td>' + esc(t.clientName || '--') + '</td>' +
+        '<td>' + esc(t.assignedToName || '--') + '</td>' +
+        '<td>' + (t.dueDate || '--') + '</td>' +
         '<td><span class="status-badge task-status-' + (t.status || 'todo') + '">' + esc(statusLabel) + '</span></td>' +
         '<td style="white-space:nowrap">' +
           '<button type="button" class="btn btn-sm btn-outline" data-edit="' + esc(t.id) + '" title="Edit"><i class="fas fa-pen"></i></button> ' +
@@ -112,7 +112,7 @@
       b.addEventListener('click', function () {
         var id = b.getAttribute('data-delete');
         var t = _tasks.filter(function (x) { return x.id === id; })[0];
-        AppModal.confirm('Delete Task', 'Delete “‘ + esc(t ? t.title : '') + '”?', function () {
+        AppModal.confirm('Delete Task', 'Delete "' + esc(t ? t.title : '') + '"?', function () {
           AppDB.deleteTask(id).then(function () {
             _tasks = _tasks.filter(function (x) { return x.id !== id; });
             renderTable(state);
@@ -125,11 +125,11 @@
 
   function buildTaskModalHtml(task, state) {
     var clients = state.clients || [];
-    var clientOpts = '<option value="">— No patient —</option>' + clients.filter(function (c) { return c.status === 'active'; }).map(function (c) {
+    var clientOpts = '<option value="">-- No patient --</option>' + clients.filter(function (c) { return c.status === 'active'; }).map(function (c) {
       var sel = (task && task.clientId === c.id) ? ' selected' : '';
       return '<option value="' + esc(c.id) + '"' + sel + '>' + esc(c.name || '') + '</option>';
     }).join('');
-    var staffOpts = '<option value="">— Unassigned —</option>' + _staff.map(function (s) {
+    var staffOpts = '<option value="">-- Unassigned --</option>' + _staff.map(function (s) {
       var sel = (task && task.assignedTo === s.uid) ? ' selected' : '';
       return '<option value="' + esc(s.uid) + '"' + sel + '>' + esc(s.displayName || s.email || '') + '</option>';
     }).join('');
