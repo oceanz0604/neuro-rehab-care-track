@@ -88,13 +88,19 @@
       return;
     }
 
-    var html = '<table class="staff-table"><thead><tr><th>Title</th><th>Patient</th><th>Assigned to</th><th>Due date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    var html = '<table class="staff-table"><thead><tr><th>Title</th><th>Patient</th><th>Assigned to</th><th>Created by</th><th>Due date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     filtered.forEach(function (t) {
       var statusLabel = (STATUS_OPTIONS.filter(function (s) { return s.value === t.status; })[0] || {}).label || t.status;
+      var createdByName = t.createdByName || '';
+      if (!createdByName && t.createdBy && _staff.length) {
+        var creator = _staff.filter(function (s) { return s.uid === t.createdBy; })[0];
+        createdByName = creator ? (creator.displayName || creator.email || '') : '';
+      }
       html += '<tr data-task-id="' + esc(t.id) + '">' +
         '<td><strong>' + esc(t.title || '--') + '</strong>' + (t.notes ? ' <span class="text-muted" title="' + esc(t.notes) + '">...</span>' : '') + '</td>' +
         '<td>' + esc(t.clientName || '--') + '</td>' +
         '<td>' + esc(t.assignedToName || '--') + '</td>' +
+        '<td>' + esc(createdByName || '--') + '</td>' +
         '<td>' + (t.dueDate || '--') + '</td>' +
         '<td><span class="status-badge task-status-' + (t.status || 'todo') + '">' + esc(statusLabel) + '</span></td>' +
         '<td style="white-space:nowrap">' +
@@ -137,7 +143,7 @@
       var sel = (task && task.status === s.value) ? ' selected' : (!task && s.value === 'todo') ? ' selected' : '';
       return '<option value="' + s.value + '"' + sel + '>' + s.label + '</option>';
     }).join('');
-    return '<div class="modal-card"><h3 class="modal-title">' + (task ? 'Edit Task' : 'Add Task') + '</h3>' +
+    return '<div class="modal-card modal-card-task"><h3 class="modal-title">' + (task ? 'Edit Task' : 'Add Task') + '</h3>' +
       '<div class="form-grid">' +
         '<div class="fg fg-full"><label>Title</label><input id="task-title" type="text" class="fi" placeholder="Task title" value="' + esc(task ? task.title : '') + '"></div>' +
         '<div class="fg fg-full"><label>Patient (optional)</label><select id="task-client" class="fi">' + clientOpts + '</select></div>' +

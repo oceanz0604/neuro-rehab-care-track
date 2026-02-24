@@ -10,8 +10,8 @@
 
   var STRINGS = {
     en: {
-      frTitle: 'Client Progress Report', frSub: 'Monthly — supportive language only',
-      lblC: 'Client', lblM: 'Report month', lblL: 'Language', noc: 'Select a client to preview.',
+      frTitle: 'Client Progress Report', frSub: 'Date range — supportive language only',
+      lblC: 'Client', lblM: 'Report month', lblFrom: 'From date', lblTo: 'To date', lblL: 'Language', noc: 'Select a client to preview.',
       center: 'Neuro-Psychiatric Rehabilitation Centre', rTitle: 'Monthly Client Progress Report',
       cLbl: 'Client', tLbl: 'Assigned doctor', aLbl: 'Admitted', pTitle: 'Progress this month',
       mTitle: 'Monthly progress', wTitle: 'Weekly trend summary',
@@ -43,8 +43,8 @@
       riskSummaryLabels: { withinRange: 'within expected range.', monitored: 'being monitored.' }
     },
     mr: {
-      frTitle: 'कुटुंब प्रगती अहवाल', frSub: 'मासिक — सहाय्यक भाषा',
-      lblC: 'रुग्ण निवडा', lblM: 'अहवाल महिना', lblL: 'भाषा', noc: 'वरून रुग्ण निवडा.',
+      frTitle: 'कुटुंब प्रगती अहवाल', frSub: 'तारखा श्रेणी — सहाय्यक भाषा',
+      lblC: 'रुग्ण निवडा', lblM: 'अहवाल महिना', lblFrom: 'पासून तारीख', lblTo: 'पर्यंत तारीख', lblL: 'भाषा', noc: 'वरून रुग्ण निवडा.',
       center: 'न्यूरो-मनोरुग्ण पुनर्वसन केंद्र', rTitle: 'मासिक कुटुंब प्रगती अहवाल',
       cLbl: 'रुग्ण', tLbl: 'नियुक्त डॉक्टर', aLbl: 'प्रवेश', pTitle: 'या महिन्याची प्रगती',
       mTitle: 'मासिक प्रगती', wTitle: 'साप्ताहिक कल सारांश',
@@ -82,7 +82,8 @@
     $('fr-title').textContent = s.frTitle;
     $('fr-sub').textContent = s.frSub;
     $('fr-lbl-c').textContent = s.lblC;
-    $('fr-lbl-m').textContent = s.lblM;
+    if ($('fr-lbl-from')) $('fr-lbl-from').textContent = s.lblFrom || 'From date';
+    if ($('fr-lbl-to')) $('fr-lbl-to').textContent = s.lblTo || 'To date';
     $('fr-lbl-l').textContent = s.lblL;
 
     var opts = '<option value="">— ' + s.lblC + ' —</option>' + (state.clients || []).filter(function (c) { return c.status === 'active'; }).map(function (c) {
@@ -93,7 +94,12 @@
     sel.innerHTML = opts;
     if (prev) sel.value = prev;
 
-    if (!$('fr-mon').value) $('fr-mon').value = new Date().toISOString().slice(0, 7);
+    var today = new Date().toISOString().slice(0, 10);
+    var firstDay = new Date();
+    firstDay.setDate(1);
+    var fromDefault = firstDay.toISOString().slice(0, 10);
+    if ($('fr-date-from') && !$('fr-date-from').value) $('fr-date-from').value = fromDefault;
+    if ($('fr-date-to') && !$('fr-date-to').value) $('fr-date-to').value = today;
     generateReport(state);
   }
 
@@ -106,13 +112,17 @@
     $('fr-prev').hidden = false;
 
     var s = STRINGS[_lang];
-    var mon = $('fr-mon').value || new Date().toISOString().slice(0, 7);
-    var mStr = new Date(mon + '-01').toLocaleDateString(s.locale, { month: 'long', year: 'numeric' });
+    var fromVal = ($('fr-date-from') || {}).value || new Date().toISOString().slice(0, 10);
+    var toVal = ($('fr-date-to') || {}).value || new Date().toISOString().slice(0, 10);
+    var fromDate = new Date(fromVal);
+    var toDate = new Date(toVal);
+    if (toDate < fromDate) toDate = fromDate;
+    var dateRangeStr = fromDate.toLocaleDateString(s.locale, { day: 'numeric', month: 'short', year: 'numeric' }) + ' – ' + toDate.toLocaleDateString(s.locale, { day: 'numeric', month: 'short', year: 'numeric' });
 
-    fetchMonthData(cid, mon).then(function (data) {
+    fetchDateRangeData(cid, fromVal, toVal).then(function (data) {
       data = data || [];
       var bars = computeBars(data, s);
-      var trend = computeTrend(data, mon, s);
+      var trend = computeTrend(data, fromVal.slice(0, 7), s);
 
       var noteHtml = (c.progressReportNote && c.progressReportNote.trim()) ? '<div class="card" style="margin-bottom:12px"><div style="font-weight:700;margin-bottom:8px">' + s.noteTitle + '</div><p style="margin:0;font-size:.9rem;white-space:pre-wrap">' + esc(c.progressReportNote) + '</p></div>' : '';
       $('fr-prev').innerHTML =
@@ -127,7 +137,7 @@
         '<div id="fr-report-content" class="fr-report-content">' +
         '<div class="rh"><div class="rh-c">' + s.center + '</div><div class="rh-t">' + s.rTitle + '</div>' +
         '<div class="rh-d">' + s.cLbl + ': <strong>' + esc(c.name) + '</strong> | ID: ' + c.id + ' | ' + s.tLbl + ': ' + ((c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—') + '</div>' +
-        '<div class="rh-s">' + mStr + ' | ' + s.aLbl + ': ' + (c.admissionDate || '—') + '</div></div>' +
+        '<div class="rh-s">' + dateRangeStr + ' | ' + s.aLbl + ': ' + (c.admissionDate || '—') + '</div></div>' +
         '<div class="alert alert-warn">' + s.disc + '</div>' +
         noteHtml +
         '<div class="card"><div style="font-weight:700;color:var(--primary);margin-bottom:12px">' + s.pTitle + '</div>' +
@@ -149,14 +159,16 @@
         s.tips.map(function (t, i) { return '<div class="tipr"><div class="tipn">' + (i + 1) + '</div><div class="tipt">' + t + '</div></div>'; }).join('') + '</div>' +
         '<div class="fr-foot">' + s.footer + '</div>' +
         '</div>';
-      bindExportPdf(c, mon);
+      bindExportPdf(c, fromVal, toVal);
       bindSaveNote(c);
     });
   }
 
-  function fetchMonthData(clientId, month) {
-    var start = new Date(month + '-01');
-    var end = new Date(start.getFullYear(), start.getMonth() + 1, 0, 23, 59, 59);
+  function fetchDateRangeData(clientId, fromStr, toStr) {
+    var start = new Date(fromStr);
+    start.setHours(0, 0, 0, 0);
+    var end = new Date(toStr);
+    end.setHours(23, 59, 59, 999);
     return AppDB.getClientReports(clientId, null, 200).then(function (result) {
       var docs = (result && result.docs) ? result.docs : [];
       return docs.filter(function (r) {
@@ -388,11 +400,11 @@
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
 
-  function bindExportPdf(client, month) {
+  function bindExportPdf(client, fromStr, toStr) {
     var btn = document.getElementById('fr-export-pdf');
     if (!btn) return;
     btn.onclick = function () {
-      exportReportPdf(client, month);
+      exportReportPdf(client, fromStr, toStr);
     };
   }
 
@@ -416,14 +428,14 @@
     });
   }
 
-  function exportReportPdf(client, month) {
+  function exportReportPdf(client, fromStr, toStr) {
     var el = document.getElementById('fr-report-content');
     if (!el || typeof html2pdf === 'undefined') {
       if (window.CareTrack) window.CareTrack.toast('PDF export not available.');
       return;
     }
     var name = (client && client.name) ? client.name.replace(/[^a-zA-Z0-9]/g, '-') : 'Report';
-    var filename = 'Family-Report-' + name + '-' + (month || '').slice(0, 7) + '.pdf';
+    var filename = 'Family-Report-' + name + '-' + (fromStr || '').slice(0, 10) + '-to-' + (toStr || '').slice(0, 10) + '.pdf';
     var opt = {
       margin: 10,
       filename: filename,
@@ -453,7 +465,8 @@
   function init(state) {
     if (_inited) return; _inited = true;
     $('fr-cl').addEventListener('change', function () { generateReport(window.CareTrack.getState()); });
-    $('fr-mon').addEventListener('change', function () { generateReport(window.CareTrack.getState()); });
+    if ($('fr-date-from')) $('fr-date-from').addEventListener('change', function () { generateReport(window.CareTrack.getState()); });
+    if ($('fr-date-to')) $('fr-date-to').addEventListener('change', function () { generateReport(window.CareTrack.getState()); });
     document.querySelectorAll('.lbtn[data-lang]').forEach(function (b) {
       b.addEventListener('click', function () {
         _lang = b.getAttribute('data-lang');

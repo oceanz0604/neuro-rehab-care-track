@@ -134,7 +134,7 @@
       return '<div class="reports-patient-card" data-client-id="' + esc(c.id) + '" role="button" tabindex="0">' +
         '<div class="card-name">' + esc(c.name || '—') + myBadge + '</div>' +
         '<div class="card-meta">' + esc(c.diagnosis || '—') + '</div>' +
-        '<div><span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + '</span></div>' +
+        '<div><span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk && c.currentRisk !== 'none' ? c.currentRisk : '—') + '</span></div>' +
         '<div class="card-summary">' + summary + '</div></div>';
     }).join('');
     container.querySelectorAll('.reports-patient-card').forEach(function (card) {

@@ -22,11 +22,11 @@
   // Short topbar labels only; page content keeps the real heading (avoids duplicate titles)
   var PAGE_TITLES = {
     dashboard: 'Dashboard',
-    patients: 'List',
-    reports: 'Activity',
+    patients: 'Patients',
+    reports: 'Reports',
     'patient-detail': 'Patient',
-    comms: 'Chat',
-    freport: 'Report',
+    comms: 'Team Chat',
+    freport: 'Client Progress Report',
     tasks: 'Tasks',
     settings: 'Settings',
     admin: 'Admin'
@@ -83,7 +83,13 @@
     });
   }
 
+  function hideLoading() {
+    var el = $('loading-screen');
+    if (el) el.classList.add('hidden');
+  }
+
   function showLogin() {
+    hideLoading();
     $('login-screen').classList.remove('hidden');
     $('login-screen').style.display = '';
     $('app-shell').setAttribute('hidden', '');
@@ -103,6 +109,7 @@
   }
 
   function showApp() {
+    hideLoading();
     $('login-screen').style.display = 'none';
     $('app-shell').removeAttribute('hidden');
     var p = state.profile || {};
@@ -355,6 +362,12 @@
         e.preventDefault();
         navigate(a.getAttribute('data-page'));
       });
+    });
+
+    // Global refresh (navbar)
+    var globalRefresh = $('global-refresh-btn');
+    if (globalRefresh) globalRefresh.addEventListener('click', function () {
+      if (window.CareTrack) window.CareTrack.refreshData();
     });
 
     // Mobile sidebar

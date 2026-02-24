@@ -24,6 +24,12 @@
 </head>
 <body>
 
+<!-- ═══════ LOADING (shown until auth resolved) ═══════ -->
+<div id="loading-screen" class="loading-screen">
+  <div class="loading-spinner"></div>
+  <p>Loading...</p>
+</div>
+
 <!-- ═══════ LOGIN ═══════ -->
 <div id="login-screen" class="login-screen" style="display:none">
   <div class="login-card">
@@ -77,6 +83,7 @@
       <button type="button" id="menu-btn" class="menu-btn"><i class="fas fa-bars"></i></button>
       <h2 class="tb-title" id="tb-title">Dashboard</h2>
       <div class="tb-right">
+        <button type="button" class="btn btn-outline btn-sm notif-btn" id="global-refresh-btn" title="Refresh data"><i class="fas fa-arrows-rotate"></i> Refresh</button>
         <button type="button" class="theme-toggle-btn notif-btn" id="theme-toggle" title="Toggle dark/light theme" aria-label="Theme">
           <i class="fas fa-moon" id="theme-icon"></i>
         </button>
@@ -94,7 +101,6 @@
       <section class="page active" id="page-dashboard">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
           <h1 class="pg-title" id="d-greet" style="margin-bottom:0">Dashboard</h1>
-          <button type="button" class="btn btn-outline btn-sm" id="dash-refresh"><i class="fas fa-arrows-rotate"></i> Refresh</button>
         </div>
         <p class="pg-sub" id="d-date"></p>
         <div class="stats-row" id="dash-stats"></div>
@@ -114,7 +120,7 @@
         <div class="list-toolbar">
           <select class="filter-select" id="pt-filter-view" style="display:none"><option value="all">All patients</option><option value="mine">My patients</option></select>
           <div class="search-box"><i class="fas fa-magnifying-glass"></i><input type="text" id="pt-search" placeholder="Search by name..."></div>
-          <select class="filter-select" id="pt-filter-status"><option value="">All Status</option><option value="active">Active</option><option value="discharged">Discharged</option></select>
+          <select class="filter-select" id="pt-filter-status"><option value="">All Status</option><option value="active" selected>Active</option><option value="discharged">Discharged</option></select>
           <select class="filter-select" id="pt-filter-risk"><option value="">All Risk</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="none">None</option></select>
         </div>
         <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="patients-table"></div></div>
@@ -184,10 +190,11 @@
       <!-- ── Client Progress Report (family-facing) ── -->
       <section class="page" id="page-freport">
         <h1 class="pg-title" id="fr-title">Client Progress Report</h1>
-        <p class="pg-sub" id="fr-sub">Monthly &mdash; supportive language only</p>
+        <p class="pg-sub" id="fr-sub">Date range &mdash; supportive language only</p>
         <div class="fr-controls">
           <div class="fg" style="min-width:180px"><label id="fr-lbl-c">Client</label><select class="fi" id="fr-cl"><option value="">— Choose client —</option></select></div>
-          <div class="fg" style="min-width:160px"><label id="fr-lbl-m">Report month</label><input type="month" class="fi" id="fr-mon"></div>
+          <div class="fg" style="min-width:140px"><label id="fr-lbl-from">From date</label><input type="date" class="fi" id="fr-date-from"></div>
+          <div class="fg" style="min-width:140px"><label id="fr-lbl-to">To date</label><input type="date" class="fi" id="fr-date-to"></div>
           <div class="fg"><label id="fr-lbl-l">Language</label><div style="display:flex;gap:6px"><button type="button" class="lbtn active" data-lang="en">English</button><button type="button" class="lbtn" data-lang="mr">मराठी</button></div></div>
         </div>
         <p id="fr-noc" class="empty-state"><i class="fas fa-file-medical"></i>Select a client to preview.</p>

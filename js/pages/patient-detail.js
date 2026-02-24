@@ -14,8 +14,7 @@
     { key: 'overview',    label: 'Overview',     icon: 'fa-id-card' },
     { key: 'diagnosis',   label: 'Diagnosis',    icon: 'fa-stethoscope' },
     { key: 'reports',     label: 'Reports',      icon: 'fa-file-lines' },
-    { key: 'history',     label: 'History',      icon: 'fa-clock-rotate-left' },
-    { key: 'summary',     label: 'Latest Summary', icon: 'fa-list-check' }
+    { key: 'history',     label: 'History',      icon: 'fa-clock-rotate-left' }
   ];
 
   var REPORT_SECTIONS = [
@@ -27,10 +26,25 @@
     { key: 'risk',        label: 'Risk',         icon: 'fa-shield-halved' }
   ];
 
+  function getTabFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    var t = params.get('tab');
+    return TABS.some(function (x) { return x.key === t; }) ? t : 'overview';
+  }
+
+  function setTabInUrl(tab, replace) {
+    var url = new URL(window.location.href);
+    url.searchParams.set('tab', tab);
+    if (replace) window.history.replaceState({ tab: tab }, '', url.toString());
+    else window.history.pushState({ tab: tab }, '', url.toString());
+  }
+
   function render(state) {
     _client = state.selectedClientData;
     if (!_client) { $('pd-header').innerHTML = '<p>Patient not found.</p>'; $('pd-tabs').innerHTML = ''; $('pd-content').innerHTML = ''; return; }
 
+    _currentTab = getTabFromUrl();
+    setTabInUrl(_currentTab, true);
     $('pd-header').innerHTML = headerHTML(_client, state);
     $('pd-tabs').innerHTML = TABS.map(function (t) {
       return '<button type="button" class="tab-btn' + (t.key === _currentTab ? ' active' : '') + '" data-tab="' + t.key + '"><i class="fas ' + t.icon + '"></i> ' + t.label + '</button>';
@@ -44,28 +58,29 @@
     var profile = (state && state.profile) || {};
     var canEdit = window.Permissions && window.Permissions.canEditPatient(profile);
     var canDischarge = window.Permissions && window.Permissions.canDischargePatient(profile);
-    var actions = '';
+    var riskLabel = (c.currentRisk && c.currentRisk !== 'none') ? (c.currentRisk) : '—';
+    var riskClass = (c.currentRisk || 'none');
+    var chips = '<span class="risk-badge risk-' + riskClass + '">' + riskLabel + '</span>' +
+      '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>';
+    var actions = '<button type="button" class="btn btn-ghost btn-sm" id="pd-back-btn"><i class="fas fa-arrow-left"></i> Back</button>';
     if (canEdit) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-edit-btn"><i class="fas fa-pen"></i> Edit</button>';
     if (c.status === 'active' && canDischarge) actions += '<button type="button" class="btn btn-danger btn-sm" id="pd-discharge-btn"><i class="fas fa-right-from-bracket"></i> Discharge</button>';
-    actions += '<button type="button" class="btn btn-ghost btn-sm" id="pd-back-btn"><i class="fas fa-arrow-left"></i> Back</button>';
     var assignedDisplay = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—';
     var meta = '<span><i class="fas fa-venus-mars"></i> ' + (c.gender || '—') + '</span>' +
       '<span><i class="fas fa-calendar"></i> Adm: ' + (c.admissionDate || '—') + '</span>' +
       (c.plannedDischargeDate ? '<span><i class="fas fa-calendar-check"></i> Planned discharge: ' + esc(c.plannedDischargeDate) + '</span>' : '') +
       (c.status === 'discharged' && c.dischargeDate ? '<span><i class="fas fa-right-from-bracket"></i> Final discharge: ' + esc(c.dischargeDate) + '</span>' : '') +
       '<span><i class="fas fa-user-doctor"></i> ' + esc(assignedDisplay) + '</span>' +
-      '<span><i class="fas fa-bed"></i> ' + (c.ward || '—') + ' / ' + (c.roomNumber || '—') + '</span>' +
-      '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + ' risk</span>' +
-      '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>';
-    return '<div class="patient-header">' +
-      '<div><h2>' + esc(c.name || 'Unknown') + '</h2><div class="patient-meta">' + meta + '</div></div>' +
-      '<div class="patient-actions">' + actions + '</div></div>';
+      '<span><i class="fas fa-bed"></i> ' + (c.ward || '—') + ' / ' + (c.roomNumber || '—') + '</span>';
+    return '<div class="patient-header"><div class="patient-actions" style="margin-bottom:12px">' + actions + '</div>' +
+      '<div><h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + esc(c.name || 'Unknown') + ' ' + chips + '</h2><div class="patient-meta">' + meta + '</div></div></div>';
   }
 
   function bindTabs() {
     $('pd-tabs').querySelectorAll('.tab-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         _currentTab = btn.getAttribute('data-tab');
+        setTabInUrl(_currentTab, false);
         $('pd-tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         renderTab(_currentTab, window.CareTrack.getState());
@@ -227,7 +242,6 @@
     if (tab === 'diagnosis') { renderDiagnosisTab(el); return; }
     if (tab === 'reports') { renderReportsTab(el, state); return; }
     if (tab === 'history')  { renderHistory(el); return; }
-    if (tab === 'summary') { renderSummaryTab(el); return; }
     renderClinicalTab(el, tab, state);
   }
 
@@ -262,7 +276,7 @@
       (c.status === 'discharged' && c.dischargeDate ? info('Final Discharge', c.dischargeDate) : '') +
       info('Assigned doctor(s)', (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—') +
       info('Ward', c.ward) + info('Room', c.roomNumber) +
-      info('Risk', '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + '</span>') +
+      info('Risk', '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk && c.currentRisk !== 'none' ? c.currentRisk : '—') + '</span>') +
       info('Status', '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>') +
       '</div>';
     el.innerHTML =
@@ -392,10 +406,10 @@
     var canEdit = window.Permissions && window.Permissions.canEditPatient(profile);
     el.innerHTML = '<div class="card">' +
       '<div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' +
-      '<span><i class="fas fa-stethoscope"></i> Consultation notes</span>' +
+      '<span><i class="fas fa-stethoscope"></i> Diagnosis &amp; consultation</span>' +
       (canEdit ? '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-btn"><i class="fas fa-plus"></i> Add note</button>' : '') +
       '</div>' +
-      '<p class="pg-sub" style="margin-top:-8px;margin-bottom:12px">Diagnosis and clinical findings from each visit.</p>' +
+      '<p class="pg-sub" style="margin-top:-8px;margin-bottom:12px">Patient-level diagnosis. Latest consultation note below.</p>' +
       '<div id="pd-diagnosis-history-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>';
     loadDiagnosisHistory();
     var addBtn = document.getElementById('pd-add-diagnosis-btn');
@@ -496,18 +510,22 @@
         el.innerHTML = '<p class="empty-state" style="padding:16px;margin:0">No consultation notes yet. Add an entry after a visit.</p>';
         return;
       }
-      el.innerHTML = '<div class="diagnosis-consult-list">' + entries.map(function (e) {
-        var dateStr = e.fromDate ? new Date(e.fromDate + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-        var addedStr = e.addedByName ? esc(e.addedByName) : '—';
-        var notesHtml = (e.notes && e.notes.trim()) ? '<div class="diagnosis-consult-notes">' + esc(e.notes) + '</div>' : '';
-        return '<div class="diagnosis-consult-card">' +
-          '<div class="diagnosis-consult-head">' +
-          '<span class="diagnosis-consult-date"><i class="fas fa-calendar-check"></i> ' + dateStr + '</span>' +
-          '<span class="diagnosis-consult-by">Seen by ' + addedStr + '</span></div>' +
-          '<div class="diagnosis-consult-diagnosis"><strong>Diagnosis:</strong> ' + esc(e.diagnosis || '—') + '</div>' +
-          notesHtml +
-          '</div>';
-      }).join('') + '</div>';
+      var sorted = entries.slice().sort(function (a, b) {
+        var da = (a.fromDate || a.addedAt || '').toString();
+        var db = (b.fromDate || b.addedAt || '').toString();
+        return db.localeCompare(da);
+      });
+      var e = sorted[0];
+      var dateStr = e.fromDate ? new Date(e.fromDate + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+      var addedStr = e.addedByName ? esc(e.addedByName) : '—';
+      var notesHtml = (e.notes && e.notes.trim()) ? '<div class="diagnosis-consult-notes" style="margin-top:12px;padding:14px;background:var(--grey-bg);border-radius:var(--radius-sm);white-space:pre-wrap">' + esc(e.notes) + '</div>' : '<p class="text-muted" style="margin:8px 0 0 0">No note text.</p>';
+      el.innerHTML = '<div class="diagnosis-consult-card" style="border:1px solid var(--border);border-radius:var(--radius);padding:18px">' +
+        '<div class="diagnosis-consult-head" style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px;font-size:.9rem;color:var(--text-2)">' +
+        '<span class="diagnosis-consult-date"><i class="fas fa-calendar-check"></i> ' + dateStr + '</span>' +
+        '<span class="diagnosis-consult-by">Seen by ' + addedStr + '</span></div>' +
+        '<div class="diagnosis-consult-diagnosis" style="font-weight:600;font-size:1rem">' + esc(e.diagnosis || '—') + '</div>' +
+        notesHtml +
+        '</div>';
     }).catch(function () {
       if (el) el.innerHTML = '<p class="empty-state" style="padding:16px;margin:0">Could not load history.</p>';
     });
@@ -812,31 +830,85 @@
   var _historySection = '';
   var _historyDocs = [];
 
+  var _historyMode = 'reports';
+
   function renderHistory(el) {
     _historyLastDoc = null;
     _historySection = '';
     el.innerHTML =
       '<div class="card">' +
       '<div class="card-hd" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">' +
-        '<span><i class="fas fa-clock-rotate-left"></i> Report History</span>' +
+        '<span><i class="fas fa-clock-rotate-left"></i> History</span>' +
         '<span id="hist-total" class="hist-total"></span>' +
       '</div>' +
-      '<div style="margin-bottom:12px"><select class="filter-select" id="hist-filter">' +
-        '<option value="">All Sections</option>' +
-        '<option value="psychiatric">Psychiatric</option><option value="behavioral">Behavioral</option>' +
-        '<option value="medication">Medication</option><option value="adl">ADL</option><option value="therapeutic">Therapeutic</option><option value="risk">Risk</option>' +
-      '</select></div>' +
+      '<div style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">' +
+        '<select class="filter-select" id="hist-mode">' +
+          '<option value="reports">Report History</option>' +
+          '<option value="consultation">Consultation History</option>' +
+        '</select>' +
+        '<select class="filter-select" id="hist-filter">' +
+          '<option value="">All Sections</option>' +
+          '<option value="psychiatric">Psychiatric</option><option value="behavioral">Behavioral</option>' +
+          '<option value="medication">Medication</option><option value="adl">ADL</option><option value="therapeutic">Therapeutic</option><option value="risk">Risk</option>' +
+        '</select>' +
+      '</div>' +
       '<div id="hist-list" class="report-timeline"></div>' +
       '<button type="button" class="btn btn-outline btn-sm load-more-btn" id="hist-more" style="display:none">Load more</button>' +
       '</div>';
 
+    document.getElementById('hist-mode').addEventListener('change', function () {
+      _historyMode = this.value;
+      var sectionEl = document.getElementById('hist-filter');
+      if (sectionEl) sectionEl.style.display = _historyMode === 'reports' ? '' : 'none';
+      document.getElementById('hist-list').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+      if (_historyMode === 'consultation') loadConsultationHistory(); else loadHistory(false);
+    });
     document.getElementById('hist-filter').addEventListener('change', function () {
       _historySection = this.value; _historyLastDoc = null;
       document.getElementById('hist-list').innerHTML = '';
       loadHistory(false);
     });
-    document.getElementById('hist-more').addEventListener('click', function () { loadHistory(true); });
-    loadHistory(false);
+    document.getElementById('hist-more').addEventListener('click', function () {
+      if (_historyMode === 'consultation') return;
+      loadHistory(true);
+    });
+    if (_historyMode === 'consultation') loadConsultationHistory(); else loadHistory(false);
+  }
+
+  function loadConsultationHistory() {
+    var list = document.getElementById('hist-list');
+    var moreBtn = document.getElementById('hist-more');
+    var totalEl = document.getElementById('hist-total');
+    if (!list || !_client) return;
+    moreBtn.style.display = 'none';
+    AppDB.getClientDiagnosisHistory(_client.id).then(function (entries) {
+      if (!entries.length) {
+        list.innerHTML = '<div class="empty-state"><i class="fas fa-stethoscope"></i><p>No consultation notes yet.</p></div>';
+        if (totalEl) totalEl.textContent = '0 entries';
+        return;
+      }
+      var sorted = entries.slice().sort(function (a, b) {
+        var da = (a.fromDate || a.addedAt || '').toString();
+        var db = (b.fromDate || b.addedAt || '').toString();
+        return db.localeCompare(da);
+      });
+      var html = '';
+      sorted.forEach(function (e) {
+        var dateStr = e.fromDate ? new Date(e.fromDate + 'T12:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+        var addedStr = e.addedByName ? esc(e.addedByName) : '—';
+        var notesHtml = (e.notes && e.notes.trim()) ? '<div class="report-entry-body" style="margin-top:6px">' + esc(e.notes) + '</div>' : '';
+        html += '<div class="hist-date-group">' +
+          '<div class="hist-date-header">' + dateStr + '</div>' +
+          '<div class="report-entry">' +
+          '<div class="report-entry-hd"><strong>' + esc(e.diagnosis || '—') + '</strong> <span class="report-entry-time">' + addedStr + '</span></div>' +
+          notesHtml + '</div></div>';
+      });
+      list.innerHTML = html;
+      if (totalEl) totalEl.textContent = sorted.length + ' entr' + (sorted.length !== 1 ? 'ies' : 'y');
+    }).catch(function () {
+      list.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i><p>Could not load consultation history.</p></div>';
+      if (totalEl) totalEl.textContent = '';
+    });
   }
 
   function renderHistoryList(list, docs, append, moreBtn) {
@@ -1109,6 +1181,16 @@
 
   function init() {
     if (_bound) return; _bound = true;
+    window.addEventListener('popstate', function () {
+      var s = window.CareTrack && window.CareTrack.getState && window.CareTrack.getState();
+      if (s && s.page === 'patient-detail') {
+        _currentTab = getTabFromUrl();
+        $('pd-tabs').querySelectorAll('.tab-btn').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-tab') === _currentTab);
+        });
+        renderTab(_currentTab, s);
+      }
+    });
   }
 
   function destroy() {

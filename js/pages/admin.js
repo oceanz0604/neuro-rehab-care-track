@@ -173,9 +173,10 @@
     }).join('');
     var html =
       '<div class="modal-card"><h3 class="modal-title">Add Staff Member</h3>' +
+      '<p id="as-error" class="error-msg" style="display:none;margin-bottom:12px;padding:10px;background:var(--accent-bg);border-radius:var(--radius-sm)"></p>' +
       '<div class="form-grid">' +
         '<div class="fg fg-full"><label>Email</label><input id="as-email" type="email" class="fi" placeholder="staff@centre.org" required></div>' +
-        '<div class="fg fg-full"><label>Temporary Password</label><input id="as-pw" type="text" class="fi" placeholder="Min 6 characters" minlength="6"></div>' +
+        '<div class="fg fg-full"><label>Password</label><input id="as-pw" type="text" class="fi" placeholder="Min 6 characters" minlength="6"></div>' +
         '<div class="fg fg-full"><label>Full Name</label><input id="as-name" type="text" class="fi" placeholder="Staff name"></div>' +
         '<div class="fg fg-full"><label>Roles</label><div class="role-check-group">' + roleChecks + '</div></div>' +
       '</div>' +
@@ -188,12 +189,17 @@
       onReady: function () {
         document.getElementById('as-cancel').addEventListener('click', AppModal.close);
         document.getElementById('as-save').addEventListener('click', function () {
+          var errEl = document.getElementById('as-error');
+          if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
           var email = vv('as-email'), pw = vv('as-pw'), name = vv('as-name');
           var roles = [];
           document.querySelectorAll('.as-role-cb:checked').forEach(function (cb) { roles.push(cb.value); });
           if (!roles.length) roles = ['nurse'];
           var primaryRole = roles.indexOf('admin') !== -1 ? 'admin' : roles[0];
-          if (!email || !pw || pw.length < 6) { window.CareTrack.toast('Valid email & password (6+ chars) required'); return; }
+          if (!email || !pw || pw.length < 6) {
+            if (errEl) { errEl.textContent = 'Valid email and password (at least 6 characters) are required.'; errEl.style.display = 'block'; }
+            return;
+          }
           document.getElementById('as-save').disabled = true;
           document.getElementById('as-save').textContent = 'Creating...';
           AppDB.createStaffAccount(email, pw, { displayName: name, role: primaryRole, roles: roles })
@@ -203,7 +209,8 @@
               render(window.CareTrack.getState());
             })
             .catch(function (e) {
-              window.CareTrack.toast('Error: ' + e.message);
+              var msg = e.message || e.code || 'Could not create account. Try again.';
+              if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
               document.getElementById('as-save').disabled = false;
               document.getElementById('as-save').textContent = 'Create Account';
             });

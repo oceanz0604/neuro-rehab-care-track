@@ -60,7 +60,7 @@
         '<td>' + diagDisplay + '</td>' +
         '<td>' + (c.admissionDate || '—') + '</td>' +
         '<td>' + (c.plannedDischargeDate || '—') + '</td>' +
-        '<td><span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk || 'none') + '</span></td>' +
+        '<td><span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk && c.currentRisk !== 'none' ? c.currentRisk : '—') + '</span></td>' +
         '<td><span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span></td></tr>';
     });
     html += '</tbody></table>';
@@ -148,6 +148,21 @@
           goToStep(currentStep + 1);
         });
         document.getElementById('ap-save').addEventListener('click', saveNewPatient);
+        function syncPlannedDischarge() {
+          var adm = (document.getElementById('ap-admission') || {}).value;
+          var daysInp = document.getElementById('ap-admission-days');
+          var days = daysInp ? parseInt(daysInp.value, 10) : NaN;
+          if (!adm || !days || days < 1) return;
+          var d = new Date(adm);
+          d.setDate(d.getDate() + days);
+          var planned = document.getElementById('ap-planned-discharge');
+          if (planned) planned.value = d.toISOString().slice(0, 10);
+        }
+        var admEl = document.getElementById('ap-admission');
+        var daysEl = document.getElementById('ap-admission-days');
+        if (admEl) admEl.addEventListener('change', syncPlannedDischarge);
+        if (daysEl) daysEl.addEventListener('input', syncPlannedDischarge);
+        if (daysEl) daysEl.addEventListener('change', syncPlannedDischarge);
         bindSearchableDropdowns();
         bindMultiselects();
       }

@@ -195,7 +195,7 @@
 
     $('risk-alerts').innerHTML = sorted.map(function (c) {
       var risk = (c.currentRisk || 'none').toLowerCase();
-      var riskLabel = (c.currentRisk || 'none').toUpperCase();
+      var riskLabel = (c.currentRisk && c.currentRisk !== 'none') ? (c.currentRisk).toUpperCase() : '—';
       var yourPatient = isYourPatient(c);
       return '<div class="clickable risk-alert-row" data-client="' + (c.id || '') + '">' +
         '<span class="risk-badge risk-' + risk + '">' + riskLabel + '</span>' +
@@ -258,12 +258,6 @@
   var _refreshIntervalId = null;
 
   function init(state) {
-    var refreshBtn = $('dash-refresh');
-    if (refreshBtn) {
-      refreshBtn.addEventListener('click', function () {
-        if (window.CareTrack) window.CareTrack.refreshData();
-      });
-    }
     if (_refreshIntervalId) clearInterval(_refreshIntervalId);
     _refreshIntervalId = setInterval(function () {
       var s = window.CareTrack && window.CareTrack.getState && window.CareTrack.getState();
