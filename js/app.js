@@ -21,7 +21,7 @@
 
   // Short topbar labels only; page content keeps the real heading (avoids duplicate titles)
   var PAGE_TITLES = {
-    dashboard: 'Home',
+    dashboard: 'Dashboard',
     patients: 'List',
     reports: 'Activity',
     'patient-detail': 'Patient',
@@ -107,8 +107,6 @@
     $('app-shell').removeAttribute('hidden');
     var p = state.profile || {};
     $('sb-name').textContent = p.displayName || (state.user || {}).email || 'Staff';
-    var roleLabel = (p.roles && p.roles.length) ? p.roles.map(function (r) { return window.CareTrackRoleLabel ? window.CareTrackRoleLabel(r) : r; }).join(', ') : ((window.CareTrackRoleLabel && window.CareTrackRoleLabel(p.role)) || p.role || '—');
-    $('sb-role').textContent = roleLabel;
     $('sb-avatar').textContent = ((p.displayName || 'S')[0] || 'S').toUpperCase();
 
     var adminLink = $('nav-admin');
@@ -135,9 +133,11 @@
       }
       AppNotify.refresh(state.clients, state);
       renderCurrentPage();
+      return true;
     }).catch(function (err) {
       console.error('loadData error:', err);
       toast('Failed to load data');
+      return false;
     });
   }
 
@@ -168,7 +168,9 @@
   }
 
   function refreshData() {
-    return loadData(true);
+    return loadData(true).then(function (ok) {
+      if (ok !== false) toast('Data refreshed');
+    });
   }
 
   /* ─── Navigation ────────────────────────────────────────────── */

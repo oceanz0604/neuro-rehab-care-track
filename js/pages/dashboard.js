@@ -1,6 +1,5 @@
 /**
- * Dashboard page — stat cards, risk alerts, recent reports.
- * All one-time reads from cached data.
+ * Dashboard page — stat cards, active patients list, risk alerts, recent reports.
  */
 (function () {
   'use strict';
@@ -19,23 +18,16 @@
     var active = clients.filter(function (c) { return c.status === 'active'; });
     var highRisk = active.filter(function (c) { return c.currentRisk === 'high'; });
 
-    var todayStr = new Date().toISOString().slice(0, 10);
-    var todayReports = (state.recentReports || []).filter(function (r) {
-      return r.createdAt && r.createdAt.slice(0, 10) === todayStr;
-    });
-
     var taskCounts = { pendingOnYou: 0, createdByYou: 0 };
     function buildStats(tc) {
-      var html = statCard('fa-hospital-user', 'teal', 'Active Patients', active.length) +
-        statCard('fa-triangle-exclamation', 'red', 'High Risk', highRisk.length) +
-        statCard('fa-file-lines', 'amber', 'Reports Today', todayReports.length) +
-        statCard('fa-users', 'green', 'Total Clients', clients.length);
-      if (tc.pendingOnYou > 0) html += statCardLink('fa-list-check', 'teal', 'Pending on you', tc.pendingOnYou, 'tasks');
-      if (tc.createdByYou > 0) html += statCardLink('fa-user-pen', 'amber', 'Created by you (pending)', tc.createdByYou, 'tasks');
+      var html = statCardNav('fa-hospital-user', 'teal', 'Active Patients', active.length, 'patients', 'active', '') +
+        statCardNav('fa-triangle-exclamation', 'red', 'High Risk', highRisk.length, 'patients', 'active', 'high');
+      if (tc.pendingOnYou > 0) html += statCardNav('fa-list-check', 'teal', 'Pending on you', tc.pendingOnYou, 'tasks', '', '');
+      if (tc.createdByYou > 0) html += statCardNav('fa-user-pen', 'amber', 'Created by you (pending)', tc.createdByYou, 'tasks', '', '');
       return html;
     }
     $('dash-stats').innerHTML = buildStats(taskCounts);
-    bindTaskStatLinks();
+    bindStatLinks();
 
     if (window.AppDB && window.AppDB.getTasks) {
       window.AppDB.getTasks().then(function (tasks) {
@@ -43,40 +35,144 @@
         var pendingOnYou = tasks.filter(function (t) { return (t.assignedTo || '') === uid && (t.status || '') !== 'done'; }).length;
         var createdByYou = tasks.filter(function (t) { return (t.createdBy || '') === uid && (t.status || '') !== 'done'; }).length;
         $('dash-stats').innerHTML = buildStats({ pendingOnYou: pendingOnYou, createdByYou: createdByYou });
-        bindTaskStatLinks();
+        bindStatLinks();
       }).catch(function () {});
-    } else {
-      bindTaskStatLinks();
     }
 
+    renderMyPatients(active, state);
     renderRiskAlerts(active, state.profile || {});
     renderRecentReports(state.recentReports || []);
   }
 
-  function statCardLink(icon, color, label, value, page) {
-    var cardClass = 'stat-card stat-card-' + color + ' clickable';
-    return '<div class="' + cardClass + '" data-nav="' + (page || '') + '" role="button" tabindex="0">' +
+  /* ── Clickable stat card with optional navigation filters ── */
+  function statCardNav(icon, color, label, value, page, filterStatus, filterRisk) {
+    var attrs = ' data-nav="' + (page || '') + '"';
+    if (filterStatus) attrs += ' data-filter-status="' + filterStatus + '"';
+    if (filterRisk) attrs += ' data-filter-risk="' + filterRisk + '"';
+    return '<div class="stat-card stat-card-' + color + ' clickable"' + attrs + ' role="button" tabindex="0">' +
       '<div class="stat-icon ' + color + '"><i class="fas ' + icon + '"></i></div>' +
       '<div><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div></div></div>';
   }
 
-  function bindTaskStatLinks() {
+  function bindStatLinks() {
     var el = $('dash-stats');
     if (!el) return;
-    el.querySelectorAll('.stat-card[data-nav="tasks"]').forEach(function (card) {
-      card.addEventListener('click', function () { if (window.CareTrack) window.CareTrack.navigate('tasks'); });
-      card.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (window.CareTrack) window.CareTrack.navigate('tasks'); } });
+    el.querySelectorAll('.stat-card.clickable').forEach(function (card) {
+      card.addEventListener('click', function () {
+        var page = card.getAttribute('data-nav');
+        if (!page || !window.CareTrack) return;
+        window.CareTrack.navigate(page);
+        var fs = card.getAttribute('data-filter-status');
+        var fr = card.getAttribute('data-filter-risk');
+        if (fs || fr) {
+          setTimeout(function () {
+            if (fs) {
+              var s = document.getElementById('pt-filter-status');
+              if (s) { s.value = fs; s.dispatchEvent(new Event('change')); }
+            }
+            if (fr) {
+              var r = document.getElementById('pt-filter-risk');
+              if (r) { r.value = fr; r.dispatchEvent(new Event('change')); }
+            }
+          }, 100);
+        }
+      });
+      card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); card.click(); }
+      });
     });
   }
 
-  function statCard(icon, color, label, value) {
-    var cardClass = 'stat-card stat-card-' + color;
-    return '<div class="' + cardClass + '"><div class="stat-icon ' + color + '"><i class="fas ' + icon + '"></i></div>' +
-      '<div><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div></div></div>';
-  }
-
+  /* ── My Active Patients list ─────────────────────────────────── */
   var RISK_ORDER = { high: 0, medium: 1, low: 2, none: 3 };
 
+  function renderMyPatients(active, state) {
+    var container = $('dash-my-patients');
+    if (!container) return;
+
+    var profile = state.profile || {};
+    var myName = (profile.displayName || '').trim();
+    var roles = profile.roles || [];
+    if (!roles.length && profile.role) roles = [profile.role];
+
+    var isTherapist = roles.indexOf('therapist') !== -1;
+    var isDoctor = roles.indexOf('doctor') !== -1 || roles.indexOf('medical_officer') !== -1;
+
+    var myPatients = [];
+    if ((isTherapist || isDoctor) && myName) {
+      active.forEach(function (c) {
+        var tagged = false;
+        if (isTherapist && (c.assignedTherapist || '').trim() === myName) tagged = true;
+        if (isDoctor) {
+          var doctors = c.assignedDoctors || [];
+          if (doctors.some(function (d) { return (d || '').trim() === myName; })) tagged = true;
+        }
+        if (tagged) myPatients.push(c);
+      });
+    }
+
+    if (!myPatients.length) myPatients = active;
+
+    myPatients.sort(function (a, b) {
+      var ra = RISK_ORDER[a.currentRisk] !== undefined ? RISK_ORDER[a.currentRisk] : 4;
+      var rb = RISK_ORDER[b.currentRisk] !== undefined ? RISK_ORDER[b.currentRisk] : 4;
+      return ra - rb;
+    });
+
+    var latestByClient = {};
+    (state.recentReports || []).forEach(function (r) {
+      var cid = r.clientId;
+      if (!cid) return;
+      if (!latestByClient[cid] || r.createdAt > latestByClient[cid].createdAt) {
+        latestByClient[cid] = r;
+      }
+    });
+
+    var title = (isTherapist || isDoctor) && myName ? 'My Active Patients' : 'Active Patients';
+    var html = '<div class="card card-accent"><div class="card-hd card-hd-primary"><i class="fas fa-hospital-user"></i> ' + title + '</div>';
+
+    if (!myPatients.length) {
+      html += '<div class="empty-state"><i class="fas fa-check-circle" style="color:var(--green)"></i><p>No active patients</p></div>';
+    } else {
+      html += myPatients.map(function (c) {
+        var risk = (c.currentRisk || 'none').toLowerCase();
+        var isHigh = risk === 'high';
+        var latest = latestByClient[c.id];
+        var reportInfo = '';
+        if (latest) {
+          var dt = latest.createdAt ? new Date(latest.createdAt) : null;
+          var ts = dt ? dt.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+          reportInfo = '<div class="my-pt-report"><i class="fas fa-file-lines"></i> ' +
+            capitalize(latest.section || '') + ' &mdash; ' + ts +
+            (latest.submittedByName ? ' by ' + esc(latest.submittedByName) : '') + '</div>';
+        } else {
+          reportInfo = '<div class="my-pt-report text-muted"><i class="fas fa-file-lines"></i> No recent reports</div>';
+        }
+
+        return '<div class="my-pt-row" data-client="' + (c.id || '') + '">' +
+          '<div class="my-pt-info">' +
+          '<div class="my-pt-name">' + esc(c.name || 'Unknown') +
+          (isHigh ? ' <span class="risk-badge risk-high">HIGH ALERT</span>' : '') +
+          '</div>' +
+          '<div class="my-pt-diagnosis">' + esc(c.diagnosis || '') + '</div>' +
+          reportInfo +
+          '</div></div>';
+      }).join('');
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+
+    container.querySelectorAll('[data-client]').forEach(function (el) {
+      var id = el.getAttribute('data-client');
+      if (!id) return;
+      el.addEventListener('click', function () {
+        if (window.CareTrack) window.CareTrack.openPatient(id);
+      });
+    });
+  }
+
+  /* ── Risk Alerts ─────────────────────────────────────────────── */
   function renderRiskAlerts(activeList, profile) {
     if (!activeList.length) {
       $('risk-alerts').innerHTML = '<div class="empty-state"><i class="fas fa-check-circle" style="color:var(--green)"></i><p>No active patients</p></div>';
@@ -116,6 +212,7 @@
     });
   }
 
+  /* ── Recent Reports ──────────────────────────────────────────── */
   function sectionColor(s) {
     var m = { psychiatric: 'medium', behavioral: 'low', medication: 'medium', adl: 'none', therapeutic: 'low', risk: 'high' };
     return m[s] || 'none';
@@ -157,6 +254,7 @@
     });
   }
 
+  /* ── Init & Refresh ──────────────────────────────────────────── */
   var _refreshIntervalId = null;
 
   function init(state) {

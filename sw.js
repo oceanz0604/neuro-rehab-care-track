@@ -1,4 +1,4 @@
-var CACHE_NAME = 'caretrack-v2';
+var CACHE_NAME = 'caretrack-v4';
 var ASSETS = [
   './',
   './index.html',
@@ -21,7 +21,8 @@ var ASSETS = [
   './js/pages/admin.js',
   './js/pages/settings.js',
   './manifest.json',
-  './icons/icon.svg'
+  './icons/icon.svg',
+  './icons/logo.jpg'
 ];
 
 self.addEventListener('install', function (e) {

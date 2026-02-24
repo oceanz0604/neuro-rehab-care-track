@@ -6,13 +6,13 @@
   <script>
     (function(){ try { var t = localStorage.getItem('caretrack-theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch(e) {} })();
   </script>
-  <title>Maitra Clinic &amp; Saarth Sanmaan</title>
+  <title>Maitra Wellness</title>
   <meta name="theme-color" content="#0d9488">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Maitra Clinic">
-  <meta name="description" content="Maitra Clinic &amp; Saarth Sanmaan Psychiatric Rehabilitation Center — Clinical Rehabilitation Reporting">
+  <meta name="apple-mobile-web-app-title" content="Maitra Wellness">
+  <meta name="description" content="Maitra Wellness — Clinical Rehabilitation Reporting">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/svg+xml" href="icons/icon.svg">
   <link rel="apple-touch-icon" href="icons/icon.svg">
@@ -28,8 +28,8 @@
 <div id="login-screen" class="login-screen" style="display:none">
   <div class="login-card">
     <div class="login-header">
-      <div class="login-icon"><img src="https://www.maitraclinic.com/public/front/img/logo.png" alt="Maitra Clinic"></div>
-      <h1>Maitra Clinic &amp; Saarth Sanmaan</h1>
+      <div class="login-icon"><img src="icons/logo.jpg" alt="Maitra Wellness"></div>
+      <h1>Maitra Wellness</h1>
       <p>Psychiatric Rehabilitation Center</p>
     </div>
     <form id="login-form" autocomplete="on">
@@ -53,10 +53,10 @@
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-    <div class="sb-brand"><img src="https://www.maitraclinic.com/public/front/img/logo.png" alt="" class="sb-brand-logo"><span class="sb-brand-text">Maitra Clinic &amp; Saarth Sanmaan</span></div>
+    <div class="sb-brand"><img src="icons/logo.jpg" alt="" class="sb-brand-logo"><span class="sb-brand-text">Maitra Wellness</span></div>
     <div class="sb-user">
       <div class="sb-avatar" id="sb-avatar">S</div>
-      <div><div class="sb-name" id="sb-name">Staff</div><div class="sb-role" id="sb-role">&mdash;</div></div>
+      <div><div class="sb-name" id="sb-name">Staff</div></div>
     </div>
     <nav class="sb-nav">
       <a href="#" class="nav-link active" data-page="dashboard"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
@@ -98,6 +98,7 @@
         </div>
         <p class="pg-sub" id="d-date"></p>
         <div class="stats-row" id="dash-stats"></div>
+        <div id="dash-my-patients"></div>
         <div class="two-col">
           <div class="card card-accent-danger"><div class="card-hd card-hd-accent"><i class="fas fa-triangle-exclamation"></i> Risk Alerts</div><div id="risk-alerts"></div></div>
           <div class="card card-accent"><div class="card-hd card-hd-primary"><i class="fas fa-clock-rotate-left"></i> Recent Reports</div><div id="recent-rpts"></div></div>
