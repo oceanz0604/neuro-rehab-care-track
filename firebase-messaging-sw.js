@@ -15,16 +15,17 @@ firebase.initializeApp(firebaseConfig);
 var messaging = firebase.messaging();
 
 messaging.onBackgroundMessage(function (payload) {
+  var notif = payload.notification || {};
   var data = payload.data || {};
-  var title = data.title || 'CareTrack';
-  var body = data.body || '';
+  var title = notif.title || data.title || 'CareTrack';
+  var body = notif.body || data.body || '';
   var clientId = data.clientId || '';
   var url = clientId ? '/?page=patient-detail&id=' + encodeURIComponent(clientId) : '/';
   return self.registration.showNotification(title, {
     body: body,
     icon: '/icons/logo.jpg',
     data: { url: url, clientId: clientId },
-    tag: data.tag || 'caretrack-' + (clientId || 'general'),
+    tag: 'caretrack-' + (clientId || 'general'),
     renotify: true
   });
 });

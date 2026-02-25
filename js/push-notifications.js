@@ -41,7 +41,13 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
         body: JSON.stringify(payload)
-      }).catch(function () {});
+      })
+        .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); })
+        .then(function (r) {
+          if (!r.ok && console && console.warn) console.warn('Push API:', r.status, r.data);
+          if (r.ok && r.data && r.data.sent === 0 && r.data.reason === 'no_tokens' && console && console.info) console.info('Push: no assignees with notifications enabled');
+        })
+        .catch(function (err) { if (console && console.warn) console.warn('Push API request failed', err); });
     }).catch(function () {});
   }
 
