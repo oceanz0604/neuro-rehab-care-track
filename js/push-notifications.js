@@ -18,16 +18,27 @@
   function init(user) {
     if (!user || !user.uid || !AppDB || !AppDB.saveFcmToken) return Promise.resolve();
     if (!isSupported()) return Promise.resolve();
+    if (!('serviceWorker' in navigator)) return Promise.resolve();
 
     var messaging = firebase.messaging();
-    return messaging.getToken({ vapidKey: FCM_VAPID_KEY })
-      .then(function (token) {
-        return AppDB.saveFcmToken(user.uid, token);
-      })
-      .catch(function (err) {
-        if (err.code === 'messaging/permission-blocked') return;
-        console.warn('Push token error:', err.message || err);
+    var getReg = navigator.serviceWorker.getRegistration().then(function (reg) {
+      if (reg) return reg.ready || Promise.resolve(reg);
+      return navigator.serviceWorker.register('/sw.js').then(function (r) {
+        return r.ready || Promise.resolve(r);
       });
+    });
+
+    return getReg.then(function (registration) {
+      return messaging.getToken({
+        vapidKey: FCM_VAPID_KEY,
+        serviceWorkerRegistration: registration
+      });
+    }).then(function (token) {
+      return AppDB.saveFcmToken(user.uid, token);
+    }).catch(function (err) {
+      if (err.code === 'messaging/permission-blocked') return;
+      console.warn('Push token error:', err.message || err);
+    });
   }
 
   /** Call push API after report or diagnosis save (no Blaze required). Payload: { clientId, type, ... } */

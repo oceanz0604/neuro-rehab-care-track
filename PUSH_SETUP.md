@@ -61,26 +61,13 @@ Use your real Vercel deployment URL from step 3.
 
 ---
 
-## 6. Optional: Firebase Cloud Functions instead
-
-If you later upgrade to Blaze, you can use the **`functions/`** folder and deploy with:
-
-```bash
-cd functions && npm install && cd ..
-firebase deploy --only functions
-```
-
-Then you can clear `PUSH_API_URL` in `firebase-config.js` and remove the Vercel project if you prefer.
-
----
-
-## 7. Files
+## 6. Files
 
 | File | Role |
 |------|------|
 | `api/send-push.js` | Vercel serverless API: verifies token, gets tokens, sends FCM |
-| `js/push-notifications.js` | Gets FCM token, saves to Firestore; `triggerPush()` calls the API after save |
+| `js/push-notifications.js` | Gets FCM token (via `sw.js`), saves to Firestore; `triggerPush()` calls the API after save |
+| `sw.js` | Cache + push: receives FCM and shows the notification |
 | `js/firebase-config.js` | `FCM_VAPID_KEY` (browser), `PUSH_API_URL` (Vercel API URL) |
-| `firebase-messaging-sw.js` | Shows the notification when a push is received |
 
 If `PUSH_API_URL` is empty, the app does not call the API and push is not sent; the rest of the app works as before.
