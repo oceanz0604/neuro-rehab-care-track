@@ -89,8 +89,8 @@
     var riskClass = (c.currentRisk && c.currentRisk !== 'none') ? c.currentRisk : 'low';
     var riskBadge = '<span class="risk-badge risk-' + riskClass + '">Risk: ' + riskLabel + '</span>';
     var actions = '';
-    if (canAddDiag) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-header-btn"><i class="fas fa-stethoscope"></i> Add Diagnosis</button>';
-    if (canAddReport) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-report-btn"><i class="fas fa-file-lines"></i> Add Report</button>';
+    if (canAddDiag && c.status !== 'discharged') actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-header-btn"><i class="fas fa-stethoscope"></i> Add Diagnosis</button>';
+    if (canAddReport && c.status !== 'discharged') actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-report-btn"><i class="fas fa-file-lines"></i> Add Report</button>';
     if (canEdit) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-edit-btn"><i class="fas fa-pen"></i> Edit</button>';
     var assignedDisplay = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '';
     var wardBed = [c.ward, c.roomNumber].filter(Boolean).join(' / ') || '';
