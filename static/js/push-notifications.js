@@ -21,18 +21,30 @@
     if (!('serviceWorker' in navigator)) return Promise.resolve();
 
     var messaging = firebase.messaging();
-    var getReg = navigator.serviceWorker.getRegistration().then(function (reg) {
-      if (reg) return reg.ready || Promise.resolve(reg);
-      return navigator.serviceWorker.register('/sw.js').then(function (r) {
-        return r.ready || Promise.resolve(r);
+    function getActiveRegistration() {
+      return navigator.serviceWorker.register('/sw.js').then(function (reg) {
+        return reg.ready;
       });
-    });
+    }
 
-    return getReg.then(function (registration) {
+    function getTokenWithRetry(registration, retries) {
+      retries = retries || 0;
       return messaging.getToken({
         vapidKey: FCM_VAPID_KEY,
         serviceWorkerRegistration: registration
+      }).catch(function (err) {
+        var noActive = /no active Service Worker|Subscription failed/i.test(err.message || '');
+        if (noActive && retries < 2) {
+          return new Promise(function (r) { setTimeout(r, 500); }).then(function () {
+            return getTokenWithRetry(registration, retries + 1);
+          });
+        }
+        throw err;
       });
+    }
+
+    return getActiveRegistration().then(function (registration) {
+      return getTokenWithRetry(registration);
     }).then(function (token) {
       return AppDB.saveFcmToken(user.uid, token);
     }).catch(function (err) {
