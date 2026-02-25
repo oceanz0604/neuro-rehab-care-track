@@ -289,5 +289,4 @@
 
   window.Pages = window.Pages || {};
   window.Pages.admin = { render: render, init: init, ROLES: ROLES, roleLabel: roleLabel };
-  window.CareTrackRoleLabel = roleLabel;
 })();

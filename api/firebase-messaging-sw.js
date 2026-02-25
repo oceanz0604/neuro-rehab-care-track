@@ -11,7 +11,7 @@ self.addEventListener('push', function (e) {
   var title = notif.title || d.title || 'CareTrack';
   var body = notif.body || d.body || '';
   var clientId = d.clientId || '';
-  var url = clientId ? '/?page=patient-detail&id=' + encodeURIComponent(clientId) : '/';
+  var url = clientId ? '/patient.html?id=' + encodeURIComponent(clientId) : '/';
   try { console.log('[SW] Push received:', title, clientId || ''); } catch (err) {}
   e.waitUntil(
     self.registration.showNotification(title, {

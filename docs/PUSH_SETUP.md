@@ -45,7 +45,17 @@ After saving a report, check the browser console: you’ll see either "Push: not
 
 ---
 
-## 6. Files
+## 6. Mobile & PWA
+
+**Yes — push notifications work on mobile and when the app is installed as a PWA.**
+
+- **Android:** Add the app to the home screen (Chrome → menu → “Add to Home screen” or “Install app”). Open the app from the home screen, sign in, and allow notifications when prompted. Push uses the same FCM/Web Push flow and works in the installed PWA.
+- **iOS (16.4+):** Add to Home Screen first (Safari → Share → “Add to Home Screen”). Open the app **from the home screen icon** (not from Safari’s address bar), sign in, and allow notifications. If the prompt doesn’t appear, check **Settings → Notifications → [Maitra Wellness]** and ensure Allow Notifications is on.
+- **General:** The app uses standard Web Push (no native code). Your existing `manifest.json`, service worker, and viewport/meta tags are already set up for a good PWA experience on mobile. One FCM token per browser/device; if a user uses both phone and desktop, both can receive notifications once they’ve allowed notifications in each.
+
+---
+
+## 7. Files
 
 | File | Role |
 |------|------|

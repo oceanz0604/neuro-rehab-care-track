@@ -2,6 +2,7 @@ var CACHE_NAME = 'caretrack-v8';
 var ASSETS = [
   './',
   './index.html',
+  './patient.html',
   './manifest.json',
   './static/css/main.css',
   './static/js/firebase-config.js',
@@ -12,7 +13,6 @@ var ASSETS = [
   './static/js/app.js',
   './static/js/components/modal.js',
   './static/js/components/report-modal.js',
-  './static/js/components/notifications.js',
   './static/js/pages/dashboard.js',
   './static/js/pages/patients.js',
   './static/js/pages/reports.js',
@@ -70,7 +70,7 @@ self.addEventListener('push', function (e) {
   var title = notif.title || d.title || 'CareTrack';
   var body = notif.body || d.body || '';
   var clientId = d.clientId || '';
-  var url = clientId ? '/?page=patient-detail&id=' + encodeURIComponent(clientId) : '/';
+  var url = clientId ? '/patient.html?id=' + encodeURIComponent(clientId) : '/';
   e.waitUntil(
     self.registration.showNotification(title, {
       body: body,

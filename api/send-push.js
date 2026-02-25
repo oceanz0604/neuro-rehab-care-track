@@ -111,7 +111,7 @@ module.exports = async (req, res) => {
       },
       webpush: {
         notification: { title, body: bodyText },
-        fcmOptions: { link: '/?page=patient-detail&id=' + clientId }
+        fcmOptions: { link: '/patient.html?id=' + clientId }
       },
       tokens
     };

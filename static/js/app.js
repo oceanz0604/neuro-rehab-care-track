@@ -24,7 +24,6 @@
     dashboard: 'Dashboard',
     patients: 'Patients',
     reports: 'Reports',
-    'patient-detail': 'Patient',
     comms: 'Team Chat',
     freport: 'Progress Report',
     tasks: 'Tasks',
@@ -33,6 +32,27 @@
   };
 
   var _pageInited = {};
+  var _navigatingFromPopstate = false;
+
+  function getIndexBasePath() {
+    var p = (typeof location !== 'undefined' && location.pathname) || '';
+    return (p === '/' || p === '') ? '/index.html' : p;
+  }
+
+  function getPageFromUrl() {
+    try {
+      var params = new URLSearchParams(window.location.search);
+      return params.get('page');
+    } catch (e) { return null; }
+  }
+
+  function updateUrlForPage(page, replace) {
+    if (_navigatingFromPopstate) return;
+    var base = getIndexBasePath();
+    var url = base + '?page=' + (page || 'dashboard');
+    if (replace) history.replaceState({ page: page }, '', url);
+    else history.pushState({ page: page }, '', url);
+  }
 
   /* ─── Toast ──────────────────────────────────────────────────── */
   var _tt;
@@ -141,11 +161,6 @@
     ]).then(function (results) {
       state.clients = results[0] || [];
       state.recentReports = results[1] || [];
-      if (state.page === 'patient-detail' && state.selectedClient) {
-        var found = state.clients.filter(function (c) { return c.id === state.selectedClient; })[0];
-        if (found) state.selectedClientData = found;
-      }
-      AppNotify.refresh(state.clients, state);
       renderCurrentPage();
       return true;
     }).catch(function (err) {
@@ -210,38 +225,19 @@
     initPage(page);
     renderCurrentPage();
     if (page === 'comms') updateChatBadge();
+
+    var currentUrlPage = getPageFromUrl();
+    var replace = (currentUrlPage === page) || (!currentUrlPage && page === 'dashboard');
+    updateUrlForPage(page, replace);
   }
 
   function openPatient(clientId) {
-    state.selectedClient = clientId;
-    var found = null;
-    state.clients.forEach(function (c) { if (c.id === clientId) found = c; });
-    if (!found) {
-      AppDB.getClient(clientId).then(function (c) {
-        state.selectedClientData = c;
-        doOpenPatient();
-      });
-      return;
-    }
-    state.selectedClientData = found;
-    doOpenPatient();
-  }
-
-  function doOpenPatient() {
-    state.page = 'patient-detail';
-    document.querySelectorAll('.page').forEach(function (el) { el.classList.remove('active'); });
-    $('page-patient-detail').classList.add('active');
-    $('tb-title').textContent = (state.selectedClientData && state.selectedClientData.name) ? state.selectedClientData.name : 'Patient';
-    document.querySelectorAll('.nav-link').forEach(function (a) {
-      a.classList.toggle('active', a.getAttribute('data-page') === 'patients');
-    });
-    closeSidebar();
-    initPage('patient-detail');
-    renderCurrentPage();
+    if (!clientId) return;
+    window.location.href = '/patient.html?id=' + encodeURIComponent(clientId);
   }
 
   function initPage(page) {
-    var key = page === 'patient-detail' ? 'patientDetail' : page;
+    var key = page;
     if (Pages[key] && Pages[key].init && !_pageInited[page]) {
       Pages[key].init(state);
       _pageInited[page] = true;
@@ -250,7 +246,7 @@
 
   function renderCurrentPage() {
     var page = state.page;
-    var key = page === 'patient-detail' ? 'patientDetail' : page;
+    var key = page;
     if (Pages[key] && Pages[key].render) Pages[key].render(state);
   }
 
@@ -351,17 +347,30 @@
 
   /* ─── Init ──────────────────────────────────────────────────── */
   function init() {
+    var params = new URLSearchParams(window.location.search);
+    if (params.get('page') === 'patient-detail' && params.get('id')) {
+      window.location.replace('/patient.html?id=' + encodeURIComponent(params.get('id')));
+      return;
+    }
     if (!window.AppDB || !AppDB.ready) {
       showLoginError((AppDB && AppDB.error) || 'Firebase not configured.');
       return;
     }
     bindLogin();
     bindPwaInstall();
-    AppNotify.init();
 
     // Theme toggle (only visible in app shell)
     var themeBtn = $('theme-toggle');
     if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+
+    // Back/forward: sync view to URL
+    window.addEventListener('popstate', function (e) {
+      var page = (e.state && e.state.page) || getPageFromUrl();
+      if (page && PAGE_TITLES[page]) {
+        _navigatingFromPopstate = true;
+        try { navigate(page); } finally { _navigatingFromPopstate = false; }
+      }
+    });
 
     // Sidebar nav
     document.querySelectorAll('.nav-link').forEach(function (a) {
@@ -397,29 +406,6 @@
       AppModal.confirm('Sign out', 'Are you sure you want to sign out?', doLogout, 'Sign out');
     });
 
-    // Notification bell
-    $('notif-btn').addEventListener('click', function (e) {
-      e.stopPropagation();
-      AppNotify.togglePanel();
-    });
-    document.addEventListener('click', function (e) {
-      var panel = $('notif-panel');
-      if (panel && panel.classList.contains('visible') && !panel.contains(e.target)) {
-        panel.classList.remove('visible');
-      }
-    });
-
-    // Notification item clicks
-    $('notif-panel').addEventListener('click', function (e) {
-      var item = e.target.closest('.notif-item');
-      if (!item) return;
-      var page = item.getAttribute('data-page');
-      var id = item.getAttribute('data-id');
-      $('notif-panel').classList.remove('visible');
-      if (page === 'patient-detail' && id) openPatient(id);
-      else if (page) navigate(page);
-    });
-
     // Auth state
     AppDB.onAuthStateChanged(function (user) {
       if (user) {
@@ -447,13 +433,21 @@
           return loadConfig().then(function () {
             updateSidebarBrand();
             return loadData();
-          }).then(function () { navigate('dashboard'); });
+          }).then(function () {
+            var params = new URLSearchParams(window.location.search);
+            var page = params.get('page');
+            navigate(page && PAGE_TITLES[page] ? page : 'dashboard');
+          });
         }).catch(function () {
           state.profile = {};
           showApp();
           updateThemeIcon();
           setTimeout(function () { showPwaBanner(); }, 1500);
-          loadData().then(function () { navigate('dashboard'); });
+          loadData().then(function () {
+            var params = new URLSearchParams(window.location.search);
+            var page = params.get('page');
+            navigate(page && PAGE_TITLES[page] ? page : 'dashboard');
+          });
         });
       } else {
         if (_profileListenerUnsub) { _profileListenerUnsub(); _profileListenerUnsub = null; }

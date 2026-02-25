@@ -285,38 +285,22 @@ img { max-width: 100%; }
   transition: background var(--transition);
 }
 .notif-btn:hover { background: var(--grey-bg); }
-#notif-badge {
-  position: absolute; top: 4px; right: 4px;
-  background: var(--accent); color: #fff; font-size: .6rem; font-weight: 700;
-  min-width: 16px; height: 16px; border-radius: 8px;
-  display: none; align-items: center; justify-content: center; padding: 0 4px;
+
+/* Patient standalone page (no sidebar) */
+.patient-page .topbar-no-sidebar { left: 0; }
+.patient-page .main-content-center { max-width: 900px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+.topbar-back {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: 8px; color: var(--text-2);
+  background: none; border: none; text-decoration: none; transition: background var(--transition);
 }
-#notif-badge.visible { display: flex; }
+.topbar-back:hover { background: var(--grey-bg); color: var(--text); }
+.topbar-back i { font-size: 1.1rem; }
+
 .shift-badge {
   padding: 4px 12px; border-radius: 20px; font-size: .78rem; font-weight: 600;
   background: var(--primary-bg); color: var(--primary);
 }
-
-/* Notification panel — below fixed topbar */
-.notif-panel {
-  position: absolute; top: 100%; right: 16px; margin-top: 4px;
-  width: 320px; max-width: calc(100vw - 32px); max-height: 400px; overflow-y: auto;
-  background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow-md);
-  border: 1px solid var(--border); display: none; z-index: 60;
-}
-.notif-panel.visible { display: block; }
-.notif-item {
-  display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px;
-  border-bottom: 1px solid var(--border); cursor: pointer; transition: background var(--transition);
-}
-.notif-item:hover { background: var(--grey-bg); }
-.notif-item:last-child { border-bottom: none; }
-.notif-item i { margin-top: 2px; font-size: .9rem; }
-.notif-risk i { color: var(--accent); }
-.notif-urgent i { color: var(--amber); }
-.notif-title { font-size: .85rem; font-weight: 600; }
-.notif-sub { font-size: .78rem; color: var(--text-3); margin-top: 2px; }
-.notif-empty { padding: 24px; text-align: center; color: var(--text-3); font-size: .85rem; }
 
 /* ─── Main content (scrollable inner frame only) ────────────────── */
 .main-content {
@@ -1274,7 +1258,6 @@ tr.clickable { cursor: pointer; }
   .tb-right .notif-btn { width: 48px; height: 48px; font-size: 1.25rem; }
   .sidebar .nav-link { font-size: 1.02rem; padding: 14px 18px; }
   .sidebar .nav-link i { font-size: 1.1rem; }
-  .notif-panel { right: calc(8px + var(--safe-right)); left: calc(8px + var(--safe-left)); width: auto; max-width: none; }
   .pg-title { font-size: 1.25rem; }
   .patient-header h2 { font-size: 1.1rem; }
 }

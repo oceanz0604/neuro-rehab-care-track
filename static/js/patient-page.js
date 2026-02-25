@@ -1,0 +1,97 @@
+/**
+ * Patient detail standalone page (patient.html).
+ * Provides CareTrack stub and boots patient-detail from URL ?id=xxx.
+ */
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { user: null, profile: null, clients: [], selectedClient: null, selectedClientData: null };
+
+  function getState() { return state; }
+  function toast(msg) {
+    var el = $('toast'); if (!el) return;
+    el.textContent = msg;
+    el.setAttribute('data-show', 'true');
+    setTimeout(function () { el.setAttribute('data-show', 'false'); }, 3000);
+  }
+  function navigate(page) {
+    if (page === 'patients' || page === 'dashboard') window.location.href = '/index.html?page=' + (page || 'patients');
+    else window.location.href = '/index.html';
+  }
+  function openPatient(id) {
+    if (id) window.location.href = '/patient.html?id=' + encodeURIComponent(id);
+  }
+  function refreshData() {
+    if (state.selectedClient && window.Pages && window.Pages.patientDetail) {
+      window.AppDB.getClient(state.selectedClient).then(function (c) {
+        state.selectedClientData = c;
+        if (c && window.Pages.patientDetail.render) window.Pages.patientDetail.render(state);
+      });
+    }
+  }
+
+  window.CareTrack = {
+    getState: getState,
+    toast: toast,
+    navigate: navigate,
+    openPatient: openPatient,
+    refreshData: refreshData
+  };
+
+  function hideLoading() {
+    var el = $('loading-screen');
+    if (el) el.classList.add('hidden');
+  }
+
+  function showApp() {
+    $('patient-app').removeAttribute('hidden');
+    hideLoading();
+  }
+
+  function run() {
+    if (!window.AppDB || !AppDB.ready) {
+      window.location.href = '/index.html';
+      return;
+    }
+    var user = AppDB.getCurrentUser && AppDB.getCurrentUser();
+    if (!user) {
+      window.location.href = '/index.html';
+      return;
+    }
+    var params = new URLSearchParams(window.location.search);
+    var id = params.get('id');
+    if (!id) {
+      window.location.href = '/index.html?page=patients';
+      return;
+    }
+    state.user = user;
+    Promise.all([
+      AppDB.getUserProfile(user.uid),
+      AppDB.getClient(id)
+    ]).then(function (results) {
+      state.profile = results[0] || {};
+      var client = results[1];
+      if (!client) {
+        toast('Patient not found');
+        state.selectedClient = id;
+        state.selectedClientData = null;
+      } else {
+        state.selectedClient = id;
+        state.selectedClientData = client;
+      }
+      state.page = 'patient-detail';
+      showApp();
+      if (window.Pages && window.Pages.patientDetail) {
+        Pages.patientDetail.render(state);
+        Pages.patientDetail.init(state);
+      }
+      if (client && client.name) document.title = client.name + ' — Maitra Wellness';
+    }).catch(function (err) {
+      toast(err && err.message ? err.message : 'Failed to load');
+      window.location.href = '/index.html?page=patients';
+    });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
+  else run();
+})();
