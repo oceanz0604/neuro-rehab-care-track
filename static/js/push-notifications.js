@@ -18,28 +18,49 @@
   function init(user) {
     if (!user || !user.uid || !AppDB || !AppDB.saveFcmToken) return Promise.resolve();
     if (!isSupported()) return Promise.resolve();
-    if (!('serviceWorker' in navigator)) return Promise.resolve();
+    if (!('serviceWorker' in navigator) || !('Notification' in window)) return Promise.resolve();
 
     var messaging = firebase.messaging();
-    function getTokenWithRetry(retries) {
+    function requestPermission() {
+      if (Notification.permission === 'granted') return Promise.resolve();
+      if (Notification.permission === 'denied') return Promise.reject({ code: 'messaging/permission-blocked' });
+      return Notification.requestPermission().then(function (p) {
+        if (p !== 'granted') return Promise.reject({ code: 'messaging/permission-blocked' });
+      });
+    }
+    function getRegistration() {
+      return navigator.serviceWorker.register('/firebase-messaging-sw.js', { scope: '/' })
+        .then(function (reg) { return reg.ready; });
+    }
+    function getTokenWithRetry(registration, retries) {
       retries = retries || 0;
-      return messaging.getToken({ vapidKey: FCM_VAPID_KEY }).catch(function (err) {
-        var retryable = /no active Service Worker|Subscription failed|failed-service-worker-registration/i.test(err.message || '');
-        if (retryable && retries < 2) {
-          return new Promise(function (r) { setTimeout(r, 600); }).then(function () {
-            return getTokenWithRetry(retries + 1);
+      return messaging.getToken({
+        vapidKey: FCM_VAPID_KEY,
+        serviceWorkerRegistration: registration
+      }).catch(function (err) {
+        var retryable = /no active Service Worker|Subscription failed|failed-service-worker-registration|push service error/i.test(err.message || '');
+        if (retryable && retries < 3) {
+          var delay = 800 * (retries + 1);
+          return new Promise(function (r) { setTimeout(r, delay); }).then(function () {
+            return getTokenWithRetry(registration, retries + 1);
           });
         }
         throw err;
       });
     }
 
-    return getTokenWithRetry().then(function (token) {
-      return AppDB.saveFcmToken(user.uid, token);
-    }).catch(function (err) {
-      if (err.code === 'messaging/permission-blocked') return;
-      console.warn('Push token error:', err.message || err);
-    });
+    return requestPermission()
+      .then(getRegistration)
+      .then(function (registration) {
+        return getTokenWithRetry(registration);
+      })
+      .then(function (token) {
+        return AppDB.saveFcmToken(user.uid, token);
+      })
+      .catch(function (err) {
+        if (err.code === 'messaging/permission-blocked') return;
+        console.warn('Push token error:', err.message || err);
+      });
   }
 
   /** Call push API after report or diagnosis save (no Blaze required). Payload: { clientId, type, ... } */
@@ -57,7 +78,7 @@
         .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); })
         .then(function (r) {
           if (!r.ok && console && console.warn) console.warn('Push API:', r.status, r.data);
-          if (r.ok && r.data && r.data.sent === 0 && r.data.reason === 'no_tokens' && console && console.info) console.info('Push: no assignees with notifications enabled');
+          if (r.ok && r.data && r.data.sent === 0 && r.data.reason === 'no_tokens' && console && console.info) console.info('Push: no assignees have enabled notifications yet (report was saved successfully).');
         })
         .catch(function (err) { if (console && console.warn) console.warn('Push API request failed', err); });
     }).catch(function () {});

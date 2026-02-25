@@ -62,6 +62,10 @@ A **Neuro-Psychiatric Rehabilitation Reporting System** for clinical staff: dail
 - **Vercel:** Link the repo; deploy. Set `FIREBASE_SERVICE_ACCOUNT` for push. See `docs/DEPLOY_CHECKLIST.md`.
 - **GitHub Pages:** Enable Pages → Source: GitHub Actions. See `docs/DEPLOY_CHECKLIST.md`.
 
+## Troubleshooting
+
+- **`net::ERR_BLOCKED_BY_CLIENT`** on Firestore (e.g. `firestore.googleapis.com/.../channel`) or push: a **browser extension** (ad blocker, privacy/tracking blocker) is blocking the request. Whitelist your app’s origin (e.g. `https://your-app.vercel.app`) in the extension, or try without extensions / in another profile.
+
 ## Docs
 
 - **Deploy:** `docs/DEPLOY_CHECKLIST.md`
