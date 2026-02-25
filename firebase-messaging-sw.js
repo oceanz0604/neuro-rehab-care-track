@@ -10,6 +10,7 @@ self.addEventListener('push', function (e) {
   var body = notif.body || d.body || '';
   var clientId = d.clientId || '';
   var url = clientId ? '/?page=patient-detail&id=' + encodeURIComponent(clientId) : '/';
+  try { console.log('[SW] Push received:', title, clientId || ''); } catch (err) {}
   e.waitUntil(
     self.registration.showNotification(title, {
       body: body,
@@ -17,6 +18,10 @@ self.addEventListener('push', function (e) {
       data: { url: url, clientId: clientId },
       tag: 'caretrack-' + (clientId || 'general'),
       renotify: true
+    }).then(function () {
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function (clientList) {
+        clientList.forEach(function (c) { c.postMessage({ type: 'caretrack-push-received', title: title, body: body, clientId: clientId }); });
+      });
     })
   );
 });

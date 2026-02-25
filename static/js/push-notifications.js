@@ -79,7 +79,7 @@
         .then(function (r) {
           if (!r.ok && console && console.warn) console.warn('Push API:', r.status, r.data);
           if (r.ok && r.data) {
-            if (r.data.sent > 0 && console && console.info) console.info('Push: notifications sent to', r.data.sent, 'assignee(s).');
+            if (r.data.sent > 0 && console && console.info) console.info('Push: notifications sent to', r.data.sent, 'assignee(s). (You won\'t receive one for reports you submit—only other assignees do.)');
             if (r.data.sent === 0 && r.data.reason === 'no_tokens' && console && console.info) {
               var d = r.data;
               var msg = 'Push: ' + (d.assignedCount || 0) + ' assignee(s) on patient';
@@ -92,6 +92,15 @@
         })
         .catch(function (err) { if (console && console.warn) console.warn('Push API request failed', err); });
     }).catch(function () {});
+  }
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', function (e) {
+      if (e.data && e.data.type === 'caretrack-push-received' && console && console.info) {
+        var d = e.data;
+        console.info('Push notification received:', d.title || '', d.clientId ? '(patient ' + d.clientId + ')' : '');
+      }
+    });
   }
 
   window.AppPush = {

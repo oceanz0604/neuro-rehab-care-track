@@ -30,6 +30,7 @@
 
   function close() {
     if (overlay) {
+      if (document.activeElement && overlay.contains(document.activeElement)) document.activeElement.blur();
       overlay.classList.remove('visible');
       overlay.setAttribute('aria-hidden', 'true');
     }
