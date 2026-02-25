@@ -78,7 +78,17 @@
         .then(function (res) { return res.json().then(function (data) { return { ok: res.ok, status: res.status, data: data }; }); })
         .then(function (r) {
           if (!r.ok && console && console.warn) console.warn('Push API:', r.status, r.data);
-          if (r.ok && r.data && r.data.sent === 0 && r.data.reason === 'no_tokens' && console && console.info) console.info('Push: no assignees have enabled notifications yet (report was saved successfully).');
+          if (r.ok && r.data) {
+            if (r.data.sent > 0 && console && console.info) console.info('Push: notifications sent to', r.data.sent, 'assignee(s).');
+            if (r.data.sent === 0 && r.data.reason === 'no_tokens' && console && console.info) {
+              var d = r.data;
+              var msg = 'Push: ' + (d.assignedCount || 0) + ' assignee(s) on patient';
+              if (d.resolvedCount != null) msg += ', ' + d.resolvedCount + ' in staff list';
+              msg += ', none with notifications enabled yet. Report was saved.';
+              if (d.hint) msg += ' ' + d.hint;
+              console.info(msg);
+            }
+          }
         })
         .catch(function (err) { if (console && console.warn) console.warn('Push API request failed', err); });
     }).catch(function () {});

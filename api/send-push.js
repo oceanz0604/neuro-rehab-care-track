@@ -7,8 +7,9 @@ function looksLikeUid(s) {
 }
 
 async function getFcmTokensForAssignedDoctors(db, assignedDoctors, excludeUserId) {
-  if (!assignedDoctors || !Array.isArray(assignedDoctors) || assignedDoctors.length === 0) return [];
+  if (!assignedDoctors || !Array.isArray(assignedDoctors) || assignedDoctors.length === 0) return { tokens: [], resolvedCount: 0 };
   const tokens = [];
+  let resolvedCount = 0;
   const byUid = new Map();
   const byName = new Map();
   const byEmail = new Map();
@@ -32,11 +33,12 @@ async function getFcmTokensForAssignedDoctors(db, assignedDoctors, excludeUserId
     else uid = byName.get(norm(v)) || byEmail.get(norm(v));
     if (uid && uid !== excludeUserId && !seenUids.has(uid)) {
       seenUids.add(uid);
+      resolvedCount++;
       const profile = byUid.get(uid);
       if (profile && profile.fcmToken) tokens.push(profile.fcmToken);
     }
   }
-  return tokens;
+  return { tokens, resolvedCount };
 }
 
 module.exports = async (req, res) => {
@@ -80,8 +82,14 @@ module.exports = async (req, res) => {
       : (client.assignedTherapist || client.therapist ? [client.assignedTherapist || client.therapist] : []);
 
     const excludeUid = type === 'report' ? (submittedBy || decoded.uid) : (addedBy || decoded.uid);
-    const tokens = await getFcmTokensForAssignedDoctors(db, assignedDoctors, excludeUid);
-    if (tokens.length === 0) return res.status(200).json({ sent: 0, reason: 'no_tokens', assignedCount: assignedDoctors.length });
+    const { tokens, resolvedCount } = await getFcmTokensForAssignedDoctors(db, assignedDoctors, excludeUid);
+    if (tokens.length === 0) return res.status(200).json({
+      sent: 0,
+      reason: 'no_tokens',
+      assignedCount: assignedDoctors.length,
+      resolvedCount: resolvedCount,
+      hint: resolvedCount === 0 ? 'Assignees not found in userProfiles (check displayName/email match)' : 'Assignees have not enabled notifications yet (allow when signing in)'
+    });
 
     let title, bodyText;
     if (type === 'report') {
