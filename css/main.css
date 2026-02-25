@@ -246,9 +246,8 @@ img { max-width: 100%; }
 .sb-foot { padding: 12px 0; border-top: 1px solid rgba(255,255,255,.08); display: flex; flex-direction: column; gap: 4px; }
 .sb-foot .nav-link { width: 100%; text-decoration: none; }
 .logout-btn {
-  display: flex; align-items: center; gap: 10px; padding: 10px 14px; width: 100%;
-  background: none; border: none; color: #94a3b8; font-size: .88rem; border-radius: 8px;
-  transition: all var(--transition);
+  width: 100%; text-align: left; text-decoration: none;
+  background: none; border: none; cursor: pointer; font-family: inherit;
 }
 .logout-btn:hover { background: rgba(239,68,68,.12); color: var(--accent); }
 
