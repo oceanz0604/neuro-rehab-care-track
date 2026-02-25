@@ -622,6 +622,16 @@
           if (!diagnosis.trim()) { window.CareTrack.toast('Select at least one diagnosis'); return; }
           var profile = (state && state.profile) || {};
           AppDB.addClientDiagnosisEntry(_client.id, { diagnosis: diagnosis.trim(), fromDate: fromDate, notes: notes.trim(), addedByName: profile.displayName || '' }).then(function () {
+            if (window.AppPush && AppPush.triggerPush) {
+              AppPush.triggerPush({
+                clientId: _client.id,
+                type: 'diagnosis',
+                clientName: _client.name,
+                addedBy: (AppDB.getCurrentUser() || {}).uid,
+                addedByName: profile.displayName || '',
+                diagnosis: diagnosis.trim()
+              });
+            }
             return AppDB.updateClient(_client.id, { diagnoses: selected, diagnosis: selected[0] || '' }).then(function () {
               AppModal.close();
               window.CareTrack.toast('Consultation note saved');
@@ -970,6 +980,16 @@
       payload: payload
     };
     return AppDB.saveReport(reportData).then(function () {
+      if (window.AppPush && AppPush.triggerPush) {
+        AppPush.triggerPush({
+          clientId: _client.id,
+          type: 'report',
+          clientName: _client.name,
+          section: section,
+          submittedBy: reportData.submittedBy,
+          submittedByName: reportData.submittedByName
+        });
+      }
       window.CareTrack.toast('Report saved');
       if (section === 'risk') {
         var highest = computeHighestRisk(payload.levels || {});

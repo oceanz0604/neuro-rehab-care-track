@@ -1,10 +1,11 @@
-var CACHE_NAME = 'caretrack-v6';
+var CACHE_NAME = 'caretrack-v7';
 var ASSETS = [
   './',
   './index.html',
   './css/main.css',
   './js/firebase-config.js',
   './js/db.js',
+  './js/push-notifications.js',
   './js/permissions.js',
   './js/rtdb.js',
   './js/app.js',

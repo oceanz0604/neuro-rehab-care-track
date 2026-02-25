@@ -1,0 +1,8 @@
+{
+  "name": "neuro-rehab-care-track",
+  "private": true,
+  "description": "Neuro Rehab CareTrack — hosting + optional Vercel API for push",
+  "dependencies": {
+    "firebase-admin": "^11.11.0"
+  }
+}

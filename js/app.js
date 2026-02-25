@@ -130,6 +130,7 @@
       if (Pages.comms.setOnUnreadChange) Pages.comms.setOnUnreadChange(updateChatBadge);
       updateChatBadge();
     }
+    if (window.AppPush && state.user) AppPush.init(state.user);
   }
 
   /* ─── Data loading ──────────────────────────────────────────── */

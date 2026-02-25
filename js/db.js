@@ -67,6 +67,14 @@
     return db.collection('userProfiles').doc(uid).set(data, { merge: true });
   }
 
+  function saveFcmToken(uid, token) {
+    if (!uid || !token) return Promise.resolve();
+    return db.collection('userProfiles').doc(uid).set({
+      fcmToken: token,
+      fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  }
+
   /* ─── Normalize legacy Firestore data to expected shape ───────── */
   function normalizeClient(o) {
     if (!o) return o;
@@ -538,6 +546,7 @@
     getUserProfile: getUserProfile,
     setUserProfile: setUserProfile,
     listenUserProfile: listenUserProfile,
+    saveFcmToken: saveFcmToken,
     getAllStaff: getAllStaff,
     createStaffAccount: createStaffAccount,
     updateStaffProfile: updateStaffProfile,
