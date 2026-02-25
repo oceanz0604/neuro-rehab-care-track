@@ -7,15 +7,26 @@
   var _bound = false;
   var _currentTab = 'overview';
   var _client = null;
+  var _lastRenderedClientId = null;
   var _latestReports = {};
   var _cachedReports100 = { clientId: null, docs: [] };
 
-  var TABS = [
-    { key: 'overview',    label: 'Overview',     icon: 'fa-id-card' },
-    { key: 'diagnosis',   label: 'Diagnosis',    icon: 'fa-stethoscope' },
-    { key: 'reports',     label: 'Reports',      icon: 'fa-file-lines' },
-    { key: 'history',     label: 'History',      icon: 'fa-clock-rotate-left' }
+  var ALL_TABS = [
+    { key: 'overview',  label: 'Overview',  icon: 'fa-id-card' },
+    { key: 'notes',     label: 'Comments',  icon: 'fa-comment-dots' },
+    { key: 'history',   label: 'History',   icon: 'fa-clock-rotate-left' }
   ];
+
+  function getVisibleTabs(client, state) {
+    var profile = (state && state.profile) || {};
+    var Perm = window.Permissions;
+    if (!Perm) return ALL_TABS.filter(function (t) { return t.key === 'overview'; });
+    var tabs = [];
+    if (Perm.canViewOverview(profile)) tabs.push(ALL_TABS[0]); /* Overview */
+    if (Perm.canViewOverview(profile)) tabs.push(ALL_TABS[1]); /* Comments */
+    if (client && Perm.canViewHistoryFor(profile, client)) tabs.push(ALL_TABS[2]); /* History */
+    return tabs.length ? tabs : [ALL_TABS[0]];
+  }
 
   var REPORT_SECTIONS = [
     { key: 'psychiatric', label: 'Psychiatric',  icon: 'fa-brain' },
@@ -29,7 +40,9 @@
   function getTabFromUrl() {
     var params = new URLSearchParams(window.location.search);
     var t = params.get('tab');
-    return TABS.some(function (x) { return x.key === t; }) ? t : 'overview';
+    var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+    var visible = getVisibleTabs(_client, state);
+    return visible.some(function (x) { return x.key === t; }) ? t : (visible[0] ? visible[0].key : 'overview');
   }
 
   function setTabInUrl(tab, replace) {
@@ -41,12 +54,24 @@
 
   function render(state) {
     _client = state.selectedClientData;
-    if (!_client) { $('pd-header').innerHTML = '<p>Patient not found.</p>'; $('pd-tabs').innerHTML = ''; $('pd-content').innerHTML = ''; return; }
+    if (!_client) { $('pd-header').innerHTML = '<p>Patient not found.</p>'; $('pd-tabs').innerHTML = ''; $('pd-content').innerHTML = ''; if ($('tb-title')) $('tb-title').textContent = 'Patient'; return; }
 
-    _currentTab = getTabFromUrl();
-    setTabInUrl(_currentTab, true);
+    if ($('tb-title')) $('tb-title').textContent = _client.name || 'Patient';
+    if (_client.id !== _lastRenderedClientId) {
+      _lastRenderedClientId = _client.id;
+      _currentTab = 'overview';
+      setTabInUrl('overview', true);
+    } else {
+      _currentTab = getTabFromUrl();
+      setTabInUrl(_currentTab, true);
+    }
     $('pd-header').innerHTML = headerHTML(_client, state);
-    $('pd-tabs').innerHTML = TABS.map(function (t) {
+    var visibleTabs = getVisibleTabs(_client, state);
+    if (visibleTabs.length && visibleTabs.every(function (t) { return t.key !== _currentTab; })) {
+      _currentTab = visibleTabs[0].key;
+      setTabInUrl(_currentTab, true);
+    }
+    $('pd-tabs').innerHTML = visibleTabs.map(function (t) {
       return '<button type="button" class="tab-btn' + (t.key === _currentTab ? ' active' : '') + '" data-tab="' + t.key + '"><i class="fas ' + t.icon + '"></i> ' + t.label + '</button>';
     }).join('');
 
@@ -56,24 +81,29 @@
 
   function headerHTML(c, state) {
     var profile = (state && state.profile) || {};
-    var canEdit = window.Permissions && window.Permissions.canEditPatient(profile);
-    var canDischarge = window.Permissions && window.Permissions.canDischargePatient(profile);
-    var riskLabel = (c.currentRisk && c.currentRisk !== 'none') ? (c.currentRisk) : '—';
-    var riskClass = (c.currentRisk || 'none');
-    var chips = '<span class="risk-badge risk-' + riskClass + '">' + riskLabel + '</span>' +
-      '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>';
-    var actions = '<button type="button" class="btn btn-ghost btn-sm" id="pd-back-btn"><i class="fas fa-arrow-left"></i> Back</button>';
+    var Perm = window.Permissions;
+    var canEdit = Perm && Perm.canEditPatientFor(profile, c);
+    var canAddDiag = Perm && Perm.canAddDiagnosisFor(profile, c);
+    var canAddReport = Perm && Perm.canAddReport(profile);
+    var riskLabel = (c.currentRisk && c.currentRisk !== 'none') ? (c.currentRisk) : 'Low';
+    var riskClass = (c.currentRisk && c.currentRisk !== 'none') ? c.currentRisk : 'low';
+    var riskBadge = '<span class="risk-badge risk-' + riskClass + '">Risk: ' + riskLabel + '</span>';
+    var actions = '';
+    if (canAddDiag) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-header-btn"><i class="fas fa-stethoscope"></i> Add Diagnosis</button>';
+    if (canAddReport) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-report-btn"><i class="fas fa-file-lines"></i> Add Report</button>';
     if (canEdit) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-edit-btn"><i class="fas fa-pen"></i> Edit</button>';
-    if (c.status === 'active' && canDischarge) actions += '<button type="button" class="btn btn-danger btn-sm" id="pd-discharge-btn"><i class="fas fa-right-from-bracket"></i> Discharge</button>';
-    var assignedDisplay = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—';
-    var meta = '<span><i class="fas fa-venus-mars"></i> ' + (c.gender || '—') + '</span>' +
-      '<span><i class="fas fa-calendar"></i> Adm: ' + (c.admissionDate || '—') + '</span>' +
-      (c.plannedDischargeDate ? '<span><i class="fas fa-calendar-check"></i> Planned discharge: ' + esc(c.plannedDischargeDate) + '</span>' : '') +
-      (c.status === 'discharged' && c.dischargeDate ? '<span><i class="fas fa-right-from-bracket"></i> Final discharge: ' + esc(c.dischargeDate) + '</span>' : '') +
-      '<span><i class="fas fa-user-doctor"></i> ' + esc(assignedDisplay) + '</span>' +
-      '<span><i class="fas fa-bed"></i> ' + (c.ward || '—') + ' / ' + (c.roomNumber || '—') + '</span>';
-    return '<div class="patient-header"><div class="patient-actions" style="margin-bottom:12px">' + actions + '</div>' +
-      '<div><h2 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + esc(c.name || 'Unknown') + ' ' + chips + '</h2><div class="patient-meta">' + meta + '</div></div></div>';
+    var assignedDisplay = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '';
+    var wardBed = [c.ward, c.roomNumber].filter(Boolean).join(' / ') || '';
+    var rows = [];
+    if (c.gender) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Gender</span><span class="patient-detail-value">' + esc(c.gender) + '</span></div>');
+    rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Admission Date</span><span class="patient-detail-value">' + (c.admissionDate ? esc(c.admissionDate) : '—') + '</span></div>');
+    if (c.plannedDischargeDate) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Planned Discharge Date</span><span class="patient-detail-value">' + esc(c.plannedDischargeDate) + '</span></div>');
+    if (c.status === 'discharged' && c.dischargeDate) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Final Discharge Date</span><span class="patient-detail-value">' + esc(c.dischargeDate) + '</span></div>');
+    if (assignedDisplay) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Assigned Doctors</span><span class="patient-detail-value">' + esc(assignedDisplay) + '</span></div>');
+    if (wardBed) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Ward & Bed</span><span class="patient-detail-value">' + esc(wardBed) + '</span></div>');
+    var topRow = '<div class="patient-header-top">' + riskBadge + (actions ? '<div class="patient-actions">' + actions + '</div>' : '') + '</div>';
+    var detailsHtml = rows.length ? '<div class="patient-details-vertical">' + rows.join('') + '</div>' : '';
+    return '<div class="patient-header">' + topRow + detailsHtml + '</div>';
   }
 
   function bindTabs() {
@@ -90,20 +120,13 @@
   }
 
   function bindHeaderActions() {
-    var back = document.getElementById('pd-back-btn');
-    if (back) back.addEventListener('click', function () { window.CareTrack.navigate('patients'); });
+    var addDiag = document.getElementById('pd-add-diagnosis-header-btn');
+    if (addDiag) addDiag.addEventListener('click', showAddDiagnosisModal);
+    var addReport = document.getElementById('pd-add-report-btn');
+    if (addReport) addReport.addEventListener('click', showAddReportModal);
     var edit = document.getElementById('pd-edit-btn');
     if (edit) edit.addEventListener('click', showEditModal);
-    var dis = document.getElementById('pd-discharge-btn');
-    if (dis) dis.addEventListener('click', function () {
-      AppModal.confirm('Discharge Patient', 'Are you sure you want to discharge <strong>' + esc(_client.name) + '</strong>?', function () {
-        AppDB.dischargeClient(_client.id).then(function () {
-          window.CareTrack.toast('Patient discharged');
-          window.CareTrack.refreshData();
-          window.CareTrack.navigate('patients');
-        });
-      });
-    });
+    /* Discharge button is bound in renderOverview (bottom section) */
   }
 
   function showEditModal() {
@@ -239,8 +262,7 @@
   function renderTab(tab, state) {
     var el = $('pd-content');
     if (tab === 'overview') { renderOverview(el); return; }
-    if (tab === 'diagnosis') { renderDiagnosisTab(el); return; }
-    if (tab === 'reports') { renderReportsTab(el, state); return; }
+    if (tab === 'notes') { renderNotesTab(el, state); return; }
     if (tab === 'history')  { renderHistory(el); return; }
     renderClinicalTab(el, tab, state);
   }
@@ -267,61 +289,81 @@
   }
 
   function renderOverview(el) {
-    var c = _client;
-    var basicHtml = '<div class="form-grid">' +
-      info('Name', c.name) + info('DOB', c.dob) + info('Gender', c.gender) +
-      info('Initial diagnosis', (c.diagnoses && c.diagnoses.length ? c.diagnoses.join(', ') : c.diagnosis) || '—') +
-      info('Admission', c.admissionDate) +
-      info('Planned Discharge', c.plannedDischargeDate || '—') +
-      (c.status === 'discharged' && c.dischargeDate ? info('Final Discharge', c.dischargeDate) : '') +
-      info('Assigned doctor(s)', (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '—') +
-      info('Ward', c.ward) + info('Room', c.roomNumber) +
-      info('Risk', '<span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk && c.currentRisk !== 'none' ? c.currentRisk : '—') + '</span>') +
-      info('Status', '<span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span>') +
-      '</div>';
-    el.innerHTML =
-      collapsible('pd-overview-basic', 'Basic Information', basicHtml, false) +
-      collapsible('pd-overview-status', 'Status', '<div id="pd-status-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', true) +
-      collapsible('pd-overview-reports', 'Reports today &amp; yesterday', '<div id="pd-today-yesterday-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>', false);
-    bindCollapsibles(el);
+    var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+    var profile = (state && state.profile) || {};
+    var canDischarge = window.Permissions && window.Permissions.canDischargePatientFor(profile, _client);
+    var showDischarge = _client && _client.status === 'active' && canDischarge;
+    var bottomSection = showDischarge
+      ? '<div class="patient-detail-bottom"><div class="patient-detail-bottom-actions"><button type="button" class="btn btn-danger btn-sm" id="pd-discharge-btn"><i class="fas fa-right-from-bracket"></i> Discharge</button></div></div>'
+      : '';
+    el.innerHTML = '<div id="pd-status-body"><i class="fas fa-spinner fa-spin"></i> Loading...</div>' + bottomSection;
     loadOverviewStatus();
-    loadTodayYesterdayReports();
+    var dis = document.getElementById('pd-discharge-btn');
+    if (dis) dis.addEventListener('click', function () {
+      AppModal.confirm('Discharge Patient', 'Are you sure you want to discharge <strong>' + esc(_client.name) + '</strong>?', function () {
+        AppDB.dischargeClient(_client.id).then(function () {
+          window.CareTrack.toast('Patient discharged');
+          window.CareTrack.refreshData();
+          window.CareTrack.navigate('patients');
+        });
+      });
+    });
   }
 
-  function loadTodayYesterdayReports() {
-    var el = document.getElementById('pd-today-yesterday-body');
-    if (!el || !_client) return;
-    var today = new Date().toISOString().slice(0, 10);
-    var yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    AppDB.getClientReports(_client.id, null, 50, null).then(function (res) {
-      var docs = (res.docs || []).filter(function (r) {
-        var d = r.createdAt ? (typeof r.createdAt === 'string' ? r.createdAt.slice(0, 10) : new Date(r.createdAt).toISOString().slice(0, 10)) : '';
-        return d === today || d === yesterday;
+  function renderNotesTab(el, state) {
+    if (!_client) return;
+    var profile = (state && state.profile) || {};
+    var displayName = (profile.displayName || profile.email || 'Staff').trim();
+    el.innerHTML =
+      '<div class="patient-notes-wrap">' +
+        '<div class="patient-notes-list" id="pd-notes-list"><div class="empty-state" style="padding:20px"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
+        '<div class="patient-notes-compose">' +
+          '<textarea id="pd-notes-input" class="fi patient-notes-textarea" rows="2" placeholder="Add a note or comment..." maxlength="2000"></textarea>' +
+          '<button type="button" class="btn btn-sm" id="pd-notes-send"><i class="fas fa-paper-plane"></i> Send</button>' +
+        '</div>' +
+      '</div>';
+    loadPatientNotes();
+    var input = document.getElementById('pd-notes-input');
+    var sendBtn = document.getElementById('pd-notes-send');
+    function sendNote() {
+      var text = (input && input.value) ? input.value.trim() : '';
+      if (!text) return;
+      sendBtn.disabled = true;
+      AppDB.addClientNote(_client.id, { text: text, addedByName: displayName }).then(function () {
+        input.value = '';
+        sendBtn.disabled = false;
+        loadPatientNotes();
+      }).catch(function (e) {
+        if (window.CareTrack.toast) window.CareTrack.toast('Failed to add note: ' + (e.message || ''));
+        sendBtn.disabled = false;
       });
-      if (!docs.length) { el.innerHTML = '<p class="empty-state" style="margin:0">No reports for today or yesterday.</p>'; return; }
-      var byDate = {};
-      docs.forEach(function (r) {
-        var d = r.createdAt ? (typeof r.createdAt === 'string' ? r.createdAt.slice(0, 10) : new Date(r.createdAt).toISOString().slice(0, 10)) : '';
-        if (!byDate[d]) byDate[d] = [];
-        byDate[d].push(r);
-      });
-      var html = '';
-      [today, yesterday].forEach(function (day) {
-        if (!byDate[day]) return;
-        var label = day === today ? 'Today' : 'Yesterday';
-        html += '<div class="pd-day-group" style="margin-bottom:14px">';
-        html += '<strong style="font-size:.85rem;color:var(--text-2)">' + label + ' (' + day + ')</strong>';
-        byDate[day].forEach(function (r) {
-          var timeStr = r.createdAt ? new Date(r.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
-          html += '<div class="report-entry" style="margin-top:8px">' +
-            '<span class="risk-badge risk-' + sectionColor(r.section) + '">' + capitalize(r.section) + '</span> ' +
-            (r.submittedByName || '') + ' ' + timeStr +
-            '<div class="report-entry-body" style="font-size:.85rem;color:var(--text-2);margin-top:4px">' + summarizePayload(r.section, r.payload || {}) + '</div></div>';
-        });
-        html += '</div>';
-      });
-      el.innerHTML = html;
-    }).catch(function () { if (el) el.innerHTML = '<p class="empty-state" style="margin:0">Could not load reports.</p>'; });
+    }
+    if (sendBtn) sendBtn.addEventListener('click', sendNote);
+    if (input) input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendNote(); }
+    });
+  }
+
+  function loadPatientNotes() {
+    var list = document.getElementById('pd-notes-list');
+    if (!list || !_client) return;
+    AppDB.getClientNotes(_client.id).then(function (notes) {
+      if (!notes.length) {
+        list.innerHTML = '<div class="empty-state patient-notes-empty"><i class="fas fa-comment-dots"></i><p>No comments yet. Add a note below.</p></div>';
+        return;
+      }
+      list.innerHTML = notes.map(function (n) {
+        var dateTime = n.createdAt ? new Date(n.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+        var by = esc(n.addedByName || '—');
+        var text = esc((n.text || '').trim() || '(no text)');
+        return '<div class="patient-note-msg">' +
+          '<div class="patient-note-meta">' + by + ' · ' + dateTime + '</div>' +
+          '<div class="patient-note-text">' + text + '</div></div>';
+      }).join('');
+      list.scrollTop = list.scrollHeight;
+    }).catch(function () {
+      list.innerHTML = '<div class="empty-state patient-notes-empty"><p>Could not load notes.</p></div>';
+    });
   }
 
   function loadOverviewObservations() {
@@ -348,16 +390,34 @@
 
     function diagnosisBlock(entries) {
       if (!entries || !entries.length) return '<div class="status-diagnosis-block"><p class="status-empty">No consultation notes yet.</p></div>';
-      var html = '<div class="status-diagnosis-block"><div class="status-sub-hd"><i class="fas fa-stethoscope"></i> Consultation notes</div>';
-      entries.forEach(function (e) {
-        var dateStr = e.fromDate ? new Date(e.fromDate + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-        var byStr = e.addedByName ? ' · ' + esc(e.addedByName) : '';
-        html += '<div class="status-consult-item">';
-        html += '<span class="status-kv">' + esc(e.diagnosis || '—') + ' <span class="status-meta">' + dateStr + byStr + '</span></span>';
-        if (e.notes && e.notes.trim()) html += '<p class="status-consult-note">' + esc(e.notes) + '</p>';
+      var latest = entries[0];
+      var diagnosisStr = (latest.diagnosis || '').trim();
+      var items = diagnosisStr ? diagnosisStr.split(',').map(function (s) { return s.trim(); }).filter(Boolean) : [];
+      var latestDiagnosisHtml = items.length
+        ? '<ul class="consult-diagnosis-list">' + items.map(function (item) { return '<li>' + esc(item) + '</li>'; }).join('') + '</ul>'
+        : '<span class="consult-no-diagnosis">—</span>';
+      var html = '<div class="status-diagnosis-block">';
+      html += '<div class="status-sub-hd"><i class="fas fa-stethoscope"></i> Latest diagnosis</div>';
+      html += '<div class="consult-latest-diagnosis">' + latestDiagnosisHtml + '</div>';
+      html += '<div class="status-sub-hd consult-notes-hd"><i class="fas fa-comments"></i> Consultation notes</div>';
+      html += '<div class="consult-chat">';
+      var sorted = entries.slice().sort(function (a, b) {
+        var ta = a.createdAt ? (typeof a.createdAt === 'string' ? new Date(a.createdAt).getTime() : 0) : 0;
+        var tb = b.createdAt ? (typeof b.createdAt === 'string' ? new Date(b.createdAt).getTime() : 0) : 0;
+        return ta - tb;
+      });
+      sorted.forEach(function (e) {
+        var dateTimeStr = e.createdAt
+          ? new Date(e.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : (e.fromDate ? new Date(e.fromDate + 'T12:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
+        var meta = (e.addedByName ? esc(e.addedByName) + ' · ' : '') + dateTimeStr;
+        var note = (e.notes && e.notes.trim()) ? esc(e.notes) : '<span class="consult-no-note">No note text</span>';
+        html += '<div class="consult-chat-msg">';
+        html += '<div class="consult-chat-meta">' + meta + '</div>';
+        html += '<div class="consult-chat-body">' + note + '</div>';
         html += '</div>';
       });
-      html += '</div>';
+      html += '</div></div>';
       return html;
     }
 
@@ -566,10 +626,115 @@
               AppModal.close();
               window.CareTrack.toast('Consultation note saved');
               loadDiagnosisHistory();
-              return window.CareTrack.refreshData();
+              window.CareTrack.refreshData();
+              if (_currentTab === 'overview') {
+                var el = document.getElementById('pd-content');
+                if (el && typeof renderTab === 'function') renderTab('overview', window.CareTrack.getState());
+              }
             });
           }).catch(function (e) { window.CareTrack.toast('Error: ' + e.message); });
         });
+      }
+    });
+  }
+
+  function showAddReportModal() {
+    if (!_client) return;
+    var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+    var profile = (state && state.profile) || {};
+    var allowedSections = REPORT_SECTIONS.filter(function (s) {
+      return window.Permissions && window.Permissions.canSubmitSection(profile, s.key);
+    });
+    if (!allowedSections.length) {
+      if (window.CareTrack.toast) window.CareTrack.toast('You cannot add reports for this patient.');
+      return;
+    }
+    var firstSection = allowedSections[0];
+    var firstIcon = firstSection ? (REPORT_SECTIONS.find(function (x) { return x.key === firstSection.key; }) || {}).icon || 'fa-file-lines' : 'fa-file-lines';
+    var sectionOptions = allowedSections.map(function (s) {
+      var sec = REPORT_SECTIONS.find(function (x) { return x.key === s.key; });
+      return '<option value="' + esc(s.key) + '" data-icon="' + (sec ? sec.icon : '') + '">' + esc(s.label) + '</option>';
+    }).join('');
+    var html = '<div class="modal-card modal-card-wide"><h3 class="modal-title">Add Report</h3>' +
+      '<div class="fg pd-add-report-section-row" style="margin-bottom:14px"><label>Section</label>' +
+      '<div class="pd-add-report-section-wrap"><span id="pd-add-report-section-icon" class="pd-add-report-section-icon"><i class="fas ' + firstIcon + '"></i></span>' +
+      '<select id="pd-add-report-section" class="fi">' + sectionOptions + '</select></div></div>' +
+      '<div id="pd-add-report-form-wrap"><div class="empty-state" style="padding:20px;margin:0"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
+      '<div class="modal-actions" style="margin-top:16px"><button type="button" class="btn btn-ghost" id="pd-add-report-cancel">Cancel</button></div></div>';
+    AppModal.open(html, {
+      onReady: function () {
+        var formWrap = document.getElementById('pd-add-report-form-wrap');
+        var sectionSelect = document.getElementById('pd-add-report-section');
+        function updateSectionIcon(sectionKey) {
+          var iconEl = document.getElementById('pd-add-report-section-icon');
+          if (iconEl) {
+            var sec = REPORT_SECTIONS.find(function (x) { return x.key === sectionKey; });
+            iconEl.innerHTML = sec ? '<i class="fas ' + sec.icon + '"></i>' : '';
+          }
+        }
+        function renderForm(sectionKey) {
+          updateSectionIcon(sectionKey);
+          formWrap.innerHTML = '<div class="empty-state" style="padding:20px;margin:0"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+          var params = getParams(sectionKey, state);
+          AppDB.getLatestReport(_client.id, sectionKey).then(function (report) {
+            var payload = (report && report.payload) ? report.payload : {};
+            var formHtml = getSectionFormHtml(sectionKey, params, payload);
+            var notesVal = (payload && payload.notes) ? esc(payload.notes) : '';
+            var cardInner = formHtml +
+              '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3">' + notesVal + '</textarea></div>' +
+              '<div style="margin-top:14px"><button type="button" class="btn ct-save" data-section="' + esc(sectionKey) + '"><i class="fas fa-save"></i> Save Report</button></div>';
+            formWrap.innerHTML = '<div class="card ct-card" data-section="' + sectionKey + '">' + cardInner + '</div>';
+            var card = formWrap.querySelector('.ct-card');
+            var saveBtn = card.querySelector('.ct-save');
+            card.querySelectorAll('.rating-btn').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var param = btn.getAttribute('data-param');
+                card.querySelectorAll('.rating-btn[data-param="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
+                btn.classList.add('selected');
+              });
+            });
+            if (saveBtn) saveBtn.addEventListener('click', function () {
+              var p = doSaveReport(card, sectionKey, params, state);
+              if (p && p.then) p.then(function () {
+                AppModal.close();
+                _cachedReports100 = { clientId: null, docs: [] };
+                if (window.CareTrack.refreshData) window.CareTrack.refreshData();
+                var el = document.getElementById('pd-content');
+                if (el && typeof renderTab === 'function') renderTab(_currentTab, window.CareTrack.getState());
+              });
+            });
+          }).catch(function () {
+            var payload = {};
+            var formHtml = getSectionFormHtml(sectionKey, params, payload);
+            formWrap.innerHTML = '<div class="card ct-card" data-section="' + sectionKey + '">' +
+              formHtml +
+              '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3"></textarea></div>' +
+              '<div style="margin-top:14px"><button type="button" class="btn ct-save" data-section="' + esc(sectionKey) + '"><i class="fas fa-save"></i> Save Report</button></div></div>';
+            var card = formWrap.querySelector('.ct-card');
+            var saveBtn = card.querySelector('.ct-save');
+            card.querySelectorAll('.rating-btn').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var param = btn.getAttribute('data-param');
+                card.querySelectorAll('.rating-btn[data-param="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
+                btn.classList.add('selected');
+              });
+            });
+            if (saveBtn) saveBtn.addEventListener('click', function () {
+              var p = doSaveReport(card, sectionKey, params, state);
+              if (p && p.then) p.then(function () {
+                AppModal.close();
+                _cachedReports100 = { clientId: null, docs: [] };
+                if (window.CareTrack.refreshData) window.CareTrack.refreshData();
+                var el = document.getElementById('pd-content');
+                if (el && typeof renderTab === 'function') renderTab(_currentTab, window.CareTrack.getState());
+              });
+            });
+          });
+        }
+        renderForm(sectionSelect.value);
+        sectionSelect.addEventListener('change', function () { renderForm(sectionSelect.value); });
+        var cancelBtn = document.getElementById('pd-add-report-cancel');
+        if (cancelBtn) cancelBtn.addEventListener('click', AppModal.close);
       }
     });
   }
@@ -804,12 +969,12 @@
       submittedByName: profile.displayName || '',
       payload: payload
     };
-    AppDB.saveReport(reportData).then(function () {
+    return AppDB.saveReport(reportData).then(function () {
       window.CareTrack.toast('Report saved');
       if (section === 'risk') {
         var highest = computeHighestRisk(payload.levels || {});
         if (highest !== (_client.currentRisk || 'none')) {
-          AppDB.updateClientRisk(_client.id, highest).then(function () { window.CareTrack.refreshData(); });
+          return AppDB.updateClientRisk(_client.id, highest).then(function () { window.CareTrack.refreshData(); });
         }
       }
     }).catch(function (e) { window.CareTrack.toast('Save failed: ' + e.message); });

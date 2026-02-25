@@ -5,7 +5,56 @@
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var _inited = false;
-  var _therapistDefaultViewSet = false;
+
+  function daysUntilDischarge(plannedDischargeDate) {
+    if (!plannedDischargeDate) return null;
+    var d = new Date(plannedDischargeDate);
+    if (isNaN(d.getTime())) return null;
+    d.setHours(0, 0, 0, 0);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.ceil((d - today) / (24 * 60 * 60 * 1000));
+  }
+
+  function dischargeDaysClass(days) {
+    if (days === null) return 'discharge-days-none';
+    if (days < 0) return 'discharge-days-overdue';
+    if (days <= 7) return 'discharge-days-urgent';
+    if (days <= 14) return 'discharge-days-warning';
+    return 'discharge-days-ok';
+  }
+
+  function parseDateOnly(str) {
+    if (!str) return null;
+    var d = new Date(str);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function getDischargeLabel(c) {
+    var isDischarged = (c.status || 'active') === 'discharged';
+    var planned = parseDateOnly(c.plannedDischargeDate);
+    var actual = parseDateOnly(c.dischargeDate);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (planned) { planned.setHours(0, 0, 0, 0); }
+    if (actual) { actual.setHours(0, 0, 0, 0); }
+
+    if (isDischarged) {
+      if (planned && actual) {
+        if (actual.getTime() < planned.getTime()) return { text: 'Early Discharged', class: 'discharge-status-early' };
+        if (actual.getTime() > planned.getTime()) return { text: 'Delayed', class: 'discharge-status-delayed' };
+      }
+      return { text: 'On Time', class: 'discharge-status-done' };
+    }
+    if (planned) {
+      var days = Math.ceil((planned.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+      if (days < 0) return { text: 'Discharge Delayed', class: 'discharge-status-delayed' };
+      if (days === 0) return { text: 'Today', class: 'discharge-days-urgent' };
+      if (days <= 14) return { text: days + ' day(s) left', class: dischargeDaysClass(days) };
+      return { text: days + ' day(s) left', class: dischargeDaysClass(days) };
+    }
+    return { text: '—', class: 'discharge-days-none' };
+  }
 
   function render(state) {
     var profile = state.profile || {};
@@ -14,20 +63,11 @@
 
     var clients = state.clients || [];
     var q = ($('pt-search') || {}).value || '';
-    var sf = ($('pt-filter-status') || {}).value || '';
-    var rf = ($('pt-filter-risk') || {}).value || '';
-    var viewFilter = ($('pt-filter-view') || {}).value || 'all';
-    var viewEl = $('pt-filter-view');
     var isDoctorOrTherapist = window.Permissions && (
       window.Permissions.hasRole(profile, 'therapist') ||
       window.Permissions.hasRole(profile, 'medical_officer') ||
-      window.Permissions.hasRole(profile, 'doctor')
+      window.Permissions.hasRole(profile, 'psychiatrist')
     );
-    if (viewEl) {
-      viewEl.style.display = isDoctorOrTherapist ? '' : 'none';
-      if (!isDoctorOrTherapist) viewFilter = 'all';
-      else if (!_therapistDefaultViewSet) { viewEl.value = 'mine'; _therapistDefaultViewSet = true; viewFilter = 'mine'; }
-    }
     var myName = (profile.displayName || '').trim();
     function isMyPatient(c) {
       if (!myName) return false;
@@ -37,38 +77,61 @@
     }
 
     var filtered = clients.filter(function (c) {
-      if (viewFilter === 'mine' && isDoctorOrTherapist && !isMyPatient(c)) return false;
       if (q && (c.name || '').toLowerCase().indexOf(q.toLowerCase()) === -1) return false;
-      if (sf && c.status !== sf) return false;
-      if (rf && c.currentRisk !== rf) return false;
       return true;
     });
 
+    filtered.sort(function (a, b) {
+      var aActive = (a.status || 'active') !== 'discharged';
+      var bActive = (b.status || 'active') !== 'discharged';
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      var aMine = isDoctorOrTherapist && isMyPatient(a);
+      var bMine = isDoctorOrTherapist && isMyPatient(b);
+      if (aMine && !bMine) return -1;
+      if (!aMine && bMine) return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
+
+    var container = $('patients-table');
     if (!filtered.length) {
-      $('patients-table').innerHTML = '<div class="empty-state" style="padding:32px"><i class="fas fa-hospital-user"></i><p>' + (clients.length ? 'No matches' : 'No patients registered yet') + '</p></div>';
+      container.innerHTML = '<div class="empty-state" style="padding:32px"><i class="fas fa-hospital-user"></i><p>' + (clients.length ? 'No matches' : 'No patients registered yet') + '</p></div>';
       return;
     }
 
-    var html = '<table><thead><tr><th>Name</th><th>Initial diagnosis</th><th>Admission</th><th>Planned Discharge</th><th>Risk</th><th>Status</th></tr></thead><tbody>';
-    filtered.forEach(function (c) {
-      var diagDisplay = c.diagnosis || (c.diagnoses && c.diagnoses.length ? c.diagnoses[0] : '—');
-      if (c.diagnoses && c.diagnoses.length > 1) diagDisplay += ' <span class="text-muted">+' + (c.diagnoses.length - 1) + '</span>';
-      var nameCell = '<strong>' + esc(c.name || '—') + '</strong>';
-      if (isDoctorOrTherapist && isMyPatient(c)) nameCell += ' <span class="badge-my-patient">My patient</span>';
-      html += '<tr class="clickable" data-id="' + c.id + '">' +
-        '<td>' + nameCell + '</td>' +
-        '<td>' + diagDisplay + '</td>' +
-        '<td>' + (c.admissionDate || '—') + '</td>' +
-        '<td>' + (c.plannedDischargeDate || '—') + '</td>' +
-        '<td><span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk && c.currentRisk !== 'none' ? c.currentRisk : '—') + '</span></td>' +
-        '<td><span class="status-badge status-' + (c.status || 'active') + '">' + (c.status || 'active') + '</span></td></tr>';
-    });
-    html += '</tbody></table>';
-    $('patients-table').innerHTML = html;
+    var html = filtered.map(function (c) {
+      var isDischarged = (c.status || 'active') === 'discharged';
+      var cardClass = 'patient-card clickable' + (isDischarged ? ' patient-card-discharged' : '');
+      var dischargeInfo = getDischargeLabel(c);
+      var days = daysUntilDischarge(c.plannedDischargeDate);
+      var dischargeSub = (days !== null && days < 0 && !isDischarged) ? ' <span class="discharge-sub">(' + Math.abs(days) + ' day(s) overdue)</span>' : '';
+      var diagnosis = (c.diagnoses && c.diagnoses.length) ? c.diagnoses[c.diagnoses.length - 1] : (c.diagnosis || '—');
+      var risk = (c.currentRisk && c.currentRisk !== 'none') ? c.currentRisk : 'Low';
+      var riskClass = (c.currentRisk && c.currentRisk !== 'none') ? c.currentRisk : 'low';
+      var myBadge = isDoctorOrTherapist && isMyPatient(c) ? ' <span class="badge-my-patient">My patient</span>' : '';
+      if (isDischarged) {
+        var dischargeDateStr = c.dischargeDate ? esc(c.dischargeDate) : '—';
+        return '<div class="' + cardClass + '" data-id="' + esc(c.id) + '">' +
+          '<div class="patient-card-name-row">' +
+            '<div class="patient-card-name">' + esc(c.name || '—') + myBadge + '</div>' +
+            '<span class="patient-card-discharge-date"><span class="patient-card-discharged-badge">Discharged</span> ' + dischargeDateStr + '</span>' +
+          '</div>' +
+          '<div class="patient-card-row"><span class="patient-card-label">Discharge</span><span class="discharge-days ' + esc(dischargeInfo.class) + '">' + esc(dischargeInfo.text) + '</span></div>' +
+          '<div class="patient-card-row"><span class="patient-card-label">Diagnosis</span><span class="patient-card-diagnosis">' + esc(diagnosis) + '</span></div>' +
+          '</div>';
+      }
+      return '<div class="' + cardClass + '" data-id="' + esc(c.id) + '">' +
+        '<div class="patient-card-name">' + esc(c.name || '—') + myBadge + '</div>' +
+        '<div class="patient-card-row"><span class="patient-card-label">Discharge</span><span class="discharge-days ' + esc(dischargeInfo.class) + '">' + esc(dischargeInfo.text) + '</span>' + dischargeSub + '</div>' +
+        '<div class="patient-card-row"><span class="patient-card-label">Risk</span><span class="risk-badge risk-' + riskClass + '">' + esc(risk) + '</span></div>' +
+        '<div class="patient-card-row"><span class="patient-card-label">Diagnosis</span><span class="patient-card-diagnosis">' + esc(diagnosis) + '</span></div>' +
+        '</div>';
+    }).join('');
+    container.innerHTML = html;
 
-    $('patients-table').querySelectorAll('tr.clickable').forEach(function (tr) {
-      tr.addEventListener('click', function () {
-        if (window.CareTrack) window.CareTrack.openPatient(tr.getAttribute('data-id'));
+    container.querySelectorAll('.patient-card.clickable').forEach(function (card) {
+      card.addEventListener('click', function () {
+        if (window.CareTrack) window.CareTrack.openPatient(card.getAttribute('data-id'));
       });
     });
   }
@@ -340,10 +403,6 @@
     if (_inited) return; _inited = true;
     $('add-patient-btn').addEventListener('click', showAddModal);
     $('pt-search').addEventListener('input', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
-    $('pt-filter-status').addEventListener('change', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
-    $('pt-filter-risk').addEventListener('change', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
-    var viewFilterEl = $('pt-filter-view');
-    if (viewFilterEl) viewFilterEl.addEventListener('change', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
   }
 
   window.Pages = window.Pages || {};

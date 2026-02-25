@@ -10,9 +10,9 @@
 
   var STRINGS = {
     en: {
-      frTitle: 'Client Progress Report', frSub: 'Date range — supportive language only',
+      frTitle: 'Progress Report', frSub: 'Date range — supportive language only',
       lblC: 'Client', lblM: 'Report month', lblFrom: 'From date', lblTo: 'To date', lblL: 'Language', noc: 'Select a client to preview.',
-      center: 'Neuro-Psychiatric Rehabilitation Centre', rTitle: 'Monthly Client Progress Report',
+      center: 'Neuro-Psychiatric Rehabilitation Centre', rTitle: 'Monthly Progress Report',
       cLbl: 'Client', tLbl: 'Assigned doctor', aLbl: 'Admitted', pTitle: 'Progress this month',
       mTitle: 'Monthly progress', wTitle: 'Weekly trend summary',
       wCols: ['Area', 'Week 1', 'Week 2', 'Week 3', 'Week 4', 'Change'],

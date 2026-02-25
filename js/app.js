@@ -26,7 +26,7 @@
     reports: 'Reports',
     'patient-detail': 'Patient',
     comms: 'Team Chat',
-    freport: 'Client Progress Report',
+    freport: 'Progress Report',
     tasks: 'Tasks',
     settings: 'Settings',
     admin: 'Admin'
@@ -114,7 +114,6 @@
     $('app-shell').removeAttribute('hidden');
     var p = state.profile || {};
     $('sb-name').textContent = p.displayName || (state.user || {}).email || 'Staff';
-    $('sb-avatar').textContent = ((p.displayName || 'S')[0] || 'S').toUpperCase();
 
     var adminLink = $('nav-admin');
     if (adminLink) adminLink.style.display = (window.Permissions && window.Permissions.canAccessAdmin(p)) ? '' : 'none';
@@ -224,7 +223,7 @@
     state.page = 'patient-detail';
     document.querySelectorAll('.page').forEach(function (el) { el.classList.remove('active'); });
     $('page-patient-detail').classList.add('active');
-    $('tb-title').textContent = 'Patient';
+    $('tb-title').textContent = (state.selectedClientData && state.selectedClientData.name) ? state.selectedClientData.name : 'Patient';
     document.querySelectorAll('.nav-link').forEach(function (a) {
       a.classList.toggle('active', a.getAttribute('data-page') === 'patients');
     });
@@ -365,6 +364,10 @@
     });
 
     // Global refresh (navbar)
+    var dashboardBtn = $('tb-dashboard-btn');
+    if (dashboardBtn) dashboardBtn.addEventListener('click', function () {
+      if (window.CareTrack) window.CareTrack.navigate('dashboard');
+    });
     var globalRefresh = $('global-refresh-btn');
     if (globalRefresh) globalRefresh.addEventListener('click', function () {
       if (window.CareTrack) window.CareTrack.refreshData();

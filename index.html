@@ -59,21 +59,25 @@
 
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
-    <div class="sb-brand"><img src="icons/logo.jpg" alt="" class="sb-brand-logo"><span class="sb-brand-text">Maitra Wellness</span></div>
-    <div class="sb-user">
-      <div class="sb-avatar" id="sb-avatar">S</div>
-      <div><div class="sb-name" id="sb-name">Staff</div></div>
+    <div class="sb-brand">
+      <img src="icons/logo.jpg" alt="" class="sb-brand-logo">
+      <div class="sb-brand-inner">
+        <span class="sb-brand-text">Maitra Wellness</span>
+        <span class="sb-name" id="sb-name">Staff</span>
+      </div>
     </div>
     <nav class="sb-nav">
       <a href="#" class="nav-link active" data-page="dashboard"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
-      <a href="#" class="nav-link" data-page="patients"><i class="fas fa-hospital-user"></i><span>Patients</span></a>
-      <a href="#" class="nav-link" data-page="reports"><i class="fas fa-file-lines"></i><span>Reports</span></a>
-      <a href="#" class="nav-link nav-link-chat" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat</span><span id="chat-unread-badge" class="nav-badge"></span></a>
-      <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Client Progress Report</span></a>
       <a href="#" class="nav-link" data-page="tasks"><i class="fas fa-list-check"></i><span>Tasks</span></a>
-      <a href="#" class="nav-link" data-page="admin" id="nav-admin" style="display:none"><i class="fas fa-shield-halved"></i><span>Admin</span></a>
+      <a href="#" class="nav-link" data-page="patients"><i class="fas fa-hospital-user"></i><span>Patients</span></a>
+      <a href="#" class="nav-link" data-page="reports"><i class="fas fa-file-lines"></i><span>Reports - BETA</span></a>
+      <a href="#" class="nav-link nav-link-chat" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat - BETA</span><span id="chat-unread-badge" class="nav-badge"></span></a>
+      <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Progress Report - BETA</span></a>
     </nav>
-    <div class="sb-foot"><button id="logout-btn" class="logout-btn"><i class="fas fa-right-from-bracket"></i><span>Sign out</span></button></div>
+    <div class="sb-foot">
+      <a href="#" class="nav-link" data-page="admin" id="nav-admin" style="display:none"><i class="fas fa-shield-halved"></i><span>Admin - BETA</span></a>
+      <button id="logout-btn" class="logout-btn"><i class="fas fa-right-from-bracket"></i><span>Sign out</span></button>
+    </div>
   </aside>
   <div class="sb-overlay" id="sb-overlay"></div>
 
@@ -83,7 +87,8 @@
       <button type="button" id="menu-btn" class="menu-btn"><i class="fas fa-bars"></i></button>
       <h2 class="tb-title" id="tb-title">Dashboard</h2>
       <div class="tb-right">
-        <button type="button" class="btn btn-outline btn-sm notif-btn" id="global-refresh-btn" title="Refresh data"><i class="fas fa-arrows-rotate"></i> Refresh</button>
+        <button type="button" class="notif-btn" id="tb-dashboard-btn" title="Dashboard" aria-label="Dashboard"><i class="fas fa-house"></i></button>
+        <button type="button" class="notif-btn" id="global-refresh-btn" title="Refresh data" aria-label="Refresh"><i class="fas fa-arrows-rotate"></i></button>
         <button type="button" class="theme-toggle-btn notif-btn" id="theme-toggle" title="Toggle dark/light theme" aria-label="Theme">
           <i class="fas fa-moon" id="theme-icon"></i>
         </button>
@@ -113,17 +118,11 @@
 
       <!-- ── Patients ── -->
       <section class="page" id="page-patients">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-          <h1 class="pg-title" style="margin-bottom:0">Patients</h1>
+        <div class="patients-toolbar">
+          <div class="search-box"><i class="fas fa-magnifying-glass"></i><input type="text" id="pt-search" placeholder="Search by name..."></div>
           <button type="button" class="btn btn-sm" id="add-patient-btn"><i class="fas fa-plus"></i> Add Patient</button>
         </div>
-        <div class="list-toolbar">
-          <select class="filter-select" id="pt-filter-view" style="display:none"><option value="all">All patients</option><option value="mine">My patients</option></select>
-          <div class="search-box"><i class="fas fa-magnifying-glass"></i><input type="text" id="pt-search" placeholder="Search by name..."></div>
-          <select class="filter-select" id="pt-filter-status"><option value="">All Status</option><option value="active" selected>Active</option><option value="discharged">Discharged</option></select>
-          <select class="filter-select" id="pt-filter-risk"><option value="">All Risk</option><option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option><option value="none">None</option></select>
-        </div>
-        <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="patients-table"></div></div>
+        <div id="patients-table" class="patients-card-grid"></div>
       </section>
 
       <!-- ── Reports ── -->
@@ -187,9 +186,9 @@
         </div>
       </section>
 
-      <!-- ── Client Progress Report (family-facing) ── -->
+      <!-- ── Progress Report (family-facing) ── -->
       <section class="page" id="page-freport">
-        <h1 class="pg-title" id="fr-title">Client Progress Report</h1>
+        <h1 class="pg-title" id="fr-title">Progress Report</h1>
         <p class="pg-sub" id="fr-sub">Date range &mdash; supportive language only</p>
         <div class="fr-controls">
           <div class="fg" style="min-width:180px"><label id="fr-lbl-c">Client</label><select class="fi" id="fr-cl"><option value="">— Choose client —</option></select></div>

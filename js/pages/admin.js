@@ -1,7 +1,5 @@
 /**
- * Admin panel — staff CRUD using secondary Firebase app instance pattern.
- * Only visible to users with role === 'admin'.
- * Roles: admin, psychiatrist, nurse, therapist, psychologist, social_worker, rehab_worker, care_taker.
+ * Admin panel — staff CRUD. Single inherited role per user (hierarchy from Social Worker up to Admin).
  */
 (function () {
   'use strict';
@@ -9,24 +7,21 @@
   var _inited = false;
   var _staff = [];
 
+  // Hierarchy order: lowest → highest (matches js/permissions.js ROLE_HIERARCHY)
   var ROLES = [
-    { value: 'admin', label: 'Admin' },
-    { value: 'psychiatrist', label: 'Psychiatrist' },
-    { value: 'medical_officer', label: 'Medical Officer' },
-    { value: 'nurse', label: 'Nurse' },
-    { value: 'therapist', label: 'Therapist' },
-    { value: 'psychologist', label: 'Psychologist' },
     { value: 'social_worker', label: 'Social Worker' },
     { value: 'rehab_worker', label: 'Rehab Worker' },
-    { value: 'care_taker', label: 'Care Taker' }
+    { value: 'care_taker', label: 'Care Taker' },
+    { value: 'nurse', label: 'Nurse' },
+    { value: 'medical_officer', label: 'Medical Officer' },
+    { value: 'therapist', label: 'Therapist' },
+    { value: 'psychologist', label: 'Psychologist' },
+    { value: 'psychiatrist', label: 'Psychiatrist' },
+    { value: 'admin', label: 'Admin' }
   ];
   var ROLE_LABELS = {};
   ROLES.forEach(function (r) { ROLE_LABELS[r.value] = r.label; });
   function roleLabel(role) { return ROLE_LABELS[role] || (role || '—'); }
-  function rolesToLabels(roles) {
-    if (!roles || !roles.length) return '—';
-    return (roles.map(function (r) { return roleLabel(r); })).join(', ');
-  }
 
   function render(state) {
     if (!state.profile || !(window.Permissions && window.Permissions.canAccessAdmin(state.profile))) {
@@ -116,14 +111,14 @@
       $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No staff members</p></div>';
       return;
     }
-    var html = '<table class="staff-table"><thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    var html = '<table class="staff-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     _staff.forEach(function (s) {
       var active = s.isActive !== false;
-      var rolesDisplay = rolesToLabels(s.roles);
+      var roleDisplay = roleLabel(s.role || (s.roles && s.roles[0]) || 'social_worker');
       html += '<tr>' +
         '<td><strong>' + esc(s.displayName || '—') + '</strong></td>' +
         '<td>' + esc(s.email || '—') + '</td>' +
-        '<td><span class="role-badge">' + esc(rolesDisplay) + '</span></td>' +
+        '<td><span class="role-badge">' + esc(roleDisplay) + '</span></td>' +
         '<td><span class="status-badge ' + (active ? 'status-active' : 'status-discharged') + '">' + (active ? 'Active' : 'Inactive') + '</span></td>' +
         '<td style="white-space:nowrap">' +
           '<button type="button" class="btn btn-sm btn-outline" data-edit="' + s.uid + '" style="margin-right:4px"><i class="fas fa-pen"></i></button>' +
@@ -168,8 +163,9 @@
   }
 
   function showAddModal() {
-    var roleChecks = ROLES.map(function (r) {
-      return '<label class="role-check"><input type="checkbox" class="as-role-cb" value="' + esc(r.value) + '"> ' + esc(r.label) + '</label>';
+    var roleOptions = ROLES.map(function (r) {
+      var sel = r.value === 'nurse' ? ' selected' : '';
+      return '<option value="' + esc(r.value) + '"' + sel + '>' + esc(r.label) + '</option>';
     }).join('');
     var html =
       '<div class="modal-card"><h3 class="modal-title">Add Staff Member</h3>' +
@@ -178,7 +174,7 @@
         '<div class="fg fg-full"><label>Email</label><input id="as-email" type="email" class="fi" placeholder="staff@centre.org" required></div>' +
         '<div class="fg fg-full"><label>Password</label><input id="as-pw" type="text" class="fi" placeholder="Min 6 characters" minlength="6"></div>' +
         '<div class="fg fg-full"><label>Full Name</label><input id="as-name" type="text" class="fi" placeholder="Staff name"></div>' +
-        '<div class="fg fg-full"><label>Roles</label><div class="role-check-group">' + roleChecks + '</div></div>' +
+        '<div class="fg fg-full"><label>Role</label><select id="as-role" class="fi">' + roleOptions + '</select></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px">' +
         '<button type="button" class="btn btn-ghost" id="as-cancel">Cancel</button>' +
@@ -192,17 +188,14 @@
           var errEl = document.getElementById('as-error');
           if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
           var email = vv('as-email'), pw = vv('as-pw'), name = vv('as-name');
-          var roles = [];
-          document.querySelectorAll('.as-role-cb:checked').forEach(function (cb) { roles.push(cb.value); });
-          if (!roles.length) roles = ['nurse'];
-          var primaryRole = roles.indexOf('admin') !== -1 ? 'admin' : roles[0];
+          var role = (document.getElementById('as-role') && document.getElementById('as-role').value) || 'nurse';
           if (!email || !pw || pw.length < 6) {
             if (errEl) { errEl.textContent = 'Valid email and password (at least 6 characters) are required.'; errEl.style.display = 'block'; }
             return;
           }
           document.getElementById('as-save').disabled = true;
           document.getElementById('as-save').textContent = 'Creating...';
-          AppDB.createStaffAccount(email, pw, { displayName: name, role: primaryRole, roles: roles })
+          AppDB.createStaffAccount(email, pw, { displayName: name, role: role })
             .then(function () {
               AppModal.close();
               window.CareTrack.toast('Staff account created');
@@ -221,10 +214,10 @@
 
   function showEditStaff(uid) {
     var s = findStaff(uid); if (!s) return;
-    var currentRoles = s.roles && s.roles.length ? s.roles : [s.role || 'nurse'];
-    var roleChecks = ROLES.map(function (r) {
-      var checked = currentRoles.indexOf(r.value) !== -1 ? ' checked' : '';
-      return '<label class="role-check"><input type="checkbox" class="es-role-cb" value="' + esc(r.value) + '"' + checked + '> ' + esc(r.label) + '</label>';
+    var currentRole = s.role || (s.roles && s.roles[0]) || 'nurse';
+    var roleOptions = ROLES.map(function (r) {
+      var sel = r.value === currentRole ? ' selected' : '';
+      return '<option value="' + esc(r.value) + '"' + sel + '>' + esc(r.label) + '</option>';
     }).join('');
     var html =
       '<div class="modal-card"><h3 class="modal-title">Edit Staff</h3>' +
@@ -232,7 +225,7 @@
         '<div class="fg fg-full"><label>Email</label><input id="es-email" type="email" class="fi" value="' + esc(s.email || '') + '" readonly style="background:var(--grey-bg);cursor:not-allowed"></div>' +
         '<div class="fg fg-full"><label>Full Name</label><input id="es-name" type="text" class="fi" value="' + esc(s.displayName || '') + '"></div>' +
         '<div class="fg fg-full"><label>New password <span style="color:var(--text-3);font-weight:400">(leave blank to keep current)</span></label><input id="es-pw" type="password" class="fi" placeholder="Min 6 characters" minlength="6" autocomplete="new-password"></div>' +
-        '<div class="fg fg-full"><label>Roles</label><div class="role-check-group">' + roleChecks + '</div></div>' +
+        '<div class="fg fg-full"><label>Role</label><select id="es-role" class="fi">' + roleOptions + '</select></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px">' +
         '<button type="button" class="btn btn-ghost" id="es-cancel">Cancel</button>' +
@@ -243,12 +236,9 @@
       onReady: function () {
         document.getElementById('es-cancel').addEventListener('click', AppModal.close);
         document.getElementById('es-save').addEventListener('click', function () {
-          var roles = [];
-          document.querySelectorAll('.es-role-cb:checked').forEach(function (cb) { roles.push(cb.value); });
-          if (!roles.length) roles = ['nurse'];
-          var primaryRole = roles.indexOf('admin') !== -1 ? 'admin' : roles[0];
+          var role = (document.getElementById('es-role') && document.getElementById('es-role').value) || currentRole;
           var newPw = (document.getElementById('es-pw').value || '').trim();
-          var profileData = { displayName: vv('es-name'), role: primaryRole, roles: roles };
+          var profileData = { displayName: vv('es-name'), role: role, roles: [role] };
           var currentUid = (AppDB.getCurrentUser && AppDB.getCurrentUser()) ? AppDB.getCurrentUser().uid : null;
           var isSelf = currentUid === uid;
 

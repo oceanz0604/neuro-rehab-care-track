@@ -92,11 +92,8 @@
 
     var profile = state.profile || {};
     var myName = (profile.displayName || '').trim();
-    var roles = profile.roles || [];
-    if (!roles.length && profile.role) roles = [profile.role];
-
-    var isTherapist = roles.indexOf('therapist') !== -1;
-    var isDoctor = roles.indexOf('doctor') !== -1 || roles.indexOf('medical_officer') !== -1;
+    var isTherapist = window.Permissions && window.Permissions.hasRole(profile, 'therapist');
+    var isDoctor = window.Permissions && (window.Permissions.hasRole(profile, 'medical_officer') || window.Permissions.hasRole(profile, 'psychiatrist'));
 
     var myPatients = [];
     if ((isTherapist || isDoctor) && myName) {
@@ -149,12 +146,14 @@
           reportInfo = '<div class="my-pt-report text-muted"><i class="fas fa-file-lines"></i> No recent reports</div>';
         }
 
+        var diagnosesList = (c.diagnoses && c.diagnoses.length) ? c.diagnoses.filter(Boolean) : (c.diagnosis && c.diagnosis.trim() ? [c.diagnosis.trim()] : []);
+        var diagDisplayHtml = diagnosesList.length ? diagnosesList.map(function (d) { return '<div class="my-pt-diagnosis-line">' + esc(d) + '</div>'; }).join('') : '';
         return '<div class="my-pt-row" data-client="' + (c.id || '') + '">' +
           '<div class="my-pt-info">' +
           '<div class="my-pt-name">' + esc(c.name || 'Unknown') +
           (isHigh ? ' <span class="risk-badge risk-high">HIGH ALERT</span>' : '') +
           '</div>' +
-          '<div class="my-pt-diagnosis">' + esc(c.diagnosis || '') + '</div>' +
+          '<div class="my-pt-diagnosis">' + diagDisplayHtml + '</div>' +
           reportInfo +
           '</div></div>';
       }).join('');
@@ -172,20 +171,23 @@
     });
   }
 
-  /* ── Risk Alerts ─────────────────────────────────────────────── */
+  /* ── Risk Alerts (high-risk patients only; hide section if none) ── */
   function renderRiskAlerts(activeList, profile) {
-    if (!activeList.length) {
-      $('risk-alerts').innerHTML = '<div class="empty-state"><i class="fas fa-check-circle" style="color:var(--green)"></i><p>No active patients</p></div>';
+    var highRiskOnly = (activeList || []).filter(function (c) {
+      return (c.currentRisk || '').toLowerCase() === 'high';
+    });
+    var container = $('risk-alerts');
+    var card = container && container.parentElement;
+
+    if (!highRiskOnly.length) {
+      if (card) card.style.display = 'none';
       return;
     }
-    var sorted = activeList.slice().sort(function (a, b) {
-      var ra = RISK_ORDER[a.currentRisk] !== undefined ? RISK_ORDER[a.currentRisk] : 4;
-      var rb = RISK_ORDER[b.currentRisk] !== undefined ? RISK_ORDER[b.currentRisk] : 4;
-      return ra - rb;
-    });
+    if (card) card.style.display = '';
+
     var myName = (profile.displayName || '').trim();
     var isDoctorOrTherapist = window.Permissions &&
-      (window.Permissions.hasRole(profile, 'therapist') || window.Permissions.hasRole(profile, 'doctor') || window.Permissions.hasRole(profile, 'medical_officer'));
+      (window.Permissions.hasRole(profile, 'therapist') || window.Permissions.hasRole(profile, 'medical_officer') || window.Permissions.hasRole(profile, 'psychiatrist'));
     function isYourPatient(c) {
       if (!isDoctorOrTherapist || !myName) return false;
       if ((c.assignedTherapist || '').trim() === myName) return true;
@@ -193,17 +195,18 @@
       return doctors.some(function (d) { return (d || '').trim() === myName; });
     }
 
-    $('risk-alerts').innerHTML = sorted.map(function (c) {
-      var risk = (c.currentRisk || 'none').toLowerCase();
-      var riskLabel = (c.currentRisk && c.currentRisk !== 'none') ? (c.currentRisk).toUpperCase() : '—';
+    container.innerHTML = highRiskOnly.map(function (c) {
+      var diagDisplay = (c.diagnosis && c.diagnosis.trim()) ? c.diagnosis : (c.diagnoses && c.diagnoses.length ? (c.diagnoses[0] || '') : '') || '—';
       var yourPatient = isYourPatient(c);
       return '<div class="clickable risk-alert-row" data-client="' + (c.id || '') + '">' +
-        '<span class="risk-badge risk-' + risk + '">' + riskLabel + '</span>' +
+        '<div class="risk-alert-badges">' +
+        '<span class="risk-badge risk-high">HIGH</span>' +
         (yourPatient ? '<span class="badge-your-patient">Your patient</span>' : '') +
+        '</div>' +
         '<div class="risk-alert-info"><strong>' + esc(c.name || 'Unknown') + '</strong>' +
-        '<div class="risk-alert-meta">' + esc(c.diagnosis || '—') + '</div></div></div>';
+        '<div class="risk-alert-meta">' + esc(diagDisplay) + '</div></div></div>';
     }).join('');
-    $('risk-alerts').querySelectorAll('[data-client]').forEach(function (el) {
+    container.querySelectorAll('[data-client]').forEach(function (el) {
       var id = el.getAttribute('data-client');
       if (!id) return;
       el.addEventListener('click', function () {

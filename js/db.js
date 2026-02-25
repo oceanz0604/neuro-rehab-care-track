@@ -120,15 +120,27 @@
     };
   }
 
+  var ROLE_HIERARCHY = ['social_worker', 'rehab_worker', 'care_taker', 'nurse', 'medical_officer', 'therapist', 'psychologist', 'psychiatrist', 'admin'];
+
   function normalizeProfile(o) {
     if (!o) return o;
-    var roles = o.roles && Array.isArray(o.roles) ? o.roles : (o.role ? [o.role] : ['nurse']);
+    var rawRoles = o.roles && Array.isArray(o.roles) ? o.roles : (o.role ? [o.role] : ['nurse']);
+    var singleRole = (o.role && ROLE_HIERARCHY.indexOf(String(o.role).toLowerCase()) !== -1)
+      ? o.role
+      : rawRoles[0] || 'nurse';
+    if (rawRoles.length > 1) {
+      var maxRank = -1;
+      rawRoles.forEach(function (r) {
+        var idx = ROLE_HIERARCHY.indexOf(String(r).toLowerCase());
+        if (idx > maxRank) { maxRank = idx; singleRole = ROLE_HIERARCHY[idx]; }
+      });
+    }
     return {
       uid: o.uid,
       displayName: o.displayName || o.display_name || o.name || '',
       email: o.email || '',
-      role: o.role || roles[0] || 'nurse',
-      roles: roles,
+      role: singleRole,
+      roles: [singleRole],
       shift: o.shift || 'Morning',
       isActive: o.isActive !== false && o.isActive !== 'false',
       createdAt: o.createdAt,
@@ -154,12 +166,12 @@
     return tempAuth.createUserWithEmailAndPassword(email, password)
       .then(function (cred) {
         var uid = cred.user.uid;
-        var roles = profile.roles && profile.roles.length ? profile.roles : [profile.role || 'nurse'];
+        var role = profile.role || (profile.roles && profile.roles[0]) || 'nurse';
         var doc = {
           displayName: profile.displayName || '',
           email: email,
-          role: roles[0] || 'nurse',
-          roles: roles,
+          role: role,
+          roles: [role],
           isActive: true,
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         };
@@ -295,6 +307,36 @@
     return db.collection('clients').doc(clientId).collection('diagnosisHistory').add(doc).then(function (ref) {
       cacheClear('clients');
       logAudit('diagnosis_history_add', 'client', clientId, { entryId: ref.id }).catch(function () {});
+      return ref;
+    });
+  }
+
+  /* ─── Client notes (comments) ─────────────────────────────────── */
+  function getClientNotes(clientId, limit) {
+    return db.collection('clients').doc(clientId).collection('notes')
+      .orderBy('createdAt', 'asc')
+      .limit(limit || 100)
+      .get()
+      .then(function (snap) {
+        return snap.docs.map(function (d) {
+          var o = d.data();
+          o.id = d.id;
+          if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
+          return o;
+        });
+      });
+  }
+
+  function addClientNote(clientId, data) {
+    var user = getCurrentUser();
+    var doc = {
+      text: (data.text || '').trim(),
+      addedBy: user ? user.uid : '',
+      addedByName: data.addedByName || '',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    return db.collection('clients').doc(clientId).collection('notes').add(doc).then(function (ref) {
+      logAudit('client_note_add', 'client', clientId, { noteId: ref.id }).catch(function () {});
       return ref;
     });
   }
@@ -510,6 +552,8 @@
     updateClientRisk: updateClientRisk,
     getClientDiagnosisHistory: getClientDiagnosisHistory,
     addClientDiagnosisEntry: addClientDiagnosisEntry,
+    getClientNotes: getClientNotes,
+    addClientNote: addClientNote,
     saveReport: saveReport,
     updateReport: updateReport,
     deleteReport: deleteReport,

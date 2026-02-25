@@ -129,12 +129,12 @@
     container.innerHTML = sorted.map(function (c) {
       var count = reportCountByClient[c.id] || 0;
       var summary = count ? count + ' report' + (count !== 1 ? 's' : '') + ' in range' : 'No reports in range';
-      var myBadge = (window.Permissions && (window.Permissions.hasRole(profile, 'therapist') || window.Permissions.hasRole(profile, 'medical_officer') || window.Permissions.hasRole(profile, 'doctor')) && isMyPatient(c))
+      var myBadge = (window.Permissions && (window.Permissions.hasRole(profile, 'therapist') || window.Permissions.hasRole(profile, 'medical_officer') || window.Permissions.hasRole(profile, 'psychiatrist')) && isMyPatient(c))
         ? ' <span class="badge-my-patient">My patient</span>' : '';
       return '<div class="reports-patient-card" data-client-id="' + esc(c.id) + '" role="button" tabindex="0">' +
         '<div class="card-name">' + esc(c.name || '—') + myBadge + '</div>' +
         '<div class="card-meta">' + esc(c.diagnosis || '—') + '</div>' +
-        '<div><span class="risk-badge risk-' + (c.currentRisk || 'none') + '">' + (c.currentRisk && c.currentRisk !== 'none' ? c.currentRisk : '—') + '</span></div>' +
+        '<div><span class="risk-badge risk-' + ((c.currentRisk && c.currentRisk !== 'none') ? c.currentRisk : 'low') + '">' + (c.currentRisk && c.currentRisk !== 'none' ? c.currentRisk : 'Low') + '</span></div>' +
         '<div class="card-summary">' + summary + '</div></div>';
     }).join('');
     container.querySelectorAll('.reports-patient-card').forEach(function (card) {
