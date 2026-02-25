@@ -1,0 +1,1 @@
+{"rules":{"chat":{"$channelId":{".read":"auth != null",".write":"auth != null",".indexOn":["timestamp"]}},"presence":{"$uid":{".read":"auth != null",".write":"auth != null && auth.uid === $uid"}}}}

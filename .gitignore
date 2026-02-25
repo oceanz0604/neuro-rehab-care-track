@@ -1,5 +1,6 @@
 # Optional: uncomment to keep Firebase keys local only (then use firebase-config.sample.js as template)
-# js/firebase-config.js
+# static/js/firebase-config.js
+.firebase/
 
 # OS / editor
 .DS_Store

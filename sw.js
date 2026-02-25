@@ -2,28 +2,28 @@ var CACHE_NAME = 'caretrack-v8';
 var ASSETS = [
   './',
   './index.html',
-  './css/main.css',
-  './js/firebase-config.js',
-  './js/db.js',
-  './js/push-notifications.js',
-  './js/permissions.js',
-  './js/rtdb.js',
-  './js/app.js',
-  './js/components/modal.js',
-  './js/components/report-modal.js',
-  './js/components/notifications.js',
-  './js/pages/dashboard.js',
-  './js/pages/patients.js',
-  './js/pages/reports.js',
-  './js/pages/patient-detail.js',
-  './js/pages/team.js',
-  './js/pages/family-report.js',
-  './js/pages/tasks.js',
-  './js/pages/admin.js',
-  './js/pages/settings.js',
   './manifest.json',
-  './icons/icon.svg',
-  './icons/logo.jpg'
+  './static/css/main.css',
+  './static/js/firebase-config.js',
+  './static/js/db.js',
+  './static/js/push-notifications.js',
+  './static/js/permissions.js',
+  './static/js/rtdb.js',
+  './static/js/app.js',
+  './static/js/components/modal.js',
+  './static/js/components/report-modal.js',
+  './static/js/components/notifications.js',
+  './static/js/pages/dashboard.js',
+  './static/js/pages/patients.js',
+  './static/js/pages/reports.js',
+  './static/js/pages/patient-detail.js',
+  './static/js/pages/team.js',
+  './static/js/pages/family-report.js',
+  './static/js/pages/tasks.js',
+  './static/js/pages/admin.js',
+  './static/js/pages/settings.js',
+  './static/icons/icon.svg',
+  './static/icons/logo.jpg'
 ];
 
 self.addEventListener('install', function (e) {
@@ -74,7 +74,7 @@ self.addEventListener('push', function (e) {
   e.waitUntil(
     self.registration.showNotification(title, {
       body: body,
-      icon: '/icons/logo.jpg',
+      icon: '/static/icons/logo.jpg',
       data: { url: url, clientId: clientId },
       tag: 'caretrack-' + (clientId || 'general'),
       renotify: true
