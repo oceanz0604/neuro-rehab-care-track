@@ -1,4 +1,4 @@
-var CACHE_NAME = 'caretrack-v4';
+var CACHE_NAME = 'caretrack-v6';
 var ASSETS = [
   './',
   './index.html',

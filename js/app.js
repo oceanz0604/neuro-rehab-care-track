@@ -108,15 +108,22 @@
     }
   }
 
+  function updateSidebarBrand() {
+    var p = state.profile || {};
+    var nameEl = $('sb-name');
+    if (nameEl) nameEl.textContent = (p.displayName || (state.user || {}).email || 'Staff').trim() || 'Staff';
+    var brandEl = $('sb-brand-text');
+    if (brandEl) brandEl.textContent = (state.config && state.config.orgName) ? String(state.config.orgName).trim() : 'Maitra Wellness';
+  }
+
   function showApp() {
     hideLoading();
     $('login-screen').style.display = 'none';
     $('app-shell').removeAttribute('hidden');
-    var p = state.profile || {};
-    $('sb-name').textContent = p.displayName || (state.user || {}).email || 'Staff';
+    updateSidebarBrand();
 
     var adminLink = $('nav-admin');
-    if (adminLink) adminLink.style.display = (window.Permissions && window.Permissions.canAccessAdmin(p)) ? '' : 'none';
+    if (adminLink) adminLink.style.display = (window.Permissions && window.Permissions.canAccessAdmin(state.profile)) ? '' : 'none';
 
     if (window.Pages && window.Pages.comms) {
       if (Pages.comms.startUnreadListeners) Pages.comms.startUnreadListeners();
@@ -421,6 +428,9 @@
           if (profile && profile.isActive === false) {
             showLoginError('Your account has been deactivated. Contact your administrator.');
             AppDB.signOut();
+          } else if (profile && state.user && $('app-shell') && !$('app-shell').hasAttribute('hidden')) {
+            state.profile = profile;
+            updateSidebarBrand();
           }
         });
         AppDB.getUserProfile(user.uid).then(function (profile) {
@@ -433,7 +443,10 @@
           showApp();
           updateThemeIcon();
           setTimeout(function () { showPwaBanner(); }, 1500);
-          return loadConfig().then(function () { return loadData(); }).then(function () { navigate('dashboard'); });
+          return loadConfig().then(function () {
+            updateSidebarBrand();
+            return loadData();
+          }).then(function () { navigate('dashboard'); });
         }).catch(function () {
           state.profile = {};
           showApp();

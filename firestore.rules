@@ -20,6 +20,9 @@ service cloud.firestore {
       match /diagnosisHistory/{entryId} {
         allow read, write: if isAuth();
       }
+      match /notes/{noteId} {
+        allow read, write: if isAuth();
+      }
     }
 
     // Reports: all authenticated staff can read and write
