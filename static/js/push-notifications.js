@@ -21,31 +21,20 @@
     if (!('serviceWorker' in navigator)) return Promise.resolve();
 
     var messaging = firebase.messaging();
-    function getActiveRegistration() {
-      return navigator.serviceWorker.register('/sw.js').then(function (reg) {
-        return reg.ready;
-      });
-    }
-
-    function getTokenWithRetry(registration, retries) {
+    function getTokenWithRetry(retries) {
       retries = retries || 0;
-      return messaging.getToken({
-        vapidKey: FCM_VAPID_KEY,
-        serviceWorkerRegistration: registration
-      }).catch(function (err) {
-        var noActive = /no active Service Worker|Subscription failed/i.test(err.message || '');
-        if (noActive && retries < 2) {
-          return new Promise(function (r) { setTimeout(r, 500); }).then(function () {
-            return getTokenWithRetry(registration, retries + 1);
+      return messaging.getToken({ vapidKey: FCM_VAPID_KEY }).catch(function (err) {
+        var retryable = /no active Service Worker|Subscription failed|failed-service-worker-registration/i.test(err.message || '');
+        if (retryable && retries < 2) {
+          return new Promise(function (r) { setTimeout(r, 600); }).then(function () {
+            return getTokenWithRetry(retries + 1);
           });
         }
         throw err;
       });
     }
 
-    return getActiveRegistration().then(function (registration) {
-      return getTokenWithRetry(registration);
-    }).then(function (token) {
+    return getTokenWithRetry().then(function (token) {
       return AppDB.saveFcmToken(user.uid, token);
     }).catch(function (err) {
       if (err.code === 'messaging/permission-blocked') return;
