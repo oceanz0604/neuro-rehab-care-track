@@ -63,6 +63,8 @@
 
     var clients = state.clients || [];
     var q = ($('pt-search') || {}).value || '';
+    var filterStatus = ($('pt-filter-status') || {}).value || '';
+    var filterRisk = ($('pt-filter-risk') || {}).value || '';
     var isDoctorOrTherapist = window.Permissions && (
       window.Permissions.hasRole(profile, 'therapist') ||
       window.Permissions.hasRole(profile, 'medical_officer') ||
@@ -78,8 +80,21 @@
 
     var filtered = clients.filter(function (c) {
       if (q && (c.name || '').toLowerCase().indexOf(q.toLowerCase()) === -1) return false;
+      if (filterStatus) {
+        var st = (c.status || 'active');
+        if (filterStatus === 'active' && st === 'discharged') return false;
+        if (filterStatus === 'discharged' && st !== 'discharged') return false;
+      }
+      if (filterRisk) {
+        var risk = (c.currentRisk || 'none').toLowerCase();
+        if (risk === 'none') risk = 'low';
+        if (filterRisk !== risk) return false;
+      }
       return true;
     });
+
+    var countEl = $('pt-count');
+    if (countEl) countEl.textContent = filtered.length + ' of ' + clients.length;
 
     filtered.sort(function (a, b) {
       var aActive = (a.status || 'active') !== 'discharged';
@@ -409,6 +424,10 @@
     if (_inited) return; _inited = true;
     $('add-patient-btn').addEventListener('click', showAddModal);
     $('pt-search').addEventListener('input', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
+    var filterStatus = $('pt-filter-status');
+    var filterRisk = $('pt-filter-risk');
+    if (filterStatus) filterStatus.addEventListener('change', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
+    if (filterRisk) filterRisk.addEventListener('change', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
   }
 
   window.Pages = window.Pages || {};

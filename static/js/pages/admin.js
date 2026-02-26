@@ -52,9 +52,8 @@
     var wardBedsWrap = $('admin-ward-beds-wrap');
     var diagnosisWrap = $('admin-diagnosis-wrap');
     var auditWrap = $('admin-audit-wrap');
-    document.querySelectorAll('.admin-tab').forEach(function (b) {
+    document.querySelectorAll('.admin-nav-item').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-admin-tab') === tab);
-      b.classList.toggle('btn-outline', b.getAttribute('data-admin-tab') !== tab);
     });
     if (staffWrap) staffWrap.style.display = tab === 'staff' ? '' : 'none';
     if (reportParamsWrap) reportParamsWrap.style.display = tab === 'report-params' ? '' : 'none';
@@ -106,29 +105,51 @@
     });
   }
 
+  function staffInitials(name) {
+    var parts = (name || '').trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return (name || 'S').substring(0, 2).toUpperCase();
+  }
+
+  var ROLE_COLORS = {
+    admin: '#6366f1', psychiatrist: '#8b5cf6', psychologist: '#a855f7',
+    therapist: '#14b8a6', medical_officer: '#0ea5e9', nurse: '#22c55e',
+    care_taker: '#f59e0b', rehab_worker: '#f97316', social_worker: '#94a3b8'
+  };
+
   function renderTable() {
     if (!_staff.length) {
       $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No staff members</p></div>';
       return;
     }
-    var html = '<table class="staff-table"><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    var html = '<div class="staff-grid">';
     _staff.forEach(function (s) {
       var active = s.isActive !== false;
-      var roleDisplay = roleLabel(s.role || (s.roles && s.roles[0]) || 'social_worker');
-      html += '<tr>' +
-        '<td><strong>' + esc(s.displayName || '—') + '</strong></td>' +
-        '<td>' + esc(s.email || '—') + '</td>' +
-        '<td><span class="role-badge">' + esc(roleDisplay) + '</span></td>' +
-        '<td><span class="status-badge ' + (active ? 'status-active' : 'status-discharged') + '">' + (active ? 'Active' : 'Inactive') + '</span></td>' +
-        '<td style="white-space:nowrap">' +
-          '<button type="button" class="btn btn-sm btn-outline" data-edit="' + s.uid + '" style="margin-right:4px"><i class="fas fa-pen"></i></button>' +
+      var role = s.role || (s.roles && s.roles[0]) || 'social_worker';
+      var roleDisplay = roleLabel(role);
+      var color = ROLE_COLORS[role] || '#94a3b8';
+      html += '<div class="staff-card' + (active ? '' : ' staff-card-inactive') + '">' +
+        '<div class="staff-card-top">' +
+          '<div class="staff-card-avatar" style="background:' + color + '">' + esc(staffInitials(s.displayName)) + '</div>' +
+          '<div class="staff-card-info">' +
+            '<div class="staff-card-name">' + esc(s.displayName || '—') + '</div>' +
+            '<div class="staff-card-email">' + esc(s.email || '—') + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="staff-card-bottom">' +
+          '<span class="staff-card-role" style="background:' + color + '1a;color:' + color + '">' + esc(roleDisplay) + '</span>' +
+          '<span class="status-badge ' + (active ? 'status-active' : 'status-discharged') + '">' + (active ? 'Active' : 'Inactive') + '</span>' +
+        '</div>' +
+        '<div class="staff-card-actions">' +
+          '<button type="button" class="btn btn-sm btn-outline" data-edit="' + s.uid + '"><i class="fas fa-pen"></i> Edit</button>' +
           (active
-            ? '<button type="button" class="btn btn-sm btn-danger" data-deact="' + s.uid + '"><i class="fas fa-ban"></i></button>'
-            : '<button type="button" class="btn btn-sm" data-react="' + s.uid + '"><i class="fas fa-check"></i></button>'
+            ? '<button type="button" class="btn btn-sm btn-danger" data-deact="' + s.uid + '"><i class="fas fa-ban"></i> Deactivate</button>'
+            : '<button type="button" class="btn btn-sm" data-react="' + s.uid + '"><i class="fas fa-check"></i> Reactivate</button>'
           ) +
-        '</td></tr>';
+        '</div>' +
+      '</div>';
     });
-    html += '</tbody></table>';
+    html += '</div>';
     $('staff-table').innerHTML = html;
 
     $('staff-table').querySelectorAll('[data-edit]').forEach(function (b) {
@@ -278,7 +299,7 @@
   function init() {
     if (_inited) return; _inited = true;
     $('add-staff-btn').addEventListener('click', showAddModal);
-    document.querySelectorAll('.admin-tab').forEach(function (b) {
+    document.querySelectorAll('.admin-nav-item').forEach(function (b) {
       b.addEventListener('click', function () {
         switchAdminTab(b.getAttribute('data-admin-tab'));
       });

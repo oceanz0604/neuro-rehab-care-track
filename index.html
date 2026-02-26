@@ -116,48 +116,81 @@
           <p id="d-motivational">Ready to make a difference today.</p>
           <div class="welcome-banner-date" id="d-date"></div>
         </div>
-        <div class="quick-actions-row" id="dash-quick-actions">
-          <div class="quick-action-card" data-action="add-report">
-            <i class="fas fa-file-medical qa-icon-report"></i>
-            <div><div class="qa-label">Add Report</div><div class="qa-sub">Patient assessment</div></div>
+
+        <div class="dash-grid">
+          <!-- Left column: stats + patients -->
+          <div class="dash-col-main">
+            <div class="stats-row" id="dash-stats"></div>
+            <div class="quick-actions-row" id="dash-quick-actions">
+              <div class="quick-action-card" data-action="add-report">
+                <i class="fas fa-file-medical qa-icon-report"></i>
+                <div><div class="qa-label">Add Report</div><div class="qa-sub">Patient assessment</div></div>
+              </div>
+              <div class="quick-action-card" data-action="add-patient">
+                <i class="fas fa-user-plus qa-icon-patient"></i>
+                <div><div class="qa-label">New Patient</div><div class="qa-sub">Register admission</div></div>
+              </div>
+              <div class="quick-action-card" data-action="add-task">
+                <i class="fas fa-list-check qa-icon-task"></i>
+                <div><div class="qa-label">Create Task</div><div class="qa-sub">Assign work item</div></div>
+              </div>
+            </div>
+            <div id="dash-my-patients"></div>
           </div>
-          <div class="quick-action-card" data-action="add-patient">
-            <i class="fas fa-user-plus qa-icon-patient"></i>
-            <div><div class="qa-label">New Patient</div><div class="qa-sub">Register admission</div></div>
+
+          <!-- Right column: alerts + reports -->
+          <div class="dash-col-side">
+            <div class="dash-side-card" id="dash-risk-card">
+              <div class="dash-side-hd dash-side-hd-danger"><i class="fas fa-triangle-exclamation"></i> Risk Alerts</div>
+              <div id="risk-alerts"></div>
+            </div>
+            <div class="dash-side-card">
+              <div class="dash-side-hd dash-side-hd-primary"><i class="fas fa-clock-rotate-left"></i> Recent Reports</div>
+              <div id="recent-rpts"></div>
+            </div>
           </div>
-          <div class="quick-action-card" data-action="add-task">
-            <i class="fas fa-list-check qa-icon-task"></i>
-            <div><div class="qa-label">Create Task</div><div class="qa-sub">Assign work item</div></div>
-          </div>
-        </div>
-        <div class="stats-row" id="dash-stats"></div>
-        <div id="dash-my-patients"></div>
-        <div class="two-col">
-          <div class="card card-accent-danger"><div class="card-hd card-hd-accent"><i class="fas fa-triangle-exclamation"></i> Risk Alerts</div><div id="risk-alerts"></div></div>
-          <div class="card card-accent"><div class="card-hd card-hd-primary"><i class="fas fa-clock-rotate-left"></i> Recent Reports</div><div id="recent-rpts"></div></div>
         </div>
       </section>
 
       <!-- ── Patients ── -->
       <section class="page" id="page-patients">
-        <div class="patients-toolbar">
-          <div class="search-box"><i class="fas fa-magnifying-glass"></i><input type="text" id="pt-search" placeholder="Search by name..."></div>
+        <div class="page-toolbar">
+          <div class="page-toolbar-left">
+            <h1 class="pg-title" style="margin:0">Patients</h1>
+            <span class="page-toolbar-count" id="pt-count"></span>
+          </div>
           <button type="button" class="btn btn-sm" id="add-patient-btn"><i class="fas fa-plus"></i> Add Patient</button>
+        </div>
+        <div class="page-filters">
+          <div class="search-box" style="flex:1;max-width:320px"><i class="fas fa-magnifying-glass"></i><input type="text" id="pt-search" placeholder="Search by name..."></div>
+          <select class="filter-select" id="pt-filter-status">
+            <option value="">All statuses</option>
+            <option value="active">Active</option>
+            <option value="discharged">Discharged</option>
+          </select>
+          <select class="filter-select" id="pt-filter-risk">
+            <option value="">All risk levels</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
         </div>
         <div id="patients-table" class="patients-card-grid"></div>
       </section>
 
       <!-- ── Reports ── -->
       <section class="page" id="page-reports">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px">
-          <h1 class="pg-title" style="margin-bottom:0">Reports</h1>
-          <span id="reports-total" class="hist-total"></span>
+        <div class="page-toolbar">
+          <div class="page-toolbar-left">
+            <h1 class="pg-title" style="margin:0">Reports</h1>
+            <span class="page-toolbar-count" id="reports-total"></span>
+          </div>
         </div>
-        <div class="reports-patient-cards-wrap" style="margin-bottom:20px">
+        <div class="reports-patient-cards-wrap" style="margin-bottom:16px">
           <div class="search-box" style="max-width:280px;margin-bottom:10px"><i class="fas fa-magnifying-glass"></i><input type="text" id="reports-patient-search" placeholder="Search patients..."></div>
           <div class="reports-patient-cards" id="reports-patient-cards"></div>
         </div>
-        <div class="list-toolbar">
+        <div class="page-filters">
           <select class="filter-select" id="reports-date-range">
             <option value="today">Today</option>
             <option value="yesterday">Yesterday</option>
@@ -179,18 +212,17 @@
             <option value="therapeutic">Therapeutic</option>
             <option value="risk">Risk</option>
           </select>
-          <div class="search-box"><i class="fas fa-magnifying-glass"></i><input type="text" id="reports-search" placeholder="Search by patient..."></div>
+          <div class="search-box" style="flex:1;max-width:280px"><i class="fas fa-magnifying-glass"></i><input type="text" id="reports-search" placeholder="Search by patient..."></div>
         </div>
         <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="reports-table"></div></div>
       </section>
 
-      <!-- ── Team Chat (WhatsApp-style: channels pinned top, input fixed bottom) ── -->
+      <!-- ── Team Chat ── -->
       <section class="page" id="page-comms">
-        <h1 class="pg-title">Team Chat</h1>
         <div class="chat-layout chat-layout-wa">
           <div class="chat-main">
             <div class="channel-list channel-list-pinned" id="channel-list"></div>
-            <div class="chat-header" id="chat-header">General Ward</div>
+            <div class="chat-header" id="chat-header"><i class="fas fa-hashtag" style="color:var(--text-3);font-size:.75rem"></i> General Ward</div>
             <div class="msg-list" id="msg-list"></div>
             <div class="chat-compose chat-compose-fixed">
               <input type="text" id="msg-in" placeholder="Type a message..." autocomplete="off">
@@ -203,8 +235,12 @@
 
       <!-- ── Progress Report (family-facing) ── -->
       <section class="page" id="page-freport">
-        <h1 class="pg-title" id="fr-title">Progress Report</h1>
-        <p class="pg-sub" id="fr-sub">Date range &mdash; supportive language only</p>
+        <div class="page-toolbar">
+          <div>
+            <h1 class="pg-title" style="margin:0" id="fr-title">Progress Report</h1>
+            <p class="pg-sub" style="margin:2px 0 0" id="fr-sub">Generate family-facing progress reports with supportive language</p>
+          </div>
+        </div>
         <div class="fr-controls">
           <div class="fg" style="min-width:180px"><label id="fr-lbl-c">Client</label><select class="fi" id="fr-cl"><option value="">— Choose client —</option></select></div>
           <div class="fg" style="min-width:140px"><label id="fr-lbl-from">From date</label><input type="date" class="fi" id="fr-date-from"></div>
@@ -217,8 +253,8 @@
 
       <!-- ── Tasks (JIRA-style: Board + List) ── -->
       <section class="page" id="page-tasks">
-        <div class="tasks-toolbar">
-          <div class="tasks-toolbar-left">
+        <div class="page-toolbar">
+          <div class="page-toolbar-left">
             <h1 class="pg-title" style="margin:0">Tasks</h1>
             <div class="tasks-view-toggle" role="tablist">
               <button type="button" class="btn btn-sm tasks-view-btn active" data-view="board" aria-selected="true"><i class="fas fa-columns"></i> Board</button>
@@ -227,7 +263,7 @@
           </div>
           <button type="button" class="btn btn-sm" id="tasks-add-btn"><i class="fas fa-plus"></i> Create</button>
         </div>
-        <div class="list-toolbar" style="margin-bottom:12px">
+        <div class="page-filters">
           <select class="filter-select" id="tasks-filter-status">
             <option value="">All statuses</option>
             <option value="todo">To Do</option>
@@ -258,42 +294,54 @@
         </div>
       </section>
 
-      <!-- ── Admin (Staff | Report Parameters | Ward & Beds | Diagnosis Options | Audit Logs) ── -->
+      <!-- ── Admin ── -->
       <section class="page" id="page-admin">
-        <div class="admin-tabs" style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:8px;flex-wrap:wrap">
-          <button type="button" class="btn btn-sm admin-tab active" data-admin-tab="staff"><i class="fas fa-users"></i> Staff</button>
-          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="report-params"><i class="fas fa-list-check"></i> Report Parameters</button>
-          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="ward-beds"><i class="fas fa-bed"></i> Ward &amp; Beds</button>
-          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="diagnosis"><i class="fas fa-stethoscope"></i> Diagnosis Options</button>
-          <button type="button" class="btn btn-sm btn-outline admin-tab" data-admin-tab="audit"><i class="fas fa-clipboard-list"></i> Audit Logs</button>
-        </div>
-        <div id="admin-staff-wrap">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-            <h2 class="pg-title" style="margin:0;font-size:1.1rem">Staff Management</h2>
-            <button type="button" class="btn btn-sm" id="add-staff-btn"><i class="fas fa-user-plus"></i> Add Staff</button>
+        <div class="admin-header">
+          <div class="admin-header-text">
+            <h1 class="pg-title" style="margin:0">Administration</h1>
+            <p class="pg-sub" style="margin:0">Manage staff, configure reports, wards, and more.</p>
           </div>
-          <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="staff-table"></div></div>
         </div>
-        <div id="admin-report-params-wrap" style="display:none">
-          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Report Parameters</h2>
-          <p class="pg-sub" style="margin-bottom:16px">Edit each section and click Save. Changes are not auto-saved.</p>
-          <div id="report-params-content"></div>
+        <div class="admin-nav" role="tablist">
+          <button type="button" class="admin-nav-item active" data-admin-tab="staff" role="tab"><i class="fas fa-users"></i><span>Staff</span></button>
+          <button type="button" class="admin-nav-item" data-admin-tab="report-params" role="tab"><i class="fas fa-sliders"></i><span>Report Params</span></button>
+          <button type="button" class="admin-nav-item" data-admin-tab="ward-beds" role="tab"><i class="fas fa-bed"></i><span>Wards & Beds</span></button>
+          <button type="button" class="admin-nav-item" data-admin-tab="diagnosis" role="tab"><i class="fas fa-stethoscope"></i><span>Diagnosis</span></button>
+          <button type="button" class="admin-nav-item" data-admin-tab="audit" role="tab"><i class="fas fa-clipboard-list"></i><span>Audit Log</span></button>
         </div>
-        <div id="admin-ward-beds-wrap" style="display:none">
-          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Ward &amp; Beds</h2>
-          <p class="pg-sub" style="margin-bottom:16px">Ward names and room/bed numbers. Edit and click Save per section.</p>
-          <div id="ward-beds-content"></div>
-        </div>
-        <div id="admin-diagnosis-wrap" style="display:none">
-          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Diagnosis Options</h2>
-          <p class="pg-sub" style="margin-bottom:16px">ICD-11 diagnosis list used across the app. Edit and click Save.</p>
-          <div id="diagnosis-options-content"></div>
-        </div>
-        <div id="admin-audit-wrap" style="display:none">
-          <h2 class="pg-title" style="margin:0 0 8px 0;font-size:1.1rem">Audit Logs</h2>
-          <p class="pg-sub" style="margin-bottom:16px">Recent actions: report saves, client add/update/discharge.</p>
-          <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="audit-table"></div></div>
-          <button type="button" class="btn btn-outline btn-sm" id="audit-load-more" style="margin-top:8px;display:none">Load more</button>
+        <div class="admin-panel-body">
+          <div id="admin-staff-wrap">
+            <div class="admin-section-bar">
+              <div><h2 class="admin-section-title">Staff Management</h2><p class="admin-section-desc">Add, edit, or deactivate staff accounts.</p></div>
+              <button type="button" class="btn btn-sm" id="add-staff-btn"><i class="fas fa-user-plus"></i> Add Staff</button>
+            </div>
+            <div id="staff-table"></div>
+          </div>
+          <div id="admin-report-params-wrap" style="display:none">
+            <div class="admin-section-bar">
+              <div><h2 class="admin-section-title">Report Parameters</h2><p class="admin-section-desc">Customise the parameters available in each report section. Click Save per section.</p></div>
+            </div>
+            <div id="report-params-content"></div>
+          </div>
+          <div id="admin-ward-beds-wrap" style="display:none">
+            <div class="admin-section-bar">
+              <div><h2 class="admin-section-title">Wards &amp; Beds</h2><p class="admin-section-desc">Configure ward names and room/bed identifiers.</p></div>
+            </div>
+            <div id="ward-beds-content"></div>
+          </div>
+          <div id="admin-diagnosis-wrap" style="display:none">
+            <div class="admin-section-bar">
+              <div><h2 class="admin-section-title">Diagnosis Options</h2><p class="admin-section-desc">ICD-11 diagnosis list used across the app.</p></div>
+            </div>
+            <div id="diagnosis-options-content"></div>
+          </div>
+          <div id="admin-audit-wrap" style="display:none">
+            <div class="admin-section-bar">
+              <div><h2 class="admin-section-title">Audit Log</h2><p class="admin-section-desc">Recent actions: report saves, patient admissions, discharges.</p></div>
+            </div>
+            <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="audit-table"></div></div>
+            <button type="button" class="btn btn-outline btn-sm" id="audit-load-more" style="margin-top:12px;display:none">Load more entries</button>
+          </div>
         </div>
       </section>
 
