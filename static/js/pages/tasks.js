@@ -16,9 +16,14 @@
   function showToast(msg) { if (window.CareTrack && CareTrack.toast) CareTrack.toast(msg); else alert(msg); }
   function errMsg(e) { return (e && (e.message || e.code)) || 'Unknown error'; }
 
+  function getBaseUrl() {
+    if (typeof location === 'undefined') return '';
+    var path = location.pathname || '';
+    return location.origin + path.replace(/\/[^/]*$/, '/');
+  }
   function openTask(id) {
     if (window.CareTrack && CareTrack.openTask) CareTrack.openTask(id);
-    else window.location.href = '/task.html?id=' + encodeURIComponent(id);
+    else window.location.href = getBaseUrl() + 'task.html?id=' + encodeURIComponent(id);
   }
 
   function getClientForTask(task, clients) {

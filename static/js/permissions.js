@@ -169,7 +169,7 @@
     return false;
   }
 
-  /** 'full' | 'progress' | false. Progress = only status (and description) for assignees who are not admin/doctor/creator. */
+  /** 'full' | 'progress' | false. Progress = status update and comments only (no title/description/priority/due/assignee) for assignees who are not admin/doctor/creator. */
   function canEditTaskLevel(profile, task, client) {
     if (!profile || !task) return false;
     var uid = (profile.uid || '').toString().trim();

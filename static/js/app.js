@@ -39,6 +39,14 @@
     return (p === '/' || p === '') ? '/index.html' : p;
   }
 
+  /** Base URL for same-directory links (works with file:// and http(s)://). */
+  function getBaseUrl() {
+    if (typeof location === 'undefined') return '';
+    var path = location.pathname || '';
+    var dir = path.replace(/\/[^/]*$/, '/');
+    return location.origin + dir;
+  }
+
   function getPageFromUrl() {
     try {
       var params = new URLSearchParams(window.location.search);
@@ -291,12 +299,12 @@
 
   function openPatient(clientId) {
     if (!clientId) return;
-    window.location.href = '/patient.html?id=' + encodeURIComponent(clientId);
+    window.location.href = getBaseUrl() + 'patient.html?id=' + encodeURIComponent(clientId);
   }
 
   function openTask(taskId) {
     if (!taskId) return;
-    window.location.href = '/task.html?id=' + encodeURIComponent(taskId);
+    window.location.href = getBaseUrl() + 'task.html?id=' + encodeURIComponent(taskId);
   }
 
   function initPage(page) {
@@ -410,11 +418,11 @@
   function init() {
     var params = new URLSearchParams(window.location.search);
     if (params.get('page') === 'patient-detail' && params.get('id')) {
-      window.location.replace('/patient.html?id=' + encodeURIComponent(params.get('id')));
+      window.location.replace(getBaseUrl() + 'patient.html?id=' + encodeURIComponent(params.get('id')));
       return;
     }
     if (params.get('page') === 'task-detail' && params.get('id')) {
-      window.location.replace('/task.html?id=' + encodeURIComponent(params.get('id')));
+      window.location.replace(getBaseUrl() + 'task.html?id=' + encodeURIComponent(params.get('id')));
       return;
     }
     if (!window.AppDB || !AppDB.ready) {
@@ -583,6 +591,7 @@
     openTask: openTask,
     refreshData: refreshData,
     getState: function () { return state; },
+    getBaseUrl: getBaseUrl,
     toast: toast
   };
 })();

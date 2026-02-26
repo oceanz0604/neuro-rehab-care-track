@@ -358,9 +358,10 @@
     var displayName = (profile.displayName || profile.email || 'Staff').trim();
     el.innerHTML =
       '<div class="patient-notes-wrap">' +
+        '<h3 class="patient-notes-hd">Comments</h3>' +
         '<div class="patient-notes-compose">' +
-          '<textarea id="pd-notes-input" class="fi patient-notes-textarea" rows="2" placeholder="Add a note or comment..." maxlength="2000"></textarea>' +
-          '<button type="button" class="btn btn-sm" id="pd-notes-send"><i class="fas fa-paper-plane"></i> Send</button>' +
+          '<textarea id="pd-notes-input" class="fi patient-notes-textarea" rows="2" placeholder="Add a comment..." maxlength="2000"></textarea>' +
+          '<button type="button" class="btn btn-sm" id="pd-notes-send"><i class="fas fa-paper-plane"></i> Add</button>' +
         '</div>' +
         '<div class="patient-notes-list" id="pd-notes-list"><div class="empty-state" style="padding:20px"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
       '</div>';
@@ -391,7 +392,7 @@
     if (!list || !_client) return;
     AppDB.getClientNotes(_client.id).then(function (notes) {
       if (!notes.length) {
-        list.innerHTML = '<div class="empty-state patient-notes-empty"><i class="fas fa-comment-dots"></i><p>No comments yet. Post one above.</p></div>';
+        list.innerHTML = '<div class="empty-state patient-notes-empty"><i class="fas fa-comment-dots"></i><p>No comments yet.</p></div>';
         return;
       }
       list.innerHTML = notes.map(function (n) {

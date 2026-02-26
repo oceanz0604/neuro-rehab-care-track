@@ -14,12 +14,17 @@
     el.setAttribute('data-show', 'true');
     setTimeout(function () { el.setAttribute('data-show', 'false'); }, 3000);
   }
+  function getBaseUrl() {
+    if (typeof location === 'undefined') return '';
+    var path = location.pathname || '';
+    return location.origin + path.replace(/\/[^/]*$/, '/');
+  }
   function navigate(page) {
-    if (page === 'patients' || page === 'dashboard') window.location.href = '/index.html?page=' + (page || 'patients');
-    else window.location.href = '/index.html';
+    if (page === 'patients' || page === 'dashboard') window.location.href = getBaseUrl() + 'index.html?page=' + (page || 'patients');
+    else window.location.href = getBaseUrl() + 'index.html';
   }
   function openPatient(id) {
-    if (id) window.location.href = '/patient.html?id=' + encodeURIComponent(id);
+    if (id) window.location.href = getBaseUrl() + 'patient.html?id=' + encodeURIComponent(id);
   }
   function refreshData() {
     if (state.selectedClient && window.Pages && window.Pages.patientDetail) {
@@ -49,7 +54,7 @@
   }
 
   function goBack(fallbackPage) {
-    var fallback = '/index.html?page=' + (fallbackPage || 'patients');
+    var fallback = getBaseUrl() + 'index.html?page=' + (fallbackPage || 'patients');
     var fromOurApp = document.referrer && document.referrer.indexOf(window.location.origin) === 0;
     if (fromOurApp && window.history.length > 1) {
       window.history.back();
@@ -60,13 +65,13 @@
 
   function run() {
     if (!window.AppDB || !AppDB.ready) {
-      window.location.href = '/index.html';
+      window.location.href = getBaseUrl() + 'index.html';
       return;
     }
     var params = new URLSearchParams(window.location.search);
     var id = params.get('id');
     if (!id) {
-      window.location.href = '/index.html?page=patients';
+      window.location.href = getBaseUrl() + 'index.html?page=patients';
       return;
     }
     // Wait for auth state to be restored (Firebase is async) before redirecting
@@ -86,7 +91,7 @@
         unsub && typeof unsub === 'function' && unsub();
         var u = AppDB.getCurrentUser && AppDB.getCurrentUser();
         if (u) loadPatient(u, id);
-        else window.location.href = '/index.html';
+        else window.location.href = getBaseUrl() + 'index.html';
       }, 600);
     });
   }
@@ -129,7 +134,7 @@
       }
     }).catch(function (err) {
       toast(err && err.message ? err.message : 'Failed to load');
-      window.location.href = '/index.html?page=patients';
+      window.location.href = getBaseUrl() + 'index.html?page=patients';
     });
   }
 

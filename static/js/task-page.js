@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { user: null, profile: null, task: null, staff: [], client: null, editLevel: false, canDelete: false };
+  var state = { user: null, profile: null, task: null, staff: [], client: null, editLevel: false, canDelete: false, isEditing: false };
   var STATUS_LABELS = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' };
   var PRIORITY_ICONS = { high: 'fa-arrow-up', medium: 'fa-minus', low: 'fa-arrow-down' };
   var PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
@@ -28,224 +28,241 @@
     setTimeout(function () { el.setAttribute('data-show', 'false'); }, 3000);
   }
 
+  function getBaseUrl() {
+    if (typeof location === 'undefined') return '';
+    var path = location.pathname || '';
+    var dir = path.replace(/\/[^/]*$/, '/');
+    return location.origin + dir;
+  }
+
   window.CareTrack = {
     getState: function () { return state; },
     toast: toast,
-    navigate: function (p) { window.location.href = '/index.html?page=' + (p || 'tasks'); },
-    openTask: function (id) { if (id) window.location.href = '/task.html?id=' + encodeURIComponent(id); },
-    openPatient: function (id) { if (id) window.location.href = '/patient.html?id=' + encodeURIComponent(id); }
+    navigate: function (p) { window.location.href = getBaseUrl() + 'index.html?page=' + (p || 'tasks'); },
+    openTask: function (id) { if (id) window.location.href = getBaseUrl() + 'task.html?id=' + encodeURIComponent(id); },
+    openPatient: function (id) { if (id) window.location.href = getBaseUrl() + 'patient.html?id=' + encodeURIComponent(id); }
   };
 
   function hideLoading() { var el = $('loading-screen'); if (el) el.classList.add('hidden'); }
   function showApp() { $('task-app').removeAttribute('hidden'); hideLoading(); }
 
-  /* ─── Render ───────────────────────────────────────────────── */
-  function renderDetail() {
+  function bindShareButton() {
+    var shareBtn = $('task-share-btn');
+    if (!shareBtn) return;
+    function doCopy() {
+      var url = window.location.href;
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          toast('Link copied. Share with the creator for any doubts.');
+        }).catch(function () { fallbackCopy(url); });
+      } else {
+        fallbackCopy(url);
+      }
+    }
+    function fallbackCopy(url) {
+      var ta = document.createElement('textarea');
+      ta.value = url;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        toast('Link copied. Share with the creator for any doubts.');
+      } catch (e) {
+        toast('Copy failed. Share this link: ' + url);
+      }
+      document.body.removeChild(ta);
+    }
+    shareBtn.addEventListener('click', doCopy);
+  }
+
+  function pillLabel(val, labels) { return (labels[val] || val).toUpperCase().replace(/\s+/g, ' '); }
+
+  /* ─── Render: view mode (read-only) ─────────────────────────── */
+  function renderViewMode() {
     var root = $('task-detail-root');
     var t = state.task;
     if (!root || !t) return;
 
     var key = t.key || t.id;
     var p = t.priority || 'medium';
-    var pIcon = PRIORITY_ICONS[p] || 'fa-minus';
-    var createdStr = t.createdAt ? new Date(t.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
-    var editLevel = state.editLevel;
-    var canEditFull = editLevel === 'full';
-    var canEditProgress = editLevel === 'progress' || canEditFull;
+    var createdDateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    var canEdit = !!state.editLevel;
     var canDelete = state.canDelete;
 
     var patientHtml = '';
     if (t.clientId && t.clientName) {
-      patientHtml = '<a href="/patient.html?id=' + esc(t.clientId) + '" class="task-detail-link"><i class="fas fa-hospital-user"></i> ' + esc(t.clientName) + '</a>';
+      patientHtml = '<a href="' + getBaseUrl() + 'patient.html?id=' + esc(t.clientId) + '" class="task-detail-link"><i class="fas fa-hospital-user"></i> ' + esc(t.clientName) + '</a>';
     } else {
-      patientHtml = '<span class="task-detail-field-value" style="color:var(--text-3)">None</span>';
+      patientHtml = '<span class="task-detail-muted">None</span>';
     }
 
-    var descriptionHtml = t.notes ? esc(t.notes).replace(/\n/g, '<br>') : '<span style="color:var(--text-3)">Click to add a description...</span>';
-    var titleEditable = canEditFull ? ' contenteditable="true" spellcheck="false"' : '';
-    var descClickable = canEditProgress ? '' : ' style="pointer-events:none;cursor:default"';
+    var descriptionHtml = t.notes ? esc(t.notes).replace(/\n/g, '<br>') : '<span class="task-detail-muted">No description.</span>';
+    var statusVal = t.status || 'todo';
+    var statusBlock = '<span class="pill pill-status-' + statusVal + '">' + esc((STATUS_LABELS[statusVal] || statusVal).toUpperCase().replace(/\s+/g, ' ')) + '</span>';
+    var priorityBlock = '<span class="pill pill-priority-' + p + '">' + esc((PRIORITY_LABELS[p] || p).toUpperCase()) + '</span>';
+    var dueWrapClass = dueUrgency(t.dueDate, t.status) ? ' task-detail-due-wrap task-due-' + dueUrgency(t.dueDate, t.status) : '';
+    var patientItem = '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Patient</span><span class="task-detail-meta-value">' + patientHtml + '</span></div>';
 
     root.innerHTML =
-      '<div class="task-detail-layout">' +
-        /* ── Main panel ── */
-        '<div class="task-detail-main">' +
-          '<div class="task-detail-breadcrumb">' +
-            '<a href="/index.html?page=tasks">Tasks</a>' +
-            '<span>/</span>' +
-            '<span class="task-detail-key">' + esc(key) + '</span>' +
-          '</div>' +
-
-          '<div class="task-detail-title-wrap" id="title-wrap">' +
-            '<h1 class="task-detail-title" id="task-title"' + titleEditable + '>' + esc(t.title || 'Untitled') + '</h1>' +
-            (canEditFull ? '<button type="button" class="btn btn-sm task-detail-title-save" id="title-save-btn"><i class="fas fa-check"></i></button>' : '') +
-          '</div>' +
-
-          '<div class="task-detail-desc-section">' +
-            '<div class="task-detail-desc-label">Description</div>' +
-            '<div class="task-detail-desc-view" id="desc-view"' + descClickable + '>' + descriptionHtml + '</div>' +
-            '<div class="task-detail-desc-edit" id="desc-edit">' +
-              '<textarea id="desc-textarea" class="fi">' + esc(t.notes || '') + '</textarea>' +
-              '<div class="task-detail-desc-actions">' +
-                '<button type="button" class="btn btn-sm" id="desc-save-btn">Save</button>' +
-                '<button type="button" class="btn btn-sm btn-ghost" id="desc-cancel-btn">Cancel</button>' +
-              '</div>' +
-            '</div>' +
-          '</div>' +
-
-          '<div class="task-detail-footer-bar">' +
-            '<span class="task-detail-meta-text">Created ' + esc(createdStr) + (t.createdByName ? ' by ' + esc(t.createdByName) : '') + '</span>' +
-            (canDelete ? '<div class="task-detail-danger-actions">' +
-              '<button type="button" class="btn btn-sm btn-danger" id="task-delete-btn"><i class="fas fa-trash"></i> Delete</button>' +
-            '</div>' : '') +
-          '</div>' +
+      '<div class="task-detail-card">' +
+        '<div class="task-detail-title-wrap">' +
+          '<h1 class="task-detail-title">' + esc(t.title || 'Untitled') + '</h1>' +
         '</div>' +
+        '<div class="task-detail-desc-block">' +
+          '<div class="task-detail-desc-view">' + descriptionHtml + '</div>' +
+        '</div>' +
+        '<div class="task-detail-meta-row task-detail-meta-row-1">' +
+          '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Priority</span><div class="task-detail-meta-value">' + priorityBlock + '</div></div>' +
+          '<div class="task-detail-meta-item task-detail-meta-cell task-detail-meta-due' + dueWrapClass + '"><span class="task-detail-meta-label">Due date</span><div class="task-detail-meta-value">' + (t.dueDate || '—') + '</div></div>' +
+          patientItem +
+        '</div>' +
+        '<div class="task-detail-meta-row task-detail-meta-row-2">' +
+          '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Assignee</span><div class="task-detail-meta-value">' + esc(t.assignedToName || '—') + '</div></div>' +
+          '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Status</span><div class="task-detail-meta-value">' + statusBlock + '</div></div>' +
+        '</div>' +
+        '<div class="task-detail-created">Created on ' + esc(createdDateStr) + (t.createdByName ? ' by ' + esc(t.createdByName) : '') + '</div>' +
+        '<hr class="task-detail-sep" />' +
+        '<div class="task-detail-comments">' +
+          '<h3 class="task-detail-comments-hd">Comments</h3>' +
+          '<div class="task-detail-comments-form">' +
+            '<textarea id="task-comment-input" class="fi" placeholder="Add a comment..." rows="2"></textarea>' +
+            '<button type="button" class="btn btn-sm" id="task-comment-submit"><i class="fas fa-paper-plane"></i> Add</button>' +
+          '</div>' +
+          '<div class="task-detail-comments-list" id="task-comments-list"></div>' +
+        '</div>' +
+      '</div>';
 
-        /* ── Sidebar panel ── */
-        '<div class="task-detail-sidebar">' +
-          '<div class="task-detail-sidebar-hd">Details</div>' +
-          '<div class="task-detail-sidebar-body">' +
+    if ($('tb-title')) $('tb-title').textContent = key;
+    document.title = key + ' — Maitra Wellness';
 
-            '<div class="task-detail-field">' +
-              '<label>Status</label>' +
-              (canEditProgress ? '<select id="td-status" class="fi">' +
-                ['todo', 'in_progress', 'done'].map(function (s) {
-                  return '<option value="' + s + '"' + (t.status === s ? ' selected' : '') + '>' + esc(STATUS_LABELS[s]) + '</option>';
-                }).join('') +
-              '</select>' : '<div class="task-detail-field-value">' + esc(STATUS_LABELS[t.status] || t.status || '') + '</div>') +
-            '</div>' +
+    var editBtn = $('task-edit-btn');
+    var delBtn = $('task-delete-btn');
+    if (editBtn) { editBtn.style.display = canEdit ? '' : 'none'; editBtn.textContent = ''; editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit'; }
+    if (delBtn) delBtn.style.display = canDelete ? '' : 'none';
 
-            '<div class="task-detail-field">' +
-              '<label>Priority</label>' +
-              (canEditFull ? '<select id="td-priority" class="fi">' +
-                ['high', 'medium', 'low'].map(function (v) {
-                  return '<option value="' + v + '"' + (p === v ? ' selected' : '') + '>' + esc(PRIORITY_LABELS[v]) + '</option>';
-                }).join('') +
-              '</select>' : '<div class="task-detail-field-value">' + esc(PRIORITY_LABELS[p] || p) + '</div>') +
-            '</div>' +
+    loadTaskComments();
+  }
 
-            '<div class="task-detail-field">' +
-              '<label>Assignee</label>' +
-              (canEditFull ? '<select id="td-assignee" class="fi">' +
-                '<option value="">Unassigned</option>' +
-                (state.staff || []).map(function (s) {
-                  return '<option value="' + esc(s.uid) + '"' + (t.assignedTo === s.uid ? ' selected' : '') + '>' + esc(s.displayName || s.email || '') + '</option>';
-                }).join('') +
-              '</select>' : '<div class="task-detail-field-value">' + esc(t.assignedToName || '—') + '</div>') +
-            '</div>' +
+  /* ─── Render: edit mode (form, no comments) ─────────────────── */
+  function renderEditForm() {
+    var root = $('task-detail-root');
+    var t = state.task;
+    if (!root || !t) return;
 
-            '<div class="task-detail-field task-detail-due-wrap' + (dueUrgency(t.dueDate, t.status) ? ' task-due-' + dueUrgency(t.dueDate, t.status) : '') + '">' +
-              '<label>Due date</label>' +
-              (canEditFull ? '<input type="date" id="td-due" class="fi" value="' + esc(t.dueDate || '') + '">' : '<div class="task-detail-field-value">' + (t.dueDate || '—') + '</div>') +
-            '</div>' +
+    var key = t.key || t.id;
+    var editLevel = state.editLevel;
+    var canEditFull = editLevel === 'full';
 
-            '<div class="task-detail-field">' +
-              '<label>Patient</label>' +
-              '<div class="task-detail-field-value">' + patientHtml + '</div>' +
-            '</div>' +
+    var patientHtml = t.clientId && t.clientName
+      ? '<a href="' + getBaseUrl() + 'patient.html?id=' + esc(t.clientId) + '" class="task-detail-link">' + esc(t.clientName) + '</a>'
+      : '<span class="task-detail-muted">None</span>';
 
+    var titleRow = canEditFull
+      ? '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-title">Title</label><input type="text" id="task-edit-title" class="fi" value="' + esc(t.title || '') + '" placeholder="Task title"></div>'
+      : '';
+    var descRow = canEditFull
+      ? '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-notes">Description</label><textarea id="task-edit-notes" class="fi" rows="4" placeholder="Description">' + esc(t.notes || '') + '</textarea></div>'
+      : '';
+    var statusRow = '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-status">Status</label><select id="task-edit-status" class="fi">' +
+      ['todo', 'in_progress', 'done'].map(function (v) {
+        return '<option value="' + v + '"' + ((t.status || 'todo') === v ? ' selected' : '') + '>' + esc(STATUS_LABELS[v]) + '</option>';
+      }).join('') + '</select></div>';
+
+    var priorityRow = canEditFull
+      ? '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-priority">Priority</label><select id="task-edit-priority" class="fi">' +
+        ['high', 'medium', 'low'].map(function (v) {
+          return '<option value="' + v + '"' + ((t.priority || 'medium') === v ? ' selected' : '') + '>' + esc(PRIORITY_LABELS[v]) + '</option>';
+        }).join('') + '</select></div>'
+      : '';
+    var dueRow = canEditFull
+      ? '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-due">Due date</label><input type="date" id="task-edit-due" class="fi" value="' + esc(t.dueDate || '') + '"></div>'
+      : '';
+    var assigneeRow = canEditFull
+      ? '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-assignee">Assignee</label><select id="task-edit-assignee" class="fi"><option value="">Unassigned</option>' +
+        (state.staff || []).map(function (s) {
+          return '<option value="' + esc(s.uid) + '"' + (t.assignedTo === s.uid ? ' selected' : '') + '>' + esc(s.displayName || s.email || '') + '</option>';
+        }).join('') + '</select></div>'
+      : '';
+
+    root.innerHTML =
+      '<div class="task-detail-card task-edit-card">' +
+        '<h3 class="task-edit-hd">Edit task</h3>' +
+        '<div class="task-edit-form">' +
+          titleRow +
+          descRow +
+          '<div class="task-edit-meta-row">' +
+            statusRow + priorityRow + dueRow + assigneeRow +
+          '</div>' +
+          '<div class="task-edit-readonly">' +
+            '<span class="task-edit-meta-label">Patient</span> ' + patientHtml +
+          '</div>' +
+          '<div class="task-edit-actions">' +
+            '<button type="button" class="btn btn-primary" id="task-edit-save"><i class="fas fa-check"></i> Save</button>' +
+            '<button type="button" class="btn btn-ghost" id="task-edit-cancel">Cancel</button>' +
           '</div>' +
         '</div>' +
       '</div>';
 
-    if ($('tb-title')) $('tb-title').textContent = key + '  ' + (t.title || 'Task');
-    document.title = key + ' ' + (t.title || '') + ' — Maitra Wellness';
-
-    bindEvents();
+    if ($('tb-title')) $('tb-title').textContent = key + ' (editing)';
+    var editBtn = $('task-edit-btn');
+    var delBtn = $('task-delete-btn');
+    if (editBtn) editBtn.style.display = 'none';
+    if (delBtn) delBtn.style.display = 'none';
   }
 
-  /* ─── Event binding ────────────────────────────────────────── */
-  function bindEvents() {
+  function renderDetail() {
+    var root = $('task-detail-root');
+    if (!root || !state.task) return;
+    if (state.isEditing) {
+      renderEditForm();
+      bindEditEvents();
+    } else {
+      renderViewMode();
+      bindViewEvents();
+    }
+  }
+
+  function renderComments(list) {
+    var container = $('task-comments-list');
+    if (!container) return;
+    if (!list || !list.length) {
+      container.innerHTML = '<div class="task-detail-comments-empty">No comments yet.</div>';
+      return;
+    }
+    container.innerHTML = list.map(function (c) {
+      var dateStr = c.createdAt ? new Date(c.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+      return '<div class="task-detail-comment">' +
+        '<div class="task-detail-comment-meta">' + esc(c.createdByName || '') + ' · ' + esc(dateStr) + '</div>' +
+        '<div class="task-detail-comment-text">' + esc(c.text || '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function loadTaskComments() {
+    var t = state.task;
+    if (!t || !t.id || !window.AppDB || !AppDB.getTaskComments) return;
+    AppDB.getTaskComments(t.id).then(function (list) {
+      renderComments(list || []);
+    }).catch(function () { renderComments([]); });
+  }
+
+  /* ─── Event binding: view mode ─────────────────────────────── */
+  function bindViewEvents() {
     var t = state.task;
     if (!t) return;
 
-    function saveField(field, value, label) {
-      var payload = {}; payload[field] = value;
-      if (field === 'assignedTo') {
-        var s = (state.staff || []).filter(function (x) { return x.uid === value; })[0];
-        payload.assignedToName = s ? (s.displayName || s.email || '') : '';
-      }
-      AppDB.updateTask(t.id, payload).then(function () {
-        Object.keys(payload).forEach(function (k) { state.task[k] = payload[k]; });
-        toast(label || 'Saved');
-      }).catch(function (e) { toast('Save failed: ' + (e.message || '')); });
-    }
+    var backBtn = $('task-back-btn');
+    if (backBtn) backBtn.addEventListener('click', goBack);
 
-    /* Sidebar selects: auto-save on change */
-    var statusSel = $('td-status');
-    var prioritySel = $('td-priority');
-    var assigneeSel = $('td-assignee');
-    var dueInp = $('td-due');
-
-    if (statusSel) statusSel.addEventListener('change', function () { saveField('status', statusSel.value, 'Status updated'); });
-    if (prioritySel) prioritySel.addEventListener('change', function () { saveField('priority', prioritySel.value, 'Priority updated'); });
-    if (assigneeSel) assigneeSel.addEventListener('change', function () { saveField('assignedTo', assigneeSel.value || null, 'Assignee updated'); });
-    if (dueInp) dueInp.addEventListener('change', function () { saveField('dueDate', dueInp.value || null, 'Due date updated'); });
-
-    /* Title: inline contenteditable (full edit only) */
-    var canEditFull = state.editLevel === 'full';
-    var canEditProgress = state.editLevel === 'progress' || canEditFull;
-    var titleEl = $('task-title');
-    var titleWrap = $('title-wrap');
-    var titleSaveBtn = $('title-save-btn');
-    var originalTitle = t.title || '';
-
-    if (canEditFull && titleEl) {
-      titleEl.addEventListener('focus', function () { if (titleWrap) titleWrap.classList.add('editing'); });
-      titleEl.addEventListener('blur', function () {
-        setTimeout(function () { if (titleWrap) titleWrap.classList.remove('editing'); }, 200);
-      });
-      titleEl.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); commitTitle(); }
-        if (e.key === 'Escape') { titleEl.textContent = originalTitle; titleEl.blur(); }
-      });
-    }
-    if (titleSaveBtn) titleSaveBtn.addEventListener('click', commitTitle);
-
-    function commitTitle() {
-      if (!canEditFull || !titleEl) return;
-      var newTitle = (titleEl.textContent || '').trim();
-      if (!newTitle) { titleEl.textContent = originalTitle; toast('Title cannot be empty'); return; }
-      if (newTitle === originalTitle) return;
-      AppDB.updateTask(t.id, { title: newTitle }).then(function () {
-        state.task.title = newTitle;
-        originalTitle = newTitle;
-        if ($('tb-title')) $('tb-title').textContent = (t.key || '') + '  ' + newTitle;
-        document.title = (t.key || '') + ' ' + newTitle + ' — Maitra Wellness';
-        toast('Title updated');
-      }).catch(function (e) { titleEl.textContent = originalTitle; toast('Failed: ' + (e.message || '')); });
-    }
-
-    /* Description: click to edit (progress or full) */
-    var descView = $('desc-view');
-    var descEdit = $('desc-edit');
-    var descTextarea = $('desc-textarea');
-    var descSaveBtn = $('desc-save-btn');
-    var descCancelBtn = $('desc-cancel-btn');
-
-    if (canEditProgress && descView) {
-      descView.addEventListener('click', function () {
-        descView.style.display = 'none';
-        if (descEdit) descEdit.style.display = 'block';
-        if (descTextarea) { descTextarea.value = state.task.notes || ''; descTextarea.focus(); }
-      });
-    }
-    if (descCancelBtn) descCancelBtn.addEventListener('click', closeDescEditor);
-    if (descSaveBtn) descSaveBtn.addEventListener('click', function () {
-      var newNotes = (descTextarea && descTextarea.value !== undefined) ? (descTextarea.value || '').trim() : '';
-      AppDB.updateTask(t.id, { notes: newNotes }).then(function () {
-        state.task.notes = newNotes;
-        if (descView) descView.innerHTML = newNotes ? esc(newNotes).replace(/\n/g, '<br>') : '<span style="color:var(--text-3)">Click to add a description...</span>';
-        closeDescEditor();
-        toast('Description saved');
-      }).catch(function (e) { toast('Failed: ' + (e.message || '')); });
+    var editBtn = $('task-edit-btn');
+    if (editBtn) editBtn.addEventListener('click', function () {
+      state.isEditing = true;
+      renderDetail();
     });
 
-    function closeDescEditor() {
-      if (descEdit) descEdit.style.display = 'none';
-      if (descView) descView.style.display = '';
-    }
-
-    /* Delete */
     var deleteBtn = $('task-delete-btn');
     if (deleteBtn) deleteBtn.addEventListener('click', function () {
       if (window.AppModal && AppModal.confirm) {
@@ -258,9 +275,89 @@
     function doDelete() {
       AppDB.deleteTask(t.id).then(function () {
         toast('Task deleted');
-        window.location.href = '/index.html?page=tasks';
+        window.location.href = getBaseUrl() + 'index.html?page=tasks';
       }).catch(function (e) { toast('Delete failed: ' + (e.message || '')); });
     }
+
+    var commentInput = $('task-comment-input');
+    var commentSubmit = $('task-comment-submit');
+    if (commentSubmit && commentInput && AppDB.addTaskComment) {
+      commentSubmit.addEventListener('click', function () {
+        var text = (commentInput.value || '').trim();
+        if (!text) return;
+        commentSubmit.disabled = true;
+        AppDB.addTaskComment(t.id, text, (state.profile && state.profile.displayName) || '').then(function () {
+          commentInput.value = '';
+          commentSubmit.disabled = false;
+          loadTaskComments();
+          toast('Comment added');
+        }).catch(function (e) {
+          commentSubmit.disabled = false;
+          toast('Failed: ' + (e.message || ''));
+        });
+      });
+    }
+  }
+
+  /* ─── Event binding: edit mode ───────────────────────────────── */
+  function bindEditEvents() {
+    var t = state.task;
+    if (!t) return;
+
+    var backBtn = $('task-back-btn');
+    if (backBtn) backBtn.addEventListener('click', goBack);
+
+    var cancelBtn = $('task-edit-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', function () {
+      state.isEditing = false;
+      renderDetail();
+    });
+
+    var saveBtn = $('task-edit-save');
+    if (saveBtn) saveBtn.addEventListener('click', function () {
+      var editLevel = state.editLevel;
+      var canEditFull = editLevel === 'full';
+      var payload = {};
+
+      var titleEl = $('task-edit-title');
+      if (canEditFull && titleEl) {
+        var title = (titleEl.value || '').trim();
+        if (!title) { toast('Title cannot be empty'); return; }
+        payload.title = title;
+      }
+
+      if (canEditFull) {
+        var notesEl = $('task-edit-notes');
+        if (notesEl) payload.notes = (notesEl.value || '').trim();
+      }
+
+      var statusEl = $('task-edit-status');
+      if (statusEl) payload.status = statusEl.value || 'todo';
+
+      if (canEditFull) {
+        var priorityEl = $('task-edit-priority');
+        if (priorityEl) payload.priority = priorityEl.value || 'medium';
+        var dueEl = $('task-edit-due');
+        if (dueEl) payload.dueDate = dueEl.value || null;
+        var assigneeEl = $('task-edit-assignee');
+        if (assigneeEl) {
+          payload.assignedTo = assigneeEl.value || null;
+          var s = (state.staff || []).filter(function (x) { return x.uid === payload.assignedTo; })[0];
+          payload.assignedToName = s ? (s.displayName || s.email || '') : '';
+        }
+      }
+
+      saveBtn.disabled = true;
+      AppDB.updateTask(t.id, payload).then(function () {
+        Object.keys(payload).forEach(function (k) { state.task[k] = payload[k]; });
+        state.isEditing = false;
+        renderDetail();
+        toast('Task saved');
+      }).catch(function (e) {
+        saveBtn.disabled = false;
+        toast('Save failed: ' + (e.message || ''));
+      });
+    });
   }
 
   /* ─── Navigation ──────────────────────────────────────────── */
@@ -269,16 +366,16 @@
     if (fromOurApp && window.history.length > 1) {
       window.history.back();
     } else {
-      window.location.href = '/index.html?page=tasks';
+      window.location.href = getBaseUrl() + 'index.html?page=tasks';
     }
   }
 
   /* ─── Auth + boot ──────────────────────────────────────────── */
   function run() {
-    if (!window.AppDB || !AppDB.ready) { window.location.href = '/index.html'; return; }
+    if (!window.AppDB || !AppDB.ready) { window.location.href = getBaseUrl() + 'index.html'; return; }
     var params = new URLSearchParams(window.location.search);
     var id = params.get('id');
-    if (!id) { window.location.href = '/index.html?page=tasks'; return; }
+    if (!id) { window.location.href = getBaseUrl() + 'index.html?page=tasks'; return; }
 
     var resolved = false;
     var unsub = AppDB.onAuthStateChanged && AppDB.onAuthStateChanged(function (user) {
@@ -295,7 +392,7 @@
         if (typeof unsub === 'function') unsub();
         var u = AppDB.getCurrentUser && AppDB.getCurrentUser();
         if (u) loadTask(u, id);
-        else window.location.href = '/index.html';
+        else window.location.href = getBaseUrl() + 'index.html';
       }, 600);
     });
   }
@@ -310,7 +407,7 @@
       var task = results[0];
       state.staff = results[1] || [];
       state.profile = results[2] || {};
-      if (!task) { toast('Task not found'); window.location.href = '/index.html?page=tasks'; return; }
+      if (!task) { toast('Task not found'); window.location.href = getBaseUrl() + 'index.html?page=tasks'; return; }
       state.task = task;
       var clientPromise = task.clientId && AppDB.getClient ? AppDB.getClient(task.clientId) : Promise.resolve(null);
       clientPromise.then(function (client) {
@@ -318,7 +415,7 @@
         if (window.Permissions && window.Permissions.canViewTask) {
           if (!window.Permissions.canViewTask(state.profile, state.task, state.client)) {
             toast('You do not have access to this task');
-            window.location.href = '/index.html?page=tasks';
+            window.location.href = getBaseUrl() + 'index.html?page=tasks';
             return;
           }
         }
@@ -328,6 +425,7 @@
           ? window.Permissions.canDeleteTask(state.profile, state.task) : true;
         showApp();
         renderDetail();
+        bindShareButton();
       }).catch(function () {
         state.client = null;
         state.editLevel = (window.Permissions && window.Permissions.canEditTaskLevel)
@@ -336,10 +434,11 @@
           ? window.Permissions.canDeleteTask(state.profile, state.task) : true;
         showApp();
         renderDetail();
+        bindShareButton();
       });
     }).catch(function (err) {
       toast(err && err.message ? err.message : 'Failed to load');
-      window.location.href = '/index.html?page=tasks';
+      window.location.href = getBaseUrl() + 'index.html?page=tasks';
     });
   }
 

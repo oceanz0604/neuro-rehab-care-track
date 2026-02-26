@@ -19,6 +19,7 @@
 
   var auth = firebase.auth();
   var db   = firebase.firestore();
+  var rtdb = typeof firebase.database === 'function' ? firebase.database() : null;
 
   /* ─── Cache Layer (5-min TTL) ────────────────────────────────── */
   var _cache = {};
@@ -319,32 +320,34 @@
     });
   }
 
-  /* ─── Client notes (comments) ─────────────────────────────────── */
+  /* ─── Client notes (comments) — RTDB ───────────────────────────── */
   function getClientNotes(clientId, limit) {
-    return db.collection('clients').doc(clientId).collection('notes')
-      .orderBy('createdAt', 'desc')
-      .limit(limit || 100)
-      .get()
-      .then(function (snap) {
-        return snap.docs.map(function (d) {
-          var o = d.data();
-          o.id = d.id;
-          if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
-          return o;
-        });
+    if (!clientId) return Promise.resolve([]);
+    if (!rtdb) return Promise.resolve([]);
+    var ref = rtdb.ref('clientNotes/' + clientId).orderByChild('createdAt').limitToLast(limit || 100);
+    return ref.once('value').then(function (snap) {
+      var list = [];
+      snap.forEach(function (child) {
+        var o = child.val();
+        o.id = child.key;
+        if (o.createdAt != null && typeof o.createdAt === 'number') o.createdAt = new Date(o.createdAt).toISOString();
+        list.push(o);
       });
+      list.reverse();
+      return list;
+    });
   }
 
   function addClientNote(clientId, data) {
+    if (!rtdb) return Promise.reject(new Error('Realtime Database not available'));
     var user = getCurrentUser();
-    var doc = {
+    return rtdb.ref('clientNotes/' + clientId).push({
       text: (data.text || '').trim(),
       addedBy: user ? user.uid : '',
       addedByName: data.addedByName || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    };
-    return db.collection('clients').doc(clientId).collection('notes').add(doc).then(function (ref) {
-      logAudit('client_note_add', 'client', clientId, { noteId: ref.id }).catch(function () {});
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    }).then(function (ref) {
+      logAudit('client_note_add', 'client', clientId, { noteId: ref.key }).catch(function () {});
       return ref;
     });
   }
@@ -520,6 +523,36 @@
     });
   }
 
+  /* ─── Task comments — RTDB ───────────────────────────────────── */
+  function getTaskComments(taskId, limit) {
+    if (!taskId) return Promise.resolve([]);
+    if (!rtdb) return Promise.resolve([]);
+    var ref = rtdb.ref('taskComments/' + taskId).orderByChild('createdAt').limitToLast(limit || 50);
+    return ref.once('value').then(function (snap) {
+      var list = [];
+      snap.forEach(function (child) {
+        var o = child.val();
+        o.id = child.key;
+        if (o.createdAt != null && typeof o.createdAt === 'number') o.createdAt = new Date(o.createdAt).toISOString();
+        list.push(o);
+      });
+      list.reverse();
+      return list;
+    });
+  }
+
+  function addTaskComment(taskId, text, createdByName) {
+    if (!rtdb) return Promise.reject(new Error('Realtime Database not available'));
+    var user = getCurrentUser();
+    var name = (createdByName || (user && user.email) || '').trim() || 'Staff';
+    return rtdb.ref('taskComments/' + taskId).push({
+      text: (text || '').trim(),
+      createdBy: user ? user.uid : null,
+      createdByName: name,
+      createdAt: firebase.database.ServerValue.TIMESTAMP
+    });
+  }
+
   /* ─── Audit log ──────────────────────────────────────────────── */
   function logAudit(action, targetType, targetId, details) {
     var user = getCurrentUser();
@@ -591,6 +624,8 @@
     addTask: addTask,
     updateTask: updateTask,
     deleteTask: deleteTask,
+    getTaskComments: getTaskComments,
+    addTaskComment: addTaskComment,
     logAudit: logAudit,
     getAuditLog: getAuditLog,
     cacheClear: cacheClear

@@ -24,6 +24,15 @@
 </div>
 
 <div id="task-app" class="task-app" hidden>
+  <header class="task-page-topbar" id="task-page-topbar">
+    <button type="button" class="task-topbar-back" id="task-back-btn" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+    <h2 class="task-topbar-title" id="tb-title">Task</h2>
+    <div class="task-topbar-actions">
+      <button type="button" class="btn btn-sm btn-ghost task-topbar-share" id="task-share-btn" aria-label="Copy task link to share with creator" title="Copy link"><i class="fas fa-share-nodes"></i></button>
+      <button type="button" class="btn btn-sm btn-ghost" id="task-edit-btn" style="display:none"><i class="fas fa-pen"></i> Edit</button>
+      <button type="button" class="btn btn-sm btn-danger" id="task-delete-btn" style="display:none"><i class="fas fa-trash"></i> Delete</button>
+    </div>
+  </header>
   <main class="main-content main-content-center">
     <div id="task-detail-root"></div>
   </main>
