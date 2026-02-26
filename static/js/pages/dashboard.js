@@ -55,9 +55,9 @@
     var attrs = ' data-nav="' + (page || '') + '"';
     if (filterStatus) attrs += ' data-filter-status="' + filterStatus + '"';
     if (filterRisk) attrs += ' data-filter-risk="' + filterRisk + '"';
-    return '<div class="stat-card stat-card-' + color + ' clickable"' + attrs + ' role="button" tabindex="0">' +
-      '<div class="stat-icon ' + color + '"><i class="fas ' + icon + '"></i></div>' +
-      '<div><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div></div></div>';
+    return '<div class="stat-card clickable"' + attrs + ' role="button" tabindex="0">' +
+      '<i class="fas ' + icon + ' stat-card-icon stat-card-icon-' + color + '"></i>' +
+      '<div class="stat-card-text"><div class="stat-card-label">' + esc(label) + '</div><div class="stat-card-value">' + value + '</div></div></div>';
   }
 
   function bindStatLinks() {
