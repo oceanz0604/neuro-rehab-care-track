@@ -48,7 +48,19 @@
     hideLoading();
   }
 
+  function goBack(fallbackPage) {
+    var fallback = '/index.html?page=' + (fallbackPage || 'patients');
+    var fromOurApp = document.referrer && document.referrer.indexOf(window.location.origin) === 0;
+    if (fromOurApp && window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = fallback;
+    }
+  }
+
   function run() {
+    var backBtn = document.getElementById('topbar-back');
+    if (backBtn) backBtn.addEventListener('click', function (e) { e.preventDefault(); goBack('patients'); });
     if (!window.AppDB || !AppDB.ready) {
       window.location.href = '/index.html';
       return;

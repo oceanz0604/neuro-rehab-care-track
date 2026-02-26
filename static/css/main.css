@@ -394,16 +394,23 @@ img { max-width: 100%; }
 }
 .notif-btn:hover { background: var(--bg-subtle); }
 
-/* Patient standalone page (no sidebar) */
-.patient-page .topbar-no-sidebar { left: 0; }
-.patient-page .main-content-center { max-width: 900px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+/* Detail pages (patient, task) — no sidebar, back control */
+.topbar-detail { left: 0; }
+.topbar-detail .topbar-back { margin-right: 4px; }
+.patient-page .topbar-no-sidebar,
+.patient-page .topbar-detail { left: 0; }
+.patient-page .main-content-center,
+.task-page .main-content-center { max-width: 900px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
 .topbar-back {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px; border-radius: var(--radius-sm); color: var(--text-2);
-  background: none; border: none; text-decoration: none; transition: all var(--transition);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-width: 44px; min-height: 44px; padding: 0 10px; border-radius: var(--radius-sm);
+  color: var(--text-2); background: none; border: none; text-decoration: none; cursor: pointer;
+  transition: all var(--transition); flex-shrink: 0;
+  font-size: .9rem; font-weight: 500;
 }
-.topbar-back:hover { background: var(--bg-subtle); color: var(--text); }
-.topbar-back i { font-size: 1rem; }
+.topbar-back:hover { background: var(--bg-subtle); color: var(--primary); }
+.topbar-back i { font-size: 1.05rem; }
+.topbar-back-label { display: none; }
 
 .shift-badge {
   padding: 4px 12px; border-radius: var(--radius-pill); font-size: .75rem; font-weight: 600;
@@ -900,8 +907,8 @@ img { max-width: 100%; }
 .task-priority-badge.priority-low { background: var(--green-bg); color: var(--green); }
 
 /* ═══ Task detail page (task.html) ═══════════════════════════════════ */
-.task-page .topbar-no-sidebar { left: 0; }
-.task-page .main-content-center { max-width: 900px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
+.task-page .topbar-no-sidebar,
+.task-page .topbar-detail { left: 0; }
 .task-app { display: flex; flex-direction: column; min-height: 100vh; min-width: 0; }
 
 /* Two-column layout: main | sidebar */
@@ -1830,8 +1837,6 @@ tr.clickable { cursor: pointer; }
 
 @media (max-width: 768px) {
   :root { --bottom-nav-h: calc(56px + env(safe-area-inset-bottom, 0px)); }
-  .sidebar { transform: translateX(-100%); }
-  .sidebar.open { transform: translateX(0); }
   .sb-overlay.visible { display: block; }
   .main-wrap { margin-left: 0; }
   .topbar {
@@ -1845,15 +1850,38 @@ tr.clickable { cursor: pointer; }
     gap: 10px;
     align-items: center;
   }
-  .menu-btn { display: flex; align-items: center; justify-content: center; font-size: 1.3rem; padding: 10px; min-width: 44px; min-height: 44px; }
+  .menu-btn { display: flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; }
   .tb-title { font-size: 1.05rem; }
   .tb-breadcrumb { display: none; }
   .tb-right .notif-btn { width: 40px; height: 40px; font-size: 1.1rem; }
-  .sidebar .nav-link { font-size: .95rem; padding: 12px 16px; color: rgba(255,255,255,.7); }
-  .sidebar .nav-link i { font-size: 1rem; width: 22px; }
+  .topbar-back { padding: 0 12px 0 8px; }
+  .topbar-back-label { display: inline; white-space: nowrap; }
+  .topbar-detail .tb-breadcrumb { display: none; }
+  .topbar-detail .topbar-back-label { display: inline; }
+
+  /* Sidebar becomes a bottom sheet on mobile */
+  .sidebar {
+    width: 100%; height: auto; max-height: 70vh;
+    top: auto; bottom: 0; left: 0; right: 0;
+    transform: translateY(100%);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding-bottom: var(--safe-bottom);
+    box-shadow: 0 -8px 32px rgba(15,23,42,.2);
+    overflow-y: auto;
+  }
+  .sidebar.open { transform: translateY(0); }
+  .sb-brand { padding: 20px 16px 12px; min-height: auto; height: auto; position: relative; }
+  .sb-brand::before {
+    content: ''; display: block; width: 36px; height: 4px;
+    border-radius: 2px; background: rgba(255,255,255,.25);
+    position: absolute; top: 8px; left: 50%; transform: translateX(-50%);
+  }
+  .sidebar .nav-link { font-size: .95rem; padding: 14px 16px; color: rgba(255,255,255,.8); }
+  .sidebar .nav-link i { font-size: 1.05rem; width: 24px; }
   .sb-brand-text { font-size: 1rem; }
   .sb-brand .sb-name { font-size: .82rem; }
-  .logout-btn { font-size: .95rem; padding: 12px 16px; }
+  .logout-btn { font-size: .95rem; padding: 14px 16px; }
+  .nav-section-label { padding: 12px 16px 4px; }
   .main-content { padding: 16px; margin-bottom: var(--bottom-nav-h); }
   .bottom-nav { display: block; }
   .stats-row { grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -1903,7 +1931,7 @@ tr.clickable { cursor: pointer; }
   .login-card { padding: 30px 24px; border-radius: var(--radius-lg); }
   .main-content { padding: 12px; }
   .topbar { padding-top: max(10px, var(--safe-top)); padding-bottom: 0; padding-left: max(16px, calc(10px + var(--safe-left))); padding-right: max(16px, calc(10px + var(--safe-right))); }
-  .menu-btn { min-width: 44px; min-height: 44px; font-size: 1.3rem; }
+  .menu-btn { display: flex; min-width: 44px; min-height: 44px; }
   .tb-title { font-size: 1rem; }
   .tb-right .notif-btn { width: 40px; height: 40px; font-size: 1.15rem; }
   .sidebar .nav-link { font-size: .95rem; padding: 13px 16px; }

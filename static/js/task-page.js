@@ -241,8 +241,20 @@
     }
   }
 
+  /* ─── Navigation ──────────────────────────────────────────── */
+  function goBack() {
+    var fromOurApp = document.referrer && document.referrer.indexOf(window.location.origin) === 0;
+    if (fromOurApp && window.history.length > 1) {
+      window.history.back();
+    } else {
+      window.location.href = '/index.html?page=tasks';
+    }
+  }
+
   /* ─── Auth + boot ──────────────────────────────────────────── */
   function run() {
+    var backBtn = $('topbar-back');
+    if (backBtn) backBtn.addEventListener('click', function (e) { e.preventDefault(); goBack(); });
     if (!window.AppDB || !AppDB.ready) { window.location.href = '/index.html'; return; }
     var params = new URLSearchParams(window.location.search);
     var id = params.get('id');

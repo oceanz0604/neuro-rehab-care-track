@@ -24,8 +24,11 @@
 </div>
 
 <div id="task-app" class="task-app" hidden>
-  <header class="topbar topbar-no-sidebar">
-    <a href="/index.html?page=tasks" class="topbar-back" id="topbar-back" aria-label="Back to Tasks"><i class="fas fa-arrow-left"></i></a>
+  <header class="topbar topbar-detail">
+    <a href="/index.html?page=tasks" class="topbar-back" id="topbar-back" role="button" aria-label="Back to Tasks">
+      <i class="fas fa-arrow-left"></i>
+      <span class="topbar-back-label">Tasks</span>
+    </a>
     <div class="tb-title-wrap">
       <h2 class="tb-title" id="tb-title">Task</h2>
       <div class="tb-breadcrumb"><a href="/index.html?page=tasks">Tasks</a><span class="bc-sep"><i class="fas fa-chevron-right"></i></span><span class="bc-current" id="tb-bc-task">Details</span></div>
