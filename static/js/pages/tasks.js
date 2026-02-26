@@ -1,5 +1,5 @@
 /**
- * Tasks page — JIRA-style Kanban board + list, task detail opens in task.html
+ * Tasks page — Kanban board only, task detail opens in task.html
  */
 (function () {
   'use strict';
@@ -7,7 +7,6 @@
   var _inited = false;
   var _tasks = [];
   var _staff = [];
-  var _currentView = 'board';
   var STATUSES = ['todo', 'in_progress', 'done'];
   var STATUS_LABELS = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' };
   var PRIORITY_ICONS = { high: 'fa-arrow-up', medium: 'fa-minus', low: 'fa-arrow-down' };
@@ -39,16 +38,7 @@
   function getFilteredTasks(state) {
     var profile = (state && state.profile) || {};
     var clients = (state && state.clients) || [];
-    var visible = getVisibleTasks(_tasks, profile, clients);
-    var sf = ($('tasks-filter-status') || {}).value || '';
-    var cf = ($('tasks-filter-client') || {}).value || '';
-    var af = ($('tasks-filter-assignee') || {}).value || '';
-    return visible.filter(function (t) {
-      if (sf && t.status !== sf) return false;
-      if (cf && (t.clientId || '') !== cf) return false;
-      if (af && (t.assignedTo || '') !== af) return false;
-      return true;
-    });
+    return getVisibleTasks(_tasks, profile, clients);
   }
 
   function initials(name) {
@@ -70,31 +60,15 @@
     return '';
   }
 
-  function populateFilters(state) {
-    var cs = $('tasks-filter-client');
-    var as = $('tasks-filter-assignee');
-    if (cs && cs.options.length <= 1 && (state.clients || []).length) {
-      cs.innerHTML = '<option value="">All patients</option>' + state.clients.filter(function (c) { return c.status === 'active'; }).map(function (c) {
-        return '<option value="' + esc(c.id) + '">' + esc(c.name || '') + '</option>';
-      }).join('');
-    }
-    if (as && as.options.length <= 1 && _staff.length) {
-      as.innerHTML = '<option value="">All assignees</option>' + _staff.map(function (s) {
-        return '<option value="' + esc(s.uid) + '">' + esc(s.displayName || s.email || '') + '</option>';
-      }).join('');
-    }
-  }
-
   function render(state) {
-    if (!$('tasks-board-wrap') && !$('tasks-list-wrap')) return;
+    if (!$('tasks-board-wrap')) return;
     state = state || {};
     function done() {
-      populateFilters(state);
       var addBtn = $('tasks-add-btn');
       if (addBtn && window.Permissions && window.Permissions.canCreateTask) {
         addBtn.style.display = window.Permissions.canCreateTask(state.profile) ? '' : 'none';
       }
-      if (_currentView === 'board') renderBoard(state); else renderTable(state);
+      renderBoard(state);
     }
     AppDB.getTasks().then(function (list) {
       _tasks = list || [];
@@ -115,9 +89,11 @@
       var list = filtered.filter(function (t) { return (t.status || 'todo') === status; });
       if (countEl) countEl.textContent = list.length;
       if (!list.length) {
+        col.classList.remove('has-cards');
         col.innerHTML = '<div class="task-board-empty"><i class="fas fa-inbox"></i>No tasks here</div>';
         return;
       }
+      col.classList.add('has-cards');
       col.innerHTML = list.map(function (t) { return cardHtml(t); }).join('');
       col.querySelectorAll('.task-card').forEach(function (card) {
         card.addEventListener('click', function () { openTask(card.getAttribute('data-task-id')); });
@@ -143,40 +119,6 @@
       '<div class="task-card-title">' + esc(t.title || '—') + '</div>' +
       '<div class="task-card-footer">' + patientTag + dueTag + avatar + '</div>' +
     '</div>';
-  }
-
-  function renderTable(state) {
-    var container = $('tasks-list');
-    if (!container) return;
-    var filtered = getFilteredTasks(state);
-    var visibleCount = getVisibleTasks(_tasks, (state && state.profile) || {}, (state && state.clients) || []).length;
-    if (!filtered.length) {
-      container.innerHTML = '<div class="empty-state" style="padding:32px"><i class="fas fa-list-check"></i><p>' + (visibleCount ? 'No tasks match filters' : 'No tasks yet') + '</p></div>';
-      return;
-    }
-    var html = '<table class="staff-table task-list-table"><thead><tr><th>Key</th><th>Title</th><th>Priority</th><th>Patient</th><th>Assignee</th><th>Due</th><th>Status</th></tr></thead><tbody>';
-    filtered.forEach(function (t) {
-      var p = t.priority || 'medium';
-      var key = t.key || ('T-' + (t.id || '').slice(-6));
-      var urgency = dueUrgency(t.dueDate, t.status);
-      var rowClass = 'task-list-row' + (urgency ? ' task-due-' + urgency : '');
-      var dueCellClass = urgency ? ' task-due-cell-' + urgency : '';
-      html += '<tr class="' + rowClass + '" data-task-id="' + esc(t.id) + '">' +
-        '<td><span class="task-list-key">' + esc(key) + '</span></td>' +
-        '<td>' + esc(t.title || '—') + '</td>' +
-        '<td><span class="task-priority-badge priority-' + p + '"><i class="fas ' + (PRIORITY_ICONS[p] || 'fa-minus') + '"></i> ' + esc(PRIORITY_LABELS[p] || p) + '</span></td>' +
-        '<td>' + esc(t.clientName || '—') + '</td>' +
-        '<td>' + esc(t.assignedToName || '—') + '</td>' +
-        '<td class="task-list-due' + dueCellClass + '">' + (t.dueDate || '—') + '</td>' +
-        '<td><span class="status-badge task-status-' + (t.status || 'todo') + '">' + esc(STATUS_LABELS[t.status] || t.status || 'To Do') + '</span></td>' +
-      '</tr>';
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
-
-    container.querySelectorAll('.task-list-row').forEach(function (row) {
-      row.addEventListener('click', function () { openTask(row.getAttribute('data-task-id')); });
-    });
   }
 
   /* ─── Create / Edit Modal ─────────────────────────────────────── */
@@ -270,7 +212,7 @@
   }
 
   function refreshView(state) {
-    if (_currentView === 'board') renderBoard(state); else renderTable(state);
+    renderBoard(state);
   }
 
   /* ─── Init ─────────────────────────────────────────────────── */
@@ -279,27 +221,26 @@
     _inited = true;
     (AppDB.getAllStaff ? AppDB.getAllStaff() : Promise.resolve([])).then(function (s) { _staff = s || []; }).catch(function () {});
 
-    function applyFilters() { refreshView(state); }
-    ['tasks-filter-status', 'tasks-filter-client', 'tasks-filter-assignee'].forEach(function (id) {
-      var el = $(id); if (el) el.addEventListener('change', applyFilters);
-    });
-
-    document.querySelectorAll('.tasks-view-btn').forEach(function (btn) {
-      btn.addEventListener('click', function () {
-        var view = btn.getAttribute('data-view');
-        if (!view || view === _currentView) return;
-        _currentView = view;
-        document.querySelectorAll('.tasks-view-btn').forEach(function (b) {
-          var isActive = b.getAttribute('data-view') === view;
-          b.classList.toggle('active', isActive);
-          b.classList.toggle('btn-outline', !isActive);
-          b.setAttribute('aria-selected', String(isActive));
-        });
-        $('tasks-board-wrap').style.display = view === 'board' ? '' : 'none';
-        $('tasks-list-wrap').style.display = view === 'list' ? '' : 'none';
-        refreshView(state);
+    var board = $('task-board');
+    if (board) {
+      board.addEventListener('click', function (e) {
+        var hd = e.target && e.target.closest ? e.target.closest('.task-board-col-hd') : null;
+        if (!hd) return;
+        var col = hd.closest('.task-board-column');
+        if (!col) return;
+        var collapsed = col.classList.toggle('collapsed');
+        hd.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
       });
-    });
+      board.addEventListener('keydown', function (e) {
+        var hd = e.target && e.target.closest ? e.target.closest('.task-board-col-hd') : null;
+        if (!hd || (e.key !== 'Enter' && e.key !== ' ')) return;
+        e.preventDefault();
+        var col = hd.closest('.task-board-column');
+        if (!col) return;
+        var collapsed = col.classList.toggle('collapsed');
+        hd.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      });
+    }
   }
 
   window.Pages = window.Pages || {};
