@@ -227,6 +227,7 @@
     var myName = (p.displayName || '').trim();
     var isTherapist = window.Permissions && window.Permissions.hasRole(p, 'therapist');
     var isDoctor = window.Permissions && (window.Permissions.hasRole(p, 'medical_officer') || window.Permissions.hasRole(p, 'psychiatrist'));
+    var isAdmin = window.Permissions && window.Permissions.getRole && window.Permissions.getRole(p) === 'admin';
 
     var myPatients = [];
     if ((isTherapist || isDoctor) && myName) {
@@ -240,7 +241,7 @@
         if (tagged) myPatients.push(c);
       });
     }
-    if (!myPatients.length) myPatients = active.slice();
+    if (!myPatients.length && !isAdmin) myPatients = active.slice();
     return myPatients;
   }
 
