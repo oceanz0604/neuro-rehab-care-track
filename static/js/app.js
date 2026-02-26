@@ -92,9 +92,10 @@
         .then(function () { btn.disabled = false; btn.textContent = 'Sign in'; })
         .catch(function (err) {
           btn.disabled = false; btn.textContent = 'Sign in';
-          if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-            showLoginError('Account not found. Contact your administrator.');
-          } else if (err.code === 'auth/wrong-password') {
+          var code = err && err.code;
+          if (code === 'auth/user-not-found' || code === 'auth/invalid-credential' || code === 'auth/invalid-login-credentials') {
+            showLoginError('Account not found or invalid credentials. Contact your administrator.');
+          } else if (code === 'auth/wrong-password') {
             showLoginError('Incorrect password.');
           } else {
             showLoginError(err.message || 'Sign in failed.');
@@ -515,12 +516,17 @@
           }
         });
         AppDB.getUserProfile(user.uid).then(function (profile) {
-          if (profile && profile.isActive === false) {
+          if (!profile) {
+            showLoginError('Account not found. Contact your administrator.');
+            AppDB.signOut();
+            return;
+          }
+          if (profile.isActive === false) {
             showLoginError('Your account has been deactivated. Contact your administrator.');
             AppDB.signOut();
             return;
           }
-          state.profile = profile || {};
+          state.profile = profile;
           showApp();
           updateThemeIcon();
           setTimeout(function () { showPwaBanner(); }, 1500);
@@ -532,16 +538,9 @@
             var page = params.get('page');
             navigate(page && PAGE_TITLES[page] ? page : 'dashboard');
           });
-        }).catch(function () {
-          state.profile = {};
-          showApp();
-          updateThemeIcon();
-          setTimeout(function () { showPwaBanner(); }, 1500);
-          loadData().then(function () {
-            var params = new URLSearchParams(window.location.search);
-            var page = params.get('page');
-            navigate(page && PAGE_TITLES[page] ? page : 'dashboard');
-          });
+        }).catch(function (err) {
+          showLoginError('Could not load your profile. Contact your administrator.');
+          AppDB.signOut();
         });
       } else {
         if (_profileListenerUnsub) { _profileListenerUnsub(); _profileListenerUnsub = null; }
