@@ -322,7 +322,7 @@
   /* ─── Client notes (comments) ─────────────────────────────────── */
   function getClientNotes(clientId, limit) {
     return db.collection('clients').doc(clientId).collection('notes')
-      .orderBy('createdAt', 'asc')
+      .orderBy('createdAt', 'desc')
       .limit(limit || 100)
       .get()
       .then(function (snap) {

@@ -316,11 +316,11 @@
     var displayName = (profile.displayName || profile.email || 'Staff').trim();
     el.innerHTML =
       '<div class="patient-notes-wrap">' +
-        '<div class="patient-notes-list" id="pd-notes-list"><div class="empty-state" style="padding:20px"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
         '<div class="patient-notes-compose">' +
           '<textarea id="pd-notes-input" class="fi patient-notes-textarea" rows="2" placeholder="Add a note or comment..." maxlength="2000"></textarea>' +
           '<button type="button" class="btn btn-sm" id="pd-notes-send"><i class="fas fa-paper-plane"></i> Send</button>' +
         '</div>' +
+        '<div class="patient-notes-list" id="pd-notes-list"><div class="empty-state" style="padding:20px"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
       '</div>';
     loadPatientNotes();
     var input = document.getElementById('pd-notes-input');
@@ -349,7 +349,7 @@
     if (!list || !_client) return;
     AppDB.getClientNotes(_client.id).then(function (notes) {
       if (!notes.length) {
-        list.innerHTML = '<div class="empty-state patient-notes-empty"><i class="fas fa-comment-dots"></i><p>No comments yet. Add a note below.</p></div>';
+        list.innerHTML = '<div class="empty-state patient-notes-empty"><i class="fas fa-comment-dots"></i><p>No comments yet. Post one above.</p></div>';
         return;
       }
       list.innerHTML = notes.map(function (n) {
@@ -360,7 +360,6 @@
           '<div class="patient-note-meta">' + by + ' · ' + dateTime + '</div>' +
           '<div class="patient-note-text">' + text + '</div></div>';
       }).join('');
-      list.scrollTop = list.scrollHeight;
     }).catch(function () {
       list.innerHTML = '<div class="empty-state patient-notes-empty"><p>Could not load notes.</p></div>';
     });
