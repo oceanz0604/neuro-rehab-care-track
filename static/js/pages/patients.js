@@ -109,22 +109,28 @@
       var risk = (c.currentRisk && c.currentRisk !== 'none') ? c.currentRisk : 'Low';
       var riskClass = (c.currentRisk && c.currentRisk !== 'none') ? c.currentRisk : 'low';
       var myBadge = isDoctorOrTherapist && isMyPatient(c) ? ' <span class="badge-my-patient">My patient</span>' : '';
+      var nameParts = (c.name || '?').trim().split(/\s+/);
+      var initials = nameParts.length >= 2 ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase() : (nameParts[0] || '?').substring(0, 2).toUpperCase();
+      var avatarBg = 'risk-' + riskClass + '-bg';
+      var statusDot = isDischarged ? 'dot-discharged' : 'dot-active';
+      var avatarHtml = '<div class="patient-avatar ' + avatarBg + '">' + esc(initials) + '<span class="patient-avatar-dot ' + statusDot + '"></span></div>';
+      var quickHtml = '<div class="patient-card-quick"><button type="button" title="View" data-quick="view"><i class="fas fa-eye"></i></button></div>';
       if (isDischarged) {
         var dischargeDateStr = c.dischargeDate ? esc(c.dischargeDate) : '—';
-        return '<div class="' + cardClass + '" data-id="' + esc(c.id) + '">' +
-          '<div class="patient-card-name-row">' +
-            '<div class="patient-card-name">' + esc(c.name || '—') + myBadge + '</div>' +
-            '<span class="patient-card-discharge-date"><span class="patient-card-discharged-badge">Discharged</span> ' + dischargeDateStr + '</span>' +
-          '</div>' +
+        return '<div class="' + cardClass + '" data-id="' + esc(c.id) + '">' + quickHtml +
+          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">' + avatarHtml +
+          '<div style="flex:1;min-width:0"><div class="patient-card-name" style="margin-bottom:2px">' + esc(c.name || '—') + myBadge + '</div>' +
+          '<span class="patient-card-discharge-date"><span class="patient-card-discharged-badge">Discharged</span> ' + dischargeDateStr + '</span></div></div>' +
           '<div class="patient-card-row"><span class="patient-card-label">Discharge</span><span class="discharge-days ' + esc(dischargeInfo.class) + '">' + esc(dischargeInfo.text) + '</span></div>' +
           '<div class="patient-card-row"><span class="patient-card-label">Diagnosis</span><span class="patient-card-diagnosis">' + esc(diagnosis) + '</span></div>' +
           '</div>';
       }
-      return '<div class="' + cardClass + '" data-id="' + esc(c.id) + '">' +
-        '<div class="patient-card-name">' + esc(c.name || '—') + myBadge + '</div>' +
+      return '<div class="' + cardClass + '" data-id="' + esc(c.id) + '">' + quickHtml +
+        '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">' + avatarHtml +
+        '<div style="flex:1;min-width:0"><div class="patient-card-name" style="margin-bottom:0">' + esc(c.name || '—') + myBadge + '</div>' +
+        '<span style="font-size:.78rem;color:var(--text-3)">' + esc(diagnosis) + '</span></div></div>' +
         '<div class="patient-card-row"><span class="patient-card-label">Discharge</span><span class="discharge-days ' + esc(dischargeInfo.class) + '">' + esc(dischargeInfo.text) + '</span>' + dischargeSub + '</div>' +
         '<div class="patient-card-row"><span class="patient-card-label">Risk</span><span class="risk-badge risk-' + riskClass + '">' + esc(risk) + '</span></div>' +
-        '<div class="patient-card-row"><span class="patient-card-label">Diagnosis</span><span class="patient-card-diagnosis">' + esc(diagnosis) + '</span></div>' +
         '</div>';
     }).join('');
     container.innerHTML = html;

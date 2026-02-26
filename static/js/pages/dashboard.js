@@ -11,8 +11,15 @@
     var p = state.profile || {};
     var hour = new Date().getHours();
     var greet = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-    $('d-greet').textContent = greet + ', ' + (p.displayName || 'Staff');
-    $('d-date').textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    var greetEl = $('d-greet');
+    if (greetEl) greetEl.textContent = greet + ', ' + (p.displayName || 'Staff');
+    var motivEl = $('d-motivational');
+    if (motivEl) {
+      var tips = ['Ready to make a difference today.', 'Your patients are counting on you.', 'Every report helps the team.', 'Small steps lead to big progress.'];
+      motivEl.textContent = tips[Math.floor(Math.random() * tips.length)];
+    }
+    var dateEl = $('d-date');
+    if (dateEl) dateEl.textContent = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
     var clients = state.clients || [];
     var active = clients.filter(function (c) { return c.status === 'active'; });

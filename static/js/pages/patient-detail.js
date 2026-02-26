@@ -88,22 +88,31 @@
     var riskLabel = (c.currentRisk && c.currentRisk !== 'none') ? (c.currentRisk) : 'Low';
     var riskClass = (c.currentRisk && c.currentRisk !== 'none') ? c.currentRisk : 'low';
     var riskBadge = '<span class="risk-badge risk-' + riskClass + '">Risk: ' + riskLabel + '</span>';
+    var nameParts = (c.name || '?').trim().split(/\s+/);
+    var initials = nameParts.length >= 2 ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase() : (nameParts[0] || '?').substring(0, 2).toUpperCase();
+    var avatarBg = 'risk-' + riskClass + '-bg';
     var actions = '';
-    if (canAddDiag && c.status !== 'discharged') actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-header-btn"><i class="fas fa-stethoscope"></i> Add Diagnosis</button>';
-    if (canAddReport && c.status !== 'discharged') actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-report-btn"><i class="fas fa-file-lines"></i> Add Report</button>';
+    if (canAddDiag && c.status !== 'discharged') actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-add-diagnosis-header-btn"><i class="fas fa-stethoscope"></i> Diagnosis</button>';
+    if (canAddReport && c.status !== 'discharged') actions += '<button type="button" class="btn btn-sm" id="pd-add-report-btn"><i class="fas fa-file-lines"></i> Report</button>';
     if (canEdit) actions += '<button type="button" class="btn btn-outline btn-sm" id="pd-edit-btn"><i class="fas fa-pen"></i> Edit</button>';
     var assignedDisplay = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors.join(', ') : c.assignedTherapist) || '';
     var wardBed = [c.ward, c.roomNumber].filter(Boolean).join(' / ') || '';
+    var metaItems = [];
+    metaItems.push('<span>' + riskBadge + '</span>');
+    if (c.admissionDate) metaItems.push('<span><i class="fas fa-calendar"></i> ' + esc(c.admissionDate) + '</span>');
+    if (wardBed) metaItems.push('<span><i class="fas fa-bed"></i> ' + esc(wardBed) + '</span>');
+    if (assignedDisplay) metaItems.push('<span><i class="fas fa-user-doctor"></i> ' + esc(assignedDisplay) + '</span>');
+    var richHeader = '<div class="pd-rich-header">' +
+      '<div class="pd-rich-avatar patient-avatar ' + avatarBg + '" style="width:56px;height:56px;font-size:1.1rem">' + esc(initials) + '</div>' +
+      '<div class="pd-rich-info"><h2>' + esc(c.name || 'Patient') + '</h2><div class="pd-rich-meta">' + metaItems.join('') + '</div></div>' +
+      (actions ? '<div class="pd-rich-actions">' + actions + '</div>' : '') +
+      '</div>';
     var rows = [];
     if (c.gender) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Gender</span><span class="patient-detail-value">' + esc(c.gender) + '</span></div>');
-    rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Admission Date</span><span class="patient-detail-value">' + (c.admissionDate ? esc(c.admissionDate) : '—') + '</span></div>');
-    if (c.plannedDischargeDate) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Planned Discharge Date</span><span class="patient-detail-value">' + esc(c.plannedDischargeDate) + '</span></div>');
-    if (c.status === 'discharged' && c.dischargeDate) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Final Discharge Date</span><span class="patient-detail-value">' + esc(c.dischargeDate) + '</span></div>');
-    if (assignedDisplay) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Assigned Doctors</span><span class="patient-detail-value">' + esc(assignedDisplay) + '</span></div>');
-    if (wardBed) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Ward & Bed</span><span class="patient-detail-value">' + esc(wardBed) + '</span></div>');
-    var topRow = '<div class="patient-header-top">' + riskBadge + (actions ? '<div class="patient-actions">' + actions + '</div>' : '') + '</div>';
-    var detailsHtml = rows.length ? '<div class="patient-details-vertical">' + rows.join('') + '</div>' : '';
-    return '<div class="patient-header">' + topRow + detailsHtml + '</div>';
+    if (c.plannedDischargeDate) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Planned Discharge</span><span class="patient-detail-value">' + esc(c.plannedDischargeDate) + '</span></div>');
+    if (c.status === 'discharged' && c.dischargeDate) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Final Discharge</span><span class="patient-detail-value">' + esc(c.dischargeDate) + '</span></div>');
+    var detailsHtml = rows.length ? '<div class="patient-details-vertical" style="margin-top:0">' + rows.join('') + '</div>' : '';
+    return richHeader + detailsHtml;
   }
 
   function bindTabs() {

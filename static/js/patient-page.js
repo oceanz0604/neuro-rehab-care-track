@@ -103,7 +103,20 @@
         Pages.patientDetail.render(state);
         Pages.patientDetail.init(state);
       }
-      if (client && client.name) document.title = client.name + ' — Maitra Wellness';
+      if (client && client.name) {
+        document.title = client.name + ' — Maitra Wellness';
+        var bcName = document.getElementById('tb-bc-name');
+        if (bcName) bcName.textContent = client.name;
+      }
+      var fab = document.getElementById('mobile-fab-report');
+      if (fab && client && client.status !== 'discharged') {
+        fab.addEventListener('click', function () {
+          var addBtn = document.getElementById('pd-add-report-btn');
+          if (addBtn) addBtn.click();
+        });
+      } else if (fab) {
+        fab.style.display = 'none';
+      }
     }).catch(function (err) {
       toast(err && err.message ? err.message : 'Failed to load');
       window.location.href = '/index.html?page=patients';

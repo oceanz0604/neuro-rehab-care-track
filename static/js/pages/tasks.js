@@ -80,7 +80,7 @@
       var list = filtered.filter(function (t) { return (t.status || 'todo') === status; });
       if (countEl) countEl.textContent = list.length;
       if (!list.length) {
-        col.innerHTML = '<div class="task-board-empty">No tasks</div>';
+        col.innerHTML = '<div class="task-board-empty"><i class="fas fa-inbox"></i>No tasks here</div>';
         return;
       }
       col.innerHTML = list.map(function (t) { return cardHtml(t); }).join('');
@@ -98,7 +98,7 @@
     var avatar = t.assignedToName ? '<span class="task-card-avatar" title="' + esc(t.assignedToName) + '">' + initials(t.assignedToName) + '</span>' : '';
     var patientTag = t.clientName ? '<span class="task-card-tag"><i class="fas fa-hospital-user"></i> ' + esc(t.clientName) + '</span>' : '';
     var dueTag = t.dueDate ? '<span class="task-card-tag"><i class="fas fa-calendar"></i> ' + esc(t.dueDate) + '</span>' : '';
-    return '<div class="task-card" data-task-id="' + esc(t.id) + '" role="button" tabindex="0">' +
+    return '<div class="task-card priority-card-' + p + '" data-task-id="' + esc(t.id) + '" role="button" tabindex="0">' +
       '<div class="task-card-top">' +
         '<span class="task-card-key">' + esc(key) + '</span>' +
         '<span class="task-card-priority-icon priority-' + p + '" title="' + esc(PRIORITY_LABELS[p] || p) + '"><i class="fas ' + pIcon + '"></i></span>' +

@@ -60,22 +60,24 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-brand">
-      <img id="sb-brand-logo" src="static/icons/logo.jpg" alt="" class="sb-brand-logo">
+      <div class="sb-user-avatar" id="sb-user-avatar">MW</div>
       <div class="sb-brand-inner">
         <span class="sb-brand-text" id="sb-brand-text">Maitra Wellness</span>
         <span class="sb-name" id="sb-name">Staff</span>
       </div>
     </div>
     <nav class="sb-nav">
-      <a href="#" class="nav-link active" data-page="dashboard"><i class="fas fa-chart-line"></i><span>Dashboard</span></a>
+      <div class="nav-section-label">Main</div>
+      <a href="#" class="nav-link active" data-page="dashboard"><i class="fas fa-house"></i><span>Dashboard</span></a>
       <a href="#" class="nav-link" data-page="tasks"><i class="fas fa-list-check"></i><span>Tasks</span></a>
       <a href="#" class="nav-link" data-page="patients"><i class="fas fa-hospital-user"></i><span>Patients</span></a>
-      <a href="#" class="nav-link" data-page="reports"><i class="fas fa-file-lines"></i><span>Reports - BETA</span></a>
-      <a href="#" class="nav-link nav-link-chat" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat - BETA</span><span id="chat-unread-badge" class="nav-badge"></span></a>
-      <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Progress Report - BETA</span></a>
+      <div class="nav-section-label">Tools</div>
+      <a href="#" class="nav-link" data-page="reports"><i class="fas fa-file-lines"></i><span>Reports</span></a>
+      <a href="#" class="nav-link nav-link-chat" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat</span><span id="chat-unread-badge" class="nav-badge"></span></a>
+      <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Progress Report</span></a>
     </nav>
     <div class="sb-foot">
-      <a href="#" class="nav-link" data-page="admin" id="nav-admin" style="display:none"><i class="fas fa-shield-halved"></i><span>Admin - BETA</span></a>
+      <a href="#" class="nav-link" data-page="admin" id="nav-admin" style="display:none"><i class="fas fa-shield-halved"></i><span>Admin</span></a>
       <button type="button" id="logout-btn" class="nav-link logout-btn"><i class="fas fa-right-from-bracket"></i><span>Sign out</span></button>
     </div>
   </aside>
@@ -85,9 +87,19 @@
   <div class="main-wrap">
     <header class="topbar">
       <button type="button" id="menu-btn" class="menu-btn"><i class="fas fa-bars"></i></button>
-      <h2 class="tb-title" id="tb-title">Dashboard</h2>
+      <div class="tb-title-wrap">
+        <h2 class="tb-title" id="tb-title">Dashboard</h2>
+        <div class="tb-breadcrumb" id="tb-breadcrumb"><span class="bc-current">Dashboard</span></div>
+      </div>
       <div class="tb-right">
-        <button type="button" class="notif-btn" id="tb-dashboard-btn" title="Dashboard" aria-label="Dashboard"><i class="fas fa-house"></i></button>
+        <div style="position:relative">
+          <button type="button" class="tb-quick-add" id="tb-quick-add" title="Quick actions" aria-label="Quick actions"><i class="fas fa-plus"></i></button>
+          <div class="quick-add-menu" id="quick-add-menu">
+            <button type="button" class="quick-add-item" data-action="add-report"><i class="fas fa-file-medical"></i> Add Report</button>
+            <button type="button" class="quick-add-item" data-action="add-patient"><i class="fas fa-user-plus"></i> New Patient</button>
+            <button type="button" class="quick-add-item" data-action="add-task"><i class="fas fa-list-check"></i> Create Task</button>
+          </div>
+        </div>
         <button type="button" class="notif-btn" id="global-refresh-btn" title="Refresh data" aria-label="Refresh"><i class="fas fa-arrows-rotate"></i></button>
         <button type="button" class="theme-toggle-btn notif-btn" id="theme-toggle" title="Toggle dark/light theme" aria-label="Theme">
           <i class="fas fa-moon" id="theme-icon"></i>
@@ -99,10 +111,25 @@
 
       <!-- ── Dashboard ── -->
       <section class="page active" id="page-dashboard">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
-          <h1 class="pg-title" id="d-greet" style="margin-bottom:0">Dashboard</h1>
+        <div class="welcome-banner" id="welcome-banner">
+          <h2 id="d-greet">Welcome back</h2>
+          <p id="d-motivational">Ready to make a difference today.</p>
+          <div class="welcome-banner-date" id="d-date"></div>
         </div>
-        <p class="pg-sub" id="d-date"></p>
+        <div class="quick-actions-row" id="dash-quick-actions">
+          <div class="quick-action-card" data-action="add-report">
+            <i class="fas fa-file-medical qa-icon-report"></i>
+            <div><div class="qa-label">Add Report</div><div class="qa-sub">Patient assessment</div></div>
+          </div>
+          <div class="quick-action-card" data-action="add-patient">
+            <i class="fas fa-user-plus qa-icon-patient"></i>
+            <div><div class="qa-label">New Patient</div><div class="qa-sub">Register admission</div></div>
+          </div>
+          <div class="quick-action-card" data-action="add-task">
+            <i class="fas fa-list-check qa-icon-task"></i>
+            <div><div class="qa-label">Create Task</div><div class="qa-sub">Assign work item</div></div>
+          </div>
+        </div>
         <div class="stats-row" id="dash-stats"></div>
         <div id="dash-my-patients"></div>
         <div class="two-col">
@@ -276,6 +303,17 @@
 
 <!-- Modal overlay: direct child of body so it is never clipped or hidden by #app-shell -->
 <div class="modal-overlay" id="modal-overlay" aria-hidden="true"><div id="modal-container"></div></div>
+
+<!-- Bottom Navigation (mobile) -->
+<nav class="bottom-nav" id="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button type="button" class="bottom-nav-item active" data-page="dashboard"><i class="fas fa-house"></i><span>Home</span></button>
+    <button type="button" class="bottom-nav-item" data-page="tasks"><i class="fas fa-list-check"></i><span>Tasks</span></button>
+    <button type="button" class="bottom-nav-item" data-page="patients"><i class="fas fa-hospital-user"></i><span>Patients</span></button>
+    <button type="button" class="bottom-nav-item" data-page="comms"><i class="fas fa-comments"></i><span>Chat</span></button>
+    <button type="button" class="bottom-nav-item" data-page="more" id="bottom-nav-more"><i class="fas fa-ellipsis"></i><span>More</span></button>
+  </div>
+</nav>
 
 <!-- Toast -->
 <div id="toast" data-show="false"></div>

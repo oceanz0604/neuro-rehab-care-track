@@ -130,10 +130,31 @@
 
   function updateSidebarBrand() {
     var p = state.profile || {};
+    var nameStr = (p.displayName || (state.user || {}).email || 'Staff').trim() || 'Staff';
     var nameEl = $('sb-name');
-    if (nameEl) nameEl.textContent = (p.displayName || (state.user || {}).email || 'Staff').trim() || 'Staff';
+    if (nameEl) nameEl.textContent = nameStr;
     var brandEl = $('sb-brand-text');
     if (brandEl) brandEl.textContent = (state.config && state.config.orgName) ? String(state.config.orgName).trim() : 'Maitra Wellness';
+    var avatarEl = $('sb-user-avatar');
+    if (avatarEl) {
+      var parts = nameStr.split(/\s+/);
+      var initials = parts.length >= 2 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : nameStr.substring(0, 2).toUpperCase();
+      avatarEl.textContent = initials;
+    }
+  }
+
+  function updateBreadcrumb(page) {
+    var el = $('tb-breadcrumb');
+    if (!el) return;
+    el.innerHTML = '<span class="bc-current">' + (PAGE_TITLES[page] || page) + '</span>';
+  }
+
+  function updateBottomNav(page) {
+    var nav = $('bottom-nav');
+    if (!nav) return;
+    nav.querySelectorAll('.bottom-nav-item').forEach(function (btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-page') === page);
+    });
   }
 
   function showApp() {
@@ -216,6 +237,8 @@
     if (target) target.classList.add('active');
 
     $('tb-title').textContent = PAGE_TITLES[page] || page;
+    updateBreadcrumb(page);
+    updateBottomNav(page);
 
     document.querySelectorAll('.nav-link').forEach(function (a) {
       a.classList.toggle('active', a.getAttribute('data-page') === page);
@@ -229,6 +252,25 @@
     var currentUrlPage = getPageFromUrl();
     var replace = (currentUrlPage === page) || (!currentUrlPage && page === 'dashboard');
     updateUrlForPage(page, replace);
+  }
+
+  function handleQuickAction(action) {
+    if (action === 'add-report') {
+      navigate('patients');
+      toast('Select a patient to add a report');
+    } else if (action === 'add-patient') {
+      navigate('patients');
+      setTimeout(function () {
+        var btn = $('add-patient-btn');
+        if (btn) btn.click();
+      }, 300);
+    } else if (action === 'add-task') {
+      navigate('tasks');
+      setTimeout(function () {
+        var btn = $('tasks-add-btn');
+        if (btn) btn.click();
+      }, 300);
+    }
   }
 
   function openPatient(clientId) {
@@ -390,14 +432,49 @@
     });
 
     // Global refresh (navbar)
-    var dashboardBtn = $('tb-dashboard-btn');
-    if (dashboardBtn) dashboardBtn.addEventListener('click', function () {
-      if (window.CareTrack) window.CareTrack.navigate('dashboard');
-    });
     var globalRefresh = $('global-refresh-btn');
     if (globalRefresh) globalRefresh.addEventListener('click', function () {
       if (window.CareTrack) window.CareTrack.refreshData();
     });
+
+    // Quick-action menu
+    var qaBtn = $('tb-quick-add');
+    var qaMenu = $('quick-add-menu');
+    if (qaBtn && qaMenu) {
+      qaBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        qaMenu.classList.toggle('visible');
+      });
+      document.addEventListener('click', function () { qaMenu.classList.remove('visible'); });
+      qaMenu.querySelectorAll('.quick-add-item').forEach(function (item) {
+        item.addEventListener('click', function () {
+          qaMenu.classList.remove('visible');
+          handleQuickAction(item.getAttribute('data-action'));
+        });
+      });
+    }
+    // Dashboard quick action cards
+    document.querySelectorAll('.quick-action-card[data-action]').forEach(function (card) {
+      card.addEventListener('click', function () {
+        handleQuickAction(card.getAttribute('data-action'));
+      });
+    });
+
+    // Bottom nav
+    var bottomNav = $('bottom-nav');
+    if (bottomNav) {
+      bottomNav.querySelectorAll('.bottom-nav-item').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var page = btn.getAttribute('data-page');
+          if (page === 'more') {
+            $('sidebar').classList.add('open');
+            $('sb-overlay').classList.add('visible');
+          } else {
+            navigate(page);
+          }
+        });
+      });
+    }
 
     // Mobile sidebar
     $('menu-btn').addEventListener('click', function () {
