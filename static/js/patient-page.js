@@ -53,17 +53,35 @@
       window.location.href = '/index.html';
       return;
     }
-    var user = AppDB.getCurrentUser && AppDB.getCurrentUser();
-    if (!user) {
-      window.location.href = '/index.html';
-      return;
-    }
     var params = new URLSearchParams(window.location.search);
     var id = params.get('id');
     if (!id) {
       window.location.href = '/index.html?page=patients';
       return;
     }
+    // Wait for auth state to be restored (Firebase is async) before redirecting
+    var resolved = false;
+    var unsub = AppDB.onAuthStateChanged && AppDB.onAuthStateChanged(function (user) {
+      if (user) {
+        if (resolved) return;
+        resolved = true;
+        unsub && typeof unsub === 'function' && unsub();
+        loadPatient(user, id);
+        return;
+      }
+      // First event may be null before persistence restores; wait once then decide
+      setTimeout(function () {
+        if (resolved) return;
+        resolved = true;
+        unsub && typeof unsub === 'function' && unsub();
+        var u = AppDB.getCurrentUser && AppDB.getCurrentUser();
+        if (u) loadPatient(u, id);
+        else window.location.href = '/index.html';
+      }, 600);
+    });
+  }
+
+  function loadPatient(user, id) {
     state.user = user;
     Promise.all([
       AppDB.getUserProfile(user.uid),
