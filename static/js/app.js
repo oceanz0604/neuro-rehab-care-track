@@ -236,6 +236,11 @@
     window.location.href = '/patient.html?id=' + encodeURIComponent(clientId);
   }
 
+  function openTask(taskId) {
+    if (!taskId) return;
+    window.location.href = '/task.html?id=' + encodeURIComponent(taskId);
+  }
+
   function initPage(page) {
     var key = page;
     if (Pages[key] && Pages[key].init && !_pageInited[page]) {
@@ -350,6 +355,10 @@
     var params = new URLSearchParams(window.location.search);
     if (params.get('page') === 'patient-detail' && params.get('id')) {
       window.location.replace('/patient.html?id=' + encodeURIComponent(params.get('id')));
+      return;
+    }
+    if (params.get('page') === 'task-detail' && params.get('id')) {
+      window.location.replace('/task.html?id=' + encodeURIComponent(params.get('id')));
       return;
     }
     if (!window.AppDB || !AppDB.ready) {
@@ -468,6 +477,7 @@
   window.CareTrack = {
     navigate: navigate,
     openPatient: openPatient,
+    openTask: openTask,
     refreshData: refreshData,
     getState: function () { return state; },
     toast: toast

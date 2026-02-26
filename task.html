@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script>
+    (function(){ try { var t = localStorage.getItem('caretrack-theme'); if (t === 'dark') document.documentElement.setAttribute('data-theme', 'dark'); } catch(e) {} })();
+  </script>
+  <title>Task — Maitra Wellness</title>
+  <meta name="theme-color" content="#0d9488">
+  <link rel="icon" type="image/jpeg" href="static/icons/logo.jpg">
+  <link rel="apple-touch-icon" href="static/icons/logo.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="static/css/main.css">
+</head>
+<body class="task-page">
+
+<div id="loading-screen" class="loading-screen">
+  <div class="loading-spinner"></div>
+  <p>Loading...</p>
+</div>
+
+<div id="task-app" class="task-app" hidden>
+  <header class="topbar topbar-no-sidebar">
+    <a href="/index.html?page=tasks" class="topbar-back" id="topbar-back" aria-label="Back to Tasks"><i class="fas fa-arrow-left"></i></a>
+    <h2 class="tb-title" id="tb-title">Task</h2>
+  </header>
+  <main class="main-content main-content-center">
+    <div id="task-detail-root"></div>
+  </main>
+</div>
+
+<div id="toast" data-show="false"></div>
+<div class="modal-overlay" id="modal-overlay" aria-hidden="true"><div id="modal-container"></div></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="static/js/firebase-config.js"></script>
+<script src="static/js/db.js"></script>
+<script src="static/js/permissions.js"></script>
+<script src="static/js/components/modal.js"></script>
+<script src="static/js/task-page.js"></script>
+</body>
+</html>

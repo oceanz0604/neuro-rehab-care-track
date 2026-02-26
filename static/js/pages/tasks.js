@@ -1,5 +1,5 @@
 /**
- * Tasks page (MVP-2) -- list, filter, add/edit/delete tasks.
+ * Tasks page — JIRA-style: Board (Kanban) + List view, open task in task.html
  */
 (function () {
   'use strict';
@@ -7,14 +7,19 @@
   var _inited = false;
   var _tasks = [];
   var _staff = [];
+  var _currentView = 'board'; // 'board' | 'list'
   var STATUS_OPTIONS = [
-    { value: 'todo', label: 'To do' },
-    { value: 'in_progress', label: 'In progress' },
+    { value: 'todo', label: 'To Do' },
+    { value: 'in_progress', label: 'In Progress' },
     { value: 'done', label: 'Done' }
   ];
+  var PRIORITY_OPTIONS = [
+    { value: 'high', label: 'High' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'low', label: 'Low' }
+  ];
 
-  function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-  function vv(id) { return (document.getElementById(id) || {}).value || ''; }
+  function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
   function showToast(msg) {
     if (window.CareTrack && window.CareTrack.toast) { window.CareTrack.toast(msg); return; }
     try { console.error(msg); } catch (e) {}
@@ -26,6 +31,14 @@
     if (e.message) return e.message;
     if (e.code) return e.code;
     try { return String(e); } catch (e2) { return 'Unknown error'; }
+  }
+
+  function openTask(id) {
+    if (window.CareTrack && window.CareTrack.openTask) {
+      window.CareTrack.openTask(id);
+      return;
+    }
+    window.location.href = '/task.html?id=' + encodeURIComponent(id);
   }
 
   function getFilteredTasks() {
@@ -62,20 +75,52 @@
   }
 
   function render(state) {
-    var container = $('tasks-list');
-    if (!container) return;
+    var boardWrap = $('tasks-board-wrap');
+    var listWrap = $('tasks-list-wrap');
+    if (!boardWrap && !listWrap) return;
 
-    container.innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i> Loading tasks...</div>';
     function done() {
       populateFilterDropdowns(state);
-      renderTable(state);
+      if (_currentView === 'board') renderBoard(state);
+      else renderTable(state);
     }
     AppDB.getTasks().then(function (list) {
       _tasks = list || [];
       if (_staff.length) done();
       else AppDB.getAllStaff().then(function (list) { _staff = list || []; done(); }).catch(done);
     }).catch(function () {
-      container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> Failed to load tasks.</div>';
+      var container = $('tasks-list');
+      if (container) container.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-triangle"></i> Failed to load tasks.</div>';
+      var colTodo = $('task-col-todo');
+      if (colTodo) colTodo.innerHTML = '<div class="empty-state">Failed to load.</div>';
+    });
+  }
+
+  function renderBoard(state) {
+    var filtered = getFilteredTasks();
+    ['todo', 'in_progress', 'done'].forEach(function (status) {
+      var col = $('task-col-' + status);
+      if (!col) return;
+      var list = filtered.filter(function (t) { return (t.status || 'todo') === status; });
+      if (!list.length) {
+        col.innerHTML = '<div class="task-board-empty">No tasks</div>';
+        return;
+      }
+      col.innerHTML = list.map(function (t) {
+        var key = t.key || ('T-' + (t.id || '').slice(-6));
+        var priority = (t.priority || 'medium');
+        return '<div class="task-card" data-task-id="' + esc(t.id) + '" role="button" tabindex="0">' +
+          '<span class="task-card-key">' + esc(key) + '</span>' +
+          '<span class="task-card-priority priority-' + priority + '"></span>' +
+          '<div class="task-card-title">' + esc(t.title || '—') + '</div>' +
+          (t.assignedToName ? '<div class="task-card-assignee"><i class="fas fa-user"></i> ' + esc(t.assignedToName) + '</div>' : '') +
+          (t.dueDate ? '<div class="task-card-due"><i class="fas fa-calendar"></i> ' + esc(t.dueDate) + '</div>' : '') +
+          '</div>';
+      }).join('');
+      col.querySelectorAll('.task-card').forEach(function (card) {
+        card.addEventListener('click', function () { openTask(card.getAttribute('data-task-id')); });
+        card.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openTask(card.getAttribute('data-task-id')); } });
+      });
     });
   }
 
@@ -83,25 +128,24 @@
     var container = $('tasks-list');
     var filtered = getFilteredTasks();
 
+    if (!container) return;
     if (!filtered.length) {
-      container.innerHTML = '<div class="empty-state"><i class="fas fa-list-check"></i><p>' + (_tasks.length ? 'No tasks match the filters' : 'No tasks yet. Add one to get started.') + '</p></div>';
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-list-check"></i><p>' + (_tasks.length ? 'No tasks match the filters' : 'No tasks yet. Create one to get started.') + '</p></div>';
       return;
     }
 
-    var html = '<table class="staff-table"><thead><tr><th>Title</th><th>Patient</th><th>Assigned to</th><th>Created by</th><th>Due date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    var html = '<table class="staff-table task-list-table"><thead><tr><th>Key</th><th>Title</th><th>Priority</th><th>Patient</th><th>Assignee</th><th>Due date</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
     filtered.forEach(function (t) {
       var statusLabel = (STATUS_OPTIONS.filter(function (s) { return s.value === t.status; })[0] || {}).label || t.status;
-      var createdByName = t.createdByName || '';
-      if (!createdByName && t.createdBy && _staff.length) {
-        var creator = _staff.filter(function (s) { return s.uid === t.createdBy; })[0];
-        createdByName = creator ? (creator.displayName || creator.email || '') : '';
-      }
-      html += '<tr data-task-id="' + esc(t.id) + '">' +
-        '<td><strong>' + esc(t.title || '--') + '</strong>' + (t.notes ? ' <span class="text-muted" title="' + esc(t.notes) + '">...</span>' : '') + '</td>' +
-        '<td>' + esc(t.clientName || '--') + '</td>' +
-        '<td>' + esc(t.assignedToName || '--') + '</td>' +
-        '<td>' + esc(createdByName || '--') + '</td>' +
-        '<td>' + (t.dueDate || '--') + '</td>' +
+      var key = t.key || ('T-' + (t.id || '').slice(-6));
+      var priorityLabel = (PRIORITY_OPTIONS.filter(function (p) { return p.value === (t.priority || 'medium'); })[0] || {}).label || 'Medium';
+      html += '<tr class="task-list-row" data-task-id="' + esc(t.id) + '">' +
+        '<td><span class="task-list-key">' + esc(key) + '</span></td>' +
+        '<td><strong>' + esc(t.title || '—') + '</strong></td>' +
+        '<td><span class="task-priority-badge priority-' + (t.priority || 'medium') + '">' + esc(priorityLabel) + '</span></td>' +
+        '<td>' + esc(t.clientName || '—') + '</td>' +
+        '<td>' + esc(t.assignedToName || '—') + '</td>' +
+        '<td>' + (t.dueDate || '—') + '</td>' +
         '<td><span class="status-badge task-status-' + (t.status || 'todo') + '">' + esc(statusLabel) + '</span></td>' +
         '<td style="white-space:nowrap">' +
           '<button type="button" class="btn btn-sm btn-outline" data-edit="' + esc(t.id) + '" title="Edit"><i class="fas fa-pen"></i></button> ' +
@@ -111,22 +155,36 @@
     html += '</tbody></table>';
     container.innerHTML = html;
 
-    container.querySelectorAll('[data-edit]').forEach(function (b) {
-      b.addEventListener('click', function () { showEditModal(b.getAttribute('data-edit'), state); });
-    });
-    container.querySelectorAll('[data-delete]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var id = b.getAttribute('data-delete');
-        var t = _tasks.filter(function (x) { return x.id === id; })[0];
-        AppModal.confirm('Delete Task', 'Delete "' + esc(t ? t.title : '') + '"?', function () {
-          AppDB.deleteTask(id).then(function () {
-            _tasks = _tasks.filter(function (x) { return x.id !== id; });
-            renderTable(state);
-            if (window.CareTrack) window.CareTrack.toast('Task deleted');
-          }).catch(function () { if (window.CareTrack) window.CareTrack.toast('Delete failed'); });
-        }, 'Delete');
+    container.querySelectorAll('.task-list-row').forEach(function (row) {
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function (e) {
+        if (e.target.closest('button')) return;
+        openTask(row.getAttribute('data-task-id'));
       });
     });
+    container.querySelectorAll('[data-edit]').forEach(function (b) {
+      b.addEventListener('click', function (e) { e.stopPropagation(); showEditModal(b.getAttribute('data-edit'), state); });
+    });
+    container.querySelectorAll('[data-delete]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = b.getAttribute('data-delete');
+        var t = _tasks.filter(function (x) { return x.id === id; })[0];
+        if (!window.AppModal || !AppModal.confirm) {
+          if (confirm('Delete "' + (t ? t.title : '') + '"?')) doDel(id);
+          return;
+        }
+        AppModal.confirm('Delete Task', 'Delete "' + esc(t ? t.title : '') + '"?' , function () { doDel(id); }, 'Delete');
+      });
+    });
+
+    function doDel(id) {
+      AppDB.deleteTask(id).then(function () {
+        _tasks = _tasks.filter(function (x) { return x.id !== id; });
+        renderTable(state);
+        if (window.CareTrack) window.CareTrack.toast('Task deleted');
+      }).catch(function () { if (window.CareTrack) window.CareTrack.toast('Delete failed'); });
+    }
   }
 
   function buildTaskModalHtml(task, state) {
@@ -143,18 +201,23 @@
       var sel = (task && task.status === s.value) ? ' selected' : (!task && s.value === 'todo') ? ' selected' : '';
       return '<option value="' + s.value + '"' + sel + '>' + s.label + '</option>';
     }).join('');
-    return '<div class="modal-card modal-card-task"><h3 class="modal-title">' + (task ? 'Edit Task' : 'Add Task') + '</h3>' +
+    var priorityOpts = PRIORITY_OPTIONS.map(function (p) {
+      var sel = (task ? (task.priority || 'medium') : 'medium') === p.value ? ' selected' : '';
+      return '<option value="' + p.value + '"' + sel + '>' + p.label + '</option>';
+    }).join('');
+    return '<div class="modal-card modal-card-task"><h3 class="modal-title">' + (task ? 'Edit Task' : 'Create Task') + '</h3>' +
       '<div class="form-grid">' +
         '<div class="fg fg-full"><label>Title</label><input id="task-title" type="text" class="fi" placeholder="Task title" value="' + esc(task ? task.title : '') + '"></div>' +
+        '<div class="fg fg-full"><label>Priority</label><select id="task-priority" class="fi">' + priorityOpts + '</select></div>' +
         '<div class="fg fg-full"><label>Patient (optional)</label><select id="task-client" class="fi">' + clientOpts + '</select></div>' +
         '<div class="fg fg-full"><label>Assigned to (optional)</label><select id="task-assignee" class="fi">' + staffOpts + '</select></div>' +
         '<div class="fg fg-full"><label>Due date</label><input id="task-due" type="date" class="fi" value="' + esc(task && task.dueDate ? task.dueDate : '') + '"></div>' +
         '<div class="fg fg-full"><label>Status</label><select id="task-status" class="fi">' + statusOpts + '</select></div>' +
-        '<div class="fg fg-full"><label>Notes</label><textarea id="task-notes" class="fi" rows="2" placeholder="Optional notes">' + esc(task ? task.notes : '') + '</textarea></div>' +
+        '<div class="fg fg-full"><label>Description</label><textarea id="task-notes" class="fi" rows="3" placeholder="Optional description">' + esc(task ? task.notes : '') + '</textarea></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px">' +
         '<button type="button" class="btn btn-ghost" id="task-modal-cancel">Cancel</button>' +
-        '<button type="button" class="btn" id="task-modal-save">' + (task ? 'Save' : 'Add Task') + '</button>' +
+        '<button type="button" class="btn" id="task-modal-save">' + (task ? 'Save' : 'Create') + '</button>' +
       '</div></div>';
   }
 
@@ -171,11 +234,7 @@
         var saveBtn = modalEl.querySelector('#task-modal-save');
         if (cancelBtn) cancelBtn.addEventListener('click', AppModal.close);
         if (saveBtn) saveBtn.addEventListener('click', function () {
-          try {
-            saveTaskFromModal(null, state);
-          } catch (err) {
-            showToast('Add task failed: ' + errMsg(err));
-          }
+          try { saveTaskFromModal(null, state); } catch (err) { showToast('Create failed: ' + errMsg(err)); }
         });
       }
     });
@@ -184,7 +243,11 @@
   function showEditModal(taskId, state) {
     var task = _tasks.filter(function (t) { return t.id === taskId; })[0];
     if (!task) return;
-    AppModal.open(buildTaskModalHtml(task, state), {
+    if (!window.AppModal || typeof window.AppModal.open !== 'function') {
+      showToast('Modal not available');
+      return;
+    }
+    window.AppModal.open(buildTaskModalHtml(task, state), {
       onReady: function () {
         var modalEl = document.getElementById('modal-container');
         if (!modalEl) return;
@@ -192,45 +255,44 @@
         var saveBtn = modalEl.querySelector('#task-modal-save');
         if (cancelBtn) cancelBtn.addEventListener('click', AppModal.close);
         if (saveBtn) saveBtn.addEventListener('click', function () {
-          try {
-            saveTaskFromModal(taskId, state);
-          } catch (err) {
-            showToast('Update failed: ' + errMsg(err));
-          }
+          try { saveTaskFromModal(taskId, state); } catch (err) { showToast('Update failed: ' + errMsg(err)); }
         });
       }
     });
   }
 
   function saveTaskFromModal(taskId, state) {
-    var title = vv('task-title').trim();
+    var title = (document.getElementById('task-title') || {}).value;
+    if (title !== undefined) title = (title || '').trim();
     if (!title) { showToast('Enter a title'); return; }
-    var clientId = vv('task-client') || null;
+    var clientId = (document.getElementById('task-client') || {}).value || null;
     var clientName = '';
     if (clientId) {
       var c = (state.clients || []).filter(function (x) { return x.id === clientId; })[0];
       clientName = c ? (c.name || '') : '';
     }
-    var assignedTo = vv('task-assignee') || null;
+    var assignedTo = (document.getElementById('task-assignee') || {}).value || null;
     var assignedToName = '';
     if (assignedTo) {
       var s = _staff.filter(function (x) { return x.uid === assignedTo; })[0];
       assignedToName = s ? (s.displayName || s.email || '') : '';
     }
-    var dueDate = vv('task-due') || null;
-    var status = vv('task-status') || 'todo';
-    var notes = vv('task-notes').trim();
+    var dueDate = (document.getElementById('task-due') || {}).value || null;
+    var status = (document.getElementById('task-status') || {}).value || 'todo';
+    var priority = (document.getElementById('task-priority') || {}).value || 'medium';
+    var notes = (document.getElementById('task-notes') || {}).value;
+    if (notes !== undefined) notes = (notes || '').trim();
     var profile = (state && state.profile) || {};
 
     if (taskId) {
-      AppDB.updateTask(taskId, { title: title, clientId: clientId, clientName: clientName, assignedTo: assignedTo, assignedToName: assignedToName, dueDate: dueDate || null, status: status, notes: notes })
+      AppDB.updateTask(taskId, { title: title, clientId: clientId, clientName: clientName, assignedTo: assignedTo, assignedToName: assignedToName, dueDate: dueDate || null, status: status, priority: priority, notes: notes })
         .then(function () {
           var idx = _tasks.findIndex(function (t) { return t.id === taskId; });
           if (idx !== -1) {
-            _tasks[idx] = Object.assign({}, _tasks[idx], { title: title, clientId: clientId, clientName: clientName, assignedTo: assignedTo, assignedToName: assignedToName, dueDate: dueDate, status: status, notes: notes });
+            _tasks[idx] = Object.assign({}, _tasks[idx], { title: title, clientId: clientId, clientName: clientName, assignedTo: assignedTo, assignedToName: assignedToName, dueDate: dueDate, status: status, priority: priority, notes: notes });
           }
           AppModal.close();
-          renderTable(state);
+          if (_currentView === 'board') renderBoard(state); else renderTable(state);
           showToast('Task updated');
         })
         .catch(function (e) { showToast('Update failed: ' + errMsg(e)); });
@@ -243,11 +305,13 @@
         assignedToName: assignedToName,
         dueDate: dueDate,
         status: status,
+        priority: priority,
         notes: notes,
         createdByName: (profile && profile.displayName) ? profile.displayName : ''
       }).then(function (ref) {
-        _tasks.unshift({
+        var newTask = {
           id: ref.id,
+          key: 'T-' + (ref.id.length >= 6 ? ref.id.slice(-6).toUpperCase() : ref.id),
           title: title,
           clientId: clientId,
           clientName: clientName,
@@ -255,14 +319,16 @@
           assignedToName: assignedToName,
           dueDate: dueDate,
           status: status,
+          priority: priority,
           notes: notes,
           createdAt: new Date().toISOString()
-        });
+        };
+        _tasks.unshift(newTask);
         AppModal.close();
-        renderTable(state);
-        showToast('Task added');
+        if (_currentView === 'board') renderBoard(state); else renderTable(state);
+        showToast('Task created');
       }).catch(function (e) {
-        showToast('Add failed: ' + errMsg(e));
+        showToast('Create failed: ' + errMsg(e));
       });
     }
   }
@@ -271,36 +337,54 @@
     if (_inited) return;
     _inited = true;
     AppDB.getAllStaff().then(function (list) { _staff = list || []; }).catch(function () {});
+
+    function applyFilters() {
+      if (_currentView === 'board') renderBoard(state);
+      else renderTable(state);
+    }
     var statusFilter = $('tasks-filter-status');
     var clientFilter = $('tasks-filter-client');
     var assigneeFilter = $('tasks-filter-assignee');
-    function applyFilters() { renderTable(state); }
     if (statusFilter) statusFilter.addEventListener('change', applyFilters);
     if (clientFilter) clientFilter.addEventListener('change', applyFilters);
     if (assigneeFilter) assigneeFilter.addEventListener('change', applyFilters);
+
+    document.querySelectorAll('.tasks-view-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var view = btn.getAttribute('data-view');
+        if (!view || view === _currentView) return;
+        _currentView = view;
+        document.querySelectorAll('.tasks-view-btn').forEach(function (b) {
+          b.classList.toggle('active', b.getAttribute('data-view') === view);
+          b.classList.toggle('btn-outline', b.getAttribute('data-view') !== view);
+          b.setAttribute('aria-selected', b.getAttribute('data-view') === view ? 'true' : 'false');
+        });
+        var boardWrap = $('tasks-board-wrap');
+        var listWrap = $('tasks-list-wrap');
+        if (boardWrap) boardWrap.style.display = view === 'board' ? '' : 'none';
+        if (listWrap) listWrap.style.display = view === 'list' ? '' : 'none';
+        if (view === 'board') renderBoard(state);
+        else renderTable(state);
+      });
+    });
   }
 
   window.Pages = window.Pages || {};
   window.Pages.tasks = { render: render, init: init };
 
-  // Called by button onclick (and by delegate). Guarantees Add Task works.
   window.CareTrackOpenAddTask = function () {
     try {
       var s = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : null;
-      if (!s) {
-        showToast('App not ready');
-        return;
-      }
+      if (!s) { showToast('App not ready'); return; }
       showAddModal(s);
     } catch (err) {
-      showToast('Could not open Add Task: ' + errMsg(err));
+      showToast('Could not open Create Task: ' + errMsg(err));
     }
   };
 
   document.addEventListener('click', function (e) {
-    var el = e.target;
-    if (!el || !el.closest) return;
-    if (!el.closest('#tasks-add-btn')) return;
+    if (!e.target || !e.target.closest) return;
+    if (!e.target.closest('#tasks-add-btn')) return;
     e.preventDefault();
     window.CareTrackOpenAddTask();
   });

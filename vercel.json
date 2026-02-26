@@ -1,6 +1,7 @@
 {
   "rewrites": [
     { "source": "/patient.html", "destination": "/patient.html" },
+    { "source": "/task.html", "destination": "/task.html" },
     { "source": "/firebase-messaging-sw.js", "destination": "/api/firebase-messaging-sw" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]

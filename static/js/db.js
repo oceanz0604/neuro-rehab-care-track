@@ -445,17 +445,29 @@
     return db.collection('config').doc('org').set(data, { merge: true });
   }
 
-  /* ─── Tasks (MVP-2) ───────────────────────────────────────────── */
+  /* ─── Tasks (JIRA-style) ──────────────────────────────────────── */
+  function _normalizeTaskDoc(d) {
+    var o = d.data();
+    o.id = d.id;
+    o.key = 'T-' + (d.id.length >= 6 ? d.id.slice(-6).toUpperCase() : d.id);
+    if (!o.priority) o.priority = 'medium';
+    if (o.dueDate && o.dueDate.toDate) o.dueDate = o.dueDate.toDate().toISOString().slice(0, 10);
+    if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
+    if (o.updatedAt && o.updatedAt.toDate) o.updatedAt = o.updatedAt.toDate().toISOString();
+    return o;
+  }
+
   function getTasks() {
     return db.collection('tasks').orderBy('createdAt', 'desc').limit(200).get().then(function (snap) {
-      return snap.docs.map(function (d) {
-        var o = d.data();
-        o.id = d.id;
-        if (o.dueDate && o.dueDate.toDate) o.dueDate = o.dueDate.toDate().toISOString().slice(0, 10);
-        if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
-        if (o.updatedAt && o.updatedAt.toDate) o.updatedAt = o.updatedAt.toDate().toISOString();
-        return o;
-      });
+      return snap.docs.map(function (d) { return _normalizeTaskDoc(d); });
+    });
+  }
+
+  function getTask(id) {
+    if (!id) return Promise.resolve(null);
+    return db.collection('tasks').doc(id).get().then(function (s) {
+      if (!s.exists) return null;
+      return _normalizeTaskDoc(s);
     });
   }
 
@@ -467,6 +479,7 @@
       title: title,
       dueDate: data.dueDate && String(data.dueDate).trim() ? String(data.dueDate).trim() : null,
       status: data.status === 'in_progress' || data.status === 'done' ? data.status : 'todo',
+      priority: (data.priority === 'high' || data.priority === 'medium' || data.priority === 'low') ? data.priority : 'medium',
       notes: (data.notes || '').trim(),
       clientId: data.clientId && String(data.clientId).trim() ? String(data.clientId).trim() : null,
       clientName: (data.clientName || '').trim() || null,
@@ -484,13 +497,13 @@
   }
 
   function updateTask(id, data) {
-    var user = getCurrentUser();
     var doc = {
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (data.title !== undefined) doc.title = (data.title || '').trim();
     if (data.dueDate !== undefined) doc.dueDate = data.dueDate || null;
     if (data.status !== undefined) doc.status = data.status || 'todo';
+    if (data.priority !== undefined) doc.priority = (data.priority === 'high' || data.priority === 'medium' || data.priority === 'low') ? data.priority : 'medium';
     if (data.notes !== undefined) doc.notes = (data.notes || '').trim();
     if (data.clientId !== undefined) doc.clientId = data.clientId || null;
     if (data.clientName !== undefined) doc.clientName = data.clientName || null;
@@ -574,6 +587,7 @@
     getOrgConfig: getOrgConfig,
     setOrgConfig: setOrgConfig,
     getTasks: getTasks,
+    getTask: getTask,
     addTask: addTask,
     updateTask: updateTask,
     deleteTask: deleteTask,

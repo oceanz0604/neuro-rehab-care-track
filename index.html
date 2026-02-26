@@ -188,23 +188,38 @@
         <div id="fr-prev" class="fr-preview" hidden></div>
       </section>
 
-      <!-- ── Tasks (MVP-2) ── -->
+      <!-- ── Tasks (JIRA-style: Board + List) ── -->
       <section class="page" id="page-tasks">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:16px">
-          <h1 class="pg-title" style="margin:0">Tasks</h1>
-          <button type="button" class="btn btn-sm" id="tasks-add-btn"><i class="fas fa-plus"></i> Add Task</button>
+        <div class="tasks-toolbar">
+          <div class="tasks-toolbar-left">
+            <h1 class="pg-title" style="margin:0">Tasks</h1>
+            <div class="tasks-view-toggle" role="tablist">
+              <button type="button" class="btn btn-sm tasks-view-btn active" data-view="board" aria-selected="true"><i class="fas fa-columns"></i> Board</button>
+              <button type="button" class="btn btn-sm btn-outline tasks-view-btn" data-view="list" aria-selected="false"><i class="fas fa-list"></i> List</button>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm" id="tasks-add-btn"><i class="fas fa-plus"></i> Create</button>
         </div>
         <div class="list-toolbar" style="margin-bottom:12px">
           <select class="filter-select" id="tasks-filter-status">
             <option value="">All statuses</option>
-            <option value="todo">To do</option>
-            <option value="in_progress">In progress</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
             <option value="done">Done</option>
           </select>
           <select class="filter-select" id="tasks-filter-client"><option value="">All patients</option></select>
           <select class="filter-select" id="tasks-filter-assignee"><option value="">All assignees</option></select>
         </div>
-        <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="tasks-list"></div></div>
+        <div id="tasks-board-wrap" class="tasks-board-wrap">
+          <div class="task-board" id="task-board">
+            <div class="task-board-column" data-status="todo"><div class="task-board-column-header">To Do</div><div class="task-board-cards" id="task-col-todo"></div></div>
+            <div class="task-board-column" data-status="in_progress"><div class="task-board-column-header">In Progress</div><div class="task-board-cards" id="task-col-in_progress"></div></div>
+            <div class="task-board-column" data-status="done"><div class="task-board-column-header">Done</div><div class="task-board-cards" id="task-col-done"></div></div>
+          </div>
+        </div>
+        <div id="tasks-list-wrap" class="tasks-list-wrap" style="display:none">
+          <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="tasks-list"></div></div>
+        </div>
       </section>
 
       <!-- ── Admin (Staff | Report Parameters | Ward & Beds | Diagnosis Options | Audit Logs) ── -->
