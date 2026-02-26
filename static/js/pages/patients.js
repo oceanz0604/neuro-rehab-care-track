@@ -78,12 +78,13 @@
       return doctors.some(function (d) { return (d || '').trim() === myName; });
     }
 
+    var statusFilter = filterStatus || 'active';
     var filtered = clients.filter(function (c) {
       if (q && (c.name || '').toLowerCase().indexOf(q.toLowerCase()) === -1) return false;
-      if (filterStatus) {
+      if (statusFilter !== 'all') {
         var st = (c.status || 'active');
-        if (filterStatus === 'active' && st === 'discharged') return false;
-        if (filterStatus === 'discharged' && st !== 'discharged') return false;
+        if (statusFilter === 'active' && st === 'discharged') return false;
+        if (statusFilter === 'discharged' && st !== 'discharged') return false;
       }
       if (filterRisk) {
         var risk = (c.currentRisk || 'none').toLowerCase();

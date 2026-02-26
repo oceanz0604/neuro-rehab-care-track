@@ -952,12 +952,16 @@ img { max-width: 100%; }
 /* ═══ Task detail page (task.html) — single card ═══════════════════════════════ */
 .task-page .topbar-no-sidebar,
 .task-page .topbar-detail { left: 0; }
-.task-app { display: flex; flex-direction: column; min-height: 100vh; min-width: 0; }
+.task-app {
+  display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; min-width: 0;
+  padding-top: var(--safe-top);
+}
 .task-app .main-content { margin-top: 0; padding-top: 12px; }
 
 .task-page-topbar {
   display: flex; align-items: center; gap: 12px; flex-shrink: 0;
   padding: 12px 16px; padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
   border-bottom: 1px solid var(--border); background: var(--card);
 }
 .task-topbar-back {
@@ -1990,13 +1994,24 @@ tr.clickable { cursor: pointer; }
 }
 
 @media (max-width: 768px) {
-  :root { --bottom-nav-h: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  /* Android PWA: reserve space for status bar even when env(safe-area-inset-top) is 0 */
+  :root { --safe-top: max(env(safe-area-inset-top, 0px), 24px); --bottom-nav-h: calc(56px + env(safe-area-inset-bottom, 0px)); }
+  body { padding-top: var(--safe-top); box-sizing: border-box; }
+  body * { box-sizing: border-box; }
+  .loading-screen { top: var(--safe-top); height: calc(100vh - var(--safe-top)); height: calc(100dvh - var(--safe-top)); }
+  .login-screen { padding-top: var(--safe-top); min-height: calc(100vh - var(--safe-top)); min-height: calc(100dvh - var(--safe-top)); }
   .sb-overlay.visible { display: block; }
   .main-wrap { margin-left: 0; }
   /* Hide main app topbar on mobile; navigation is via bottom bar */
   #app-shell .topbar { display: none; }
-  #app-shell .main-content { margin-top: var(--safe-top); }
+  #app-shell { padding-top: 0; }
+  #app-shell .main-content { margin-top: 0; }
   #app-shell .chat-layout-wa { height: calc(100dvh - var(--safe-top) - var(--bottom-nav-h) - 60px); min-height: 280px; }
+
+  .task-app,
+  .patient-app { padding-top: 0; }
+  .task-page .main-content,
+  .patient-page .main-content { margin-top: 0; }
 
   .topbar {
     left: 0;
@@ -2090,8 +2105,16 @@ tr.clickable { cursor: pointer; }
 
 /* Blur strip behind status/notification bar — PWA standalone only (not in browser) */
 @media (max-width: 768px) and (display-mode: standalone) {
+  /* Android PWA: ensure top inset even when env(safe-area-inset-top) is 0 */
+  :root {
+    --safe-top: max(env(safe-area-inset-top, 0px), 24px);
+  }
   #app-shell {
     position: relative;
+    padding-top: var(--safe-top);
+  }
+  #app-shell .main-content {
+    margin-top: 0;
   }
   #app-shell::before {
     content: '';
@@ -2109,6 +2132,15 @@ tr.clickable { cursor: pointer; }
   }
   [data-theme="dark"] #app-shell::before {
     background: color-mix(in srgb, var(--bg) 80%, transparent);
+  }
+  /* Task/patient standalone: same top inset so content is below system bar */
+  .task-app,
+  .patient-app {
+    padding-top: 0;
+  }
+  .task-page .main-content,
+  .patient-page .main-content {
+    margin-top: 0;
   }
 }
 
