@@ -1,190 +1,236 @@
 /**
- * Task detail standalone page (task.html) — JIRA-style ticket view.
+ * Task detail page (task.html) — JIRA-style two-column layout with inline editing.
  */
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
   var state = { user: null, profile: null, task: null, staff: [] };
-  var STATUS_OPTIONS = [
-    { value: 'todo', label: 'To Do' },
-    { value: 'in_progress', label: 'In Progress' },
-    { value: 'done', label: 'Done' }
-  ];
-  var PRIORITY_OPTIONS = [
-    { value: 'high', label: 'High', icon: 'fa-arrow-up' },
-    { value: 'medium', label: 'Medium', icon: 'fa-minus' },
-    { value: 'low', label: 'Low', icon: 'fa-arrow-down' }
-  ];
+  var STATUS_LABELS = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' };
+  var PRIORITY_ICONS = { high: 'fa-arrow-up', medium: 'fa-minus', low: 'fa-arrow-down' };
+  var PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
-  function getState() { return state; }
   function toast(msg) {
     var el = $('toast'); if (!el) return;
-    el.textContent = msg;
-    el.setAttribute('data-show', 'true');
+    el.textContent = msg; el.setAttribute('data-show', 'true');
     setTimeout(function () { el.setAttribute('data-show', 'false'); }, 3000);
-  }
-  function navigate(page) {
-    if (page === 'tasks' || page === 'dashboard') window.location.href = '/index.html?page=' + (page || 'tasks');
-    else window.location.href = '/index.html';
-  }
-  function openTask(id) {
-    if (id) window.location.href = '/task.html?id=' + encodeURIComponent(id);
-  }
-  function openPatient(id) {
-    if (id) window.location.href = '/patient.html?id=' + encodeURIComponent(id);
   }
 
   window.CareTrack = {
-    getState: getState,
+    getState: function () { return state; },
     toast: toast,
-    navigate: navigate,
-    openTask: openTask,
-    openPatient: openPatient
+    navigate: function (p) { window.location.href = '/index.html?page=' + (p || 'tasks'); },
+    openTask: function (id) { if (id) window.location.href = '/task.html?id=' + encodeURIComponent(id); },
+    openPatient: function (id) { if (id) window.location.href = '/patient.html?id=' + encodeURIComponent(id); }
   };
 
-  function hideLoading() {
-    var el = $('loading-screen');
-    if (el) el.classList.add('hidden');
-  }
+  function hideLoading() { var el = $('loading-screen'); if (el) el.classList.add('hidden'); }
+  function showApp() { $('task-app').removeAttribute('hidden'); hideLoading(); }
 
-  function showApp() {
-    $('task-app').removeAttribute('hidden');
-    hideLoading();
-  }
-
-  function renderTaskDetail() {
+  /* ─── Render ───────────────────────────────────────────────── */
+  function renderDetail() {
     var root = $('task-detail-root');
     var t = state.task;
     if (!root || !t) return;
 
-    var statusLabel = (STATUS_OPTIONS.filter(function (s) { return s.value === t.status; })[0] || {}).label || t.status;
-    var priorityLabel = (PRIORITY_OPTIONS.filter(function (p) { return p.value === (t.priority || 'medium'); })[0] || {}).label || 'Medium';
-    var priorityIcon = (PRIORITY_OPTIONS.filter(function (p) { return p.value === (t.priority || 'medium'); })[0] || {}).icon || 'fa-minus';
-
-    var patientLink = '';
-    if (t.clientId && t.clientName) {
-      patientLink = '<a href="/patient.html?id=' + esc(t.clientId) + '" class="task-detail-link"><i class="fas fa-hospital-user"></i> ' + esc(t.clientName) + '</a>';
-    } else {
-      patientLink = '<span class="text-muted">—</span>';
-    }
-
+    var key = t.key || t.id;
+    var p = t.priority || 'medium';
+    var pIcon = PRIORITY_ICONS[p] || 'fa-minus';
     var createdStr = t.createdAt ? new Date(t.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
+    var patientHtml = '';
+    if (t.clientId && t.clientName) {
+      patientHtml = '<a href="/patient.html?id=' + esc(t.clientId) + '" class="task-detail-link"><i class="fas fa-hospital-user"></i> ' + esc(t.clientName) + '</a>';
+    } else {
+      patientHtml = '<span class="task-detail-field-value" style="color:var(--text-3)">None</span>';
+    }
+
+    var descriptionHtml = t.notes ? esc(t.notes).replace(/\n/g, '<br>') : '<span style="color:var(--text-3)">Click to add a description...</span>';
+
     root.innerHTML =
-      '<div class="task-detail-card">' +
-        '<div class="task-detail-header">' +
-          '<span class="task-detail-key">' + esc(t.key || t.id) + '</span>' +
-          '<span class="task-detail-priority priority-' + (t.priority || 'medium') + '"><i class="fas ' + priorityIcon + '"></i> ' + esc(priorityLabel) + '</span>' +
+      '<div class="task-detail-layout">' +
+        /* ── Main panel ── */
+        '<div class="task-detail-main">' +
+          '<div class="task-detail-breadcrumb">' +
+            '<a href="/index.html?page=tasks">Tasks</a>' +
+            '<span>/</span>' +
+            '<span class="task-detail-key">' + esc(key) + '</span>' +
+          '</div>' +
+
+          '<div class="task-detail-title-wrap" id="title-wrap">' +
+            '<h1 class="task-detail-title" id="task-title" contenteditable="true" spellcheck="false">' + esc(t.title || 'Untitled') + '</h1>' +
+            '<button type="button" class="btn btn-sm task-detail-title-save" id="title-save-btn"><i class="fas fa-check"></i></button>' +
+          '</div>' +
+
+          '<div class="task-detail-desc-section">' +
+            '<div class="task-detail-desc-label">Description</div>' +
+            '<div class="task-detail-desc-view" id="desc-view">' + descriptionHtml + '</div>' +
+            '<div class="task-detail-desc-edit" id="desc-edit">' +
+              '<textarea id="desc-textarea" class="fi">' + esc(t.notes || '') + '</textarea>' +
+              '<div class="task-detail-desc-actions">' +
+                '<button type="button" class="btn btn-sm" id="desc-save-btn">Save</button>' +
+                '<button type="button" class="btn btn-sm btn-ghost" id="desc-cancel-btn">Cancel</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="task-detail-footer-bar">' +
+            '<span class="task-detail-meta-text">Created ' + esc(createdStr) + (t.createdByName ? ' by ' + esc(t.createdByName) : '') + '</span>' +
+            '<div class="task-detail-danger-actions">' +
+              '<button type="button" class="btn btn-sm btn-danger" id="task-delete-btn"><i class="fas fa-trash"></i> Delete</button>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
-        '<h1 class="task-detail-title" id="task-detail-title">' + esc(t.title || 'Untitled') + '</h1>' +
-        '<div class="task-detail-meta-row">' +
-          '<div class="task-detail-field"><label>Status</label><select id="task-detail-status" class="fi">' +
-            STATUS_OPTIONS.map(function (s) { return '<option value="' + s.value + '"' + (t.status === s.value ? ' selected' : '') + '>' + esc(s.label) + '</option>'; }).join('') +
-          '</select></div>' +
-          '<div class="task-detail-field"><label>Assignee</label><select id="task-detail-assignee" class="fi">' +
-            '<option value="">Unassigned</option>' +
-            (state.staff || []).map(function (s) { return '<option value="' + esc(s.uid) + '"' + (t.assignedTo === s.uid ? ' selected' : '') + '>' + esc(s.displayName || s.email || '') + '</option>'; }).join('') +
-          '</select></div>' +
-          '<div class="task-detail-field"><label>Due date</label><input type="date" id="task-detail-due" class="fi" value="' + esc(t.dueDate || '') + '"></div>' +
-          '<div class="task-detail-field"><label>Priority</label><select id="task-detail-priority" class="fi">' +
-            PRIORITY_OPTIONS.map(function (p) { return '<option value="' + p.value + '"' + ((t.priority || 'medium') === p.value ? ' selected' : '') + '>' + esc(p.label) + '</option>'; }).join('') +
-          '</select></div>' +
-        '</div>' +
-        '<div class="task-detail-field task-detail-patient"><label>Patient</label><div>' + patientLink + '</div></div>' +
-        '<div class="task-detail-description">' +
-          '<label>Description</label>' +
-          '<div class="task-detail-notes" id="task-detail-notes">' + (t.notes ? esc(t.notes).replace(/\n/g, '<br>') : '<span class="text-muted">No description.</span>') + '</div>' +
-          '<button type="button" class="btn btn-sm btn-outline" id="task-edit-desc-btn"><i class="fas fa-pen"></i> Edit</button>' +
-        '</div>' +
-        '<div class="task-detail-footer">' +
-          '<span class="text-muted">Created ' + esc(createdStr) + (t.createdByName ? ' by ' + esc(t.createdByName) : '') + '</span>' +
-          '<div class="task-detail-actions">' +
-            '<button type="button" class="btn btn-sm btn-outline" id="task-edit-title-btn"><i class="fas fa-pen"></i> Edit title</button> ' +
-            '<button type="button" class="btn btn-sm btn-danger" id="task-delete-btn"><i class="fas fa-trash"></i> Delete</button>' +
+
+        /* ── Sidebar panel ── */
+        '<div class="task-detail-sidebar">' +
+          '<div class="task-detail-sidebar-hd">Details</div>' +
+          '<div class="task-detail-sidebar-body">' +
+
+            '<div class="task-detail-field">' +
+              '<label>Status</label>' +
+              '<select id="td-status" class="fi">' +
+                ['todo', 'in_progress', 'done'].map(function (s) {
+                  return '<option value="' + s + '"' + (t.status === s ? ' selected' : '') + '>' + esc(STATUS_LABELS[s]) + '</option>';
+                }).join('') +
+              '</select>' +
+            '</div>' +
+
+            '<div class="task-detail-field">' +
+              '<label>Priority</label>' +
+              '<select id="td-priority" class="fi">' +
+                ['high', 'medium', 'low'].map(function (v) {
+                  return '<option value="' + v + '"' + (p === v ? ' selected' : '') + '>' + esc(PRIORITY_LABELS[v]) + '</option>';
+                }).join('') +
+              '</select>' +
+            '</div>' +
+
+            '<div class="task-detail-field">' +
+              '<label>Assignee</label>' +
+              '<select id="td-assignee" class="fi">' +
+                '<option value="">Unassigned</option>' +
+                (state.staff || []).map(function (s) {
+                  return '<option value="' + esc(s.uid) + '"' + (t.assignedTo === s.uid ? ' selected' : '') + '>' + esc(s.displayName || s.email || '') + '</option>';
+                }).join('') +
+              '</select>' +
+            '</div>' +
+
+            '<div class="task-detail-field">' +
+              '<label>Due date</label>' +
+              '<input type="date" id="td-due" class="fi" value="' + esc(t.dueDate || '') + '">' +
+            '</div>' +
+
+            '<div class="task-detail-field">' +
+              '<label>Patient</label>' +
+              '<div class="task-detail-field-value">' + patientHtml + '</div>' +
+            '</div>' +
+
           '</div>' +
         '</div>' +
       '</div>';
 
-    if ($('tb-title')) $('tb-title').textContent = (t.key || '') + ' ' + (t.title || 'Task');
-    document.title = (t.key || '') + ' ' + (t.title || '') + ' — Maitra Wellness';
+    if ($('tb-title')) $('tb-title').textContent = key + '  ' + (t.title || 'Task');
+    document.title = key + ' ' + (t.title || '') + ' — Maitra Wellness';
 
-    bindTaskDetailEvents();
+    bindEvents();
   }
 
-  function bindTaskDetailEvents() {
+  /* ─── Event binding ────────────────────────────────────────── */
+  function bindEvents() {
     var t = state.task;
     if (!t) return;
 
     function saveField(field, value, label) {
       var payload = {}; payload[field] = value;
       if (field === 'assignedTo') {
-        var uid = value;
-        var s = (state.staff || []).filter(function (x) { return x.uid === uid; })[0];
+        var s = (state.staff || []).filter(function (x) { return x.uid === value; })[0];
         payload.assignedToName = s ? (s.displayName || s.email || '') : '';
       }
       AppDB.updateTask(t.id, payload).then(function () {
-        state.task[field] = value;
-        if (field === 'assignedTo') state.task.assignedToName = (payload.assignedToName || '');
+        Object.keys(payload).forEach(function (k) { state.task[k] = payload[k]; });
         toast(label || 'Saved');
-      }).catch(function (e) { toast('Failed to save: ' + (e.message || '')); });
+      }).catch(function (e) { toast('Save failed: ' + (e.message || '')); });
     }
 
-    var statusSel = $('task-detail-status');
-    if (statusSel) statusSel.addEventListener('change', function () {
-      saveField('status', statusSel.value, 'Status updated');
-    });
+    /* Sidebar selects: auto-save on change */
+    var statusSel = $('td-status');
+    var prioritySel = $('td-priority');
+    var assigneeSel = $('td-assignee');
+    var dueInp = $('td-due');
 
-    var assigneeSel = $('task-detail-assignee');
-    if (assigneeSel) assigneeSel.addEventListener('change', function () {
-      saveField('assignedTo', assigneeSel.value || null, 'Assignee updated');
-    });
+    if (statusSel) statusSel.addEventListener('change', function () { saveField('status', statusSel.value, 'Status updated'); });
+    if (prioritySel) prioritySel.addEventListener('change', function () { saveField('priority', prioritySel.value, 'Priority updated'); });
+    if (assigneeSel) assigneeSel.addEventListener('change', function () { saveField('assignedTo', assigneeSel.value || null, 'Assignee updated'); });
+    if (dueInp) dueInp.addEventListener('change', function () { saveField('dueDate', dueInp.value || null, 'Due date updated'); });
 
-    var dueInp = $('task-detail-due');
-    if (dueInp) dueInp.addEventListener('change', function () {
-      saveField('dueDate', dueInp.value || null, 'Due date updated');
-    });
+    /* Title: inline contenteditable */
+    var titleEl = $('task-title');
+    var titleWrap = $('title-wrap');
+    var titleSaveBtn = $('title-save-btn');
+    var originalTitle = t.title || '';
 
-    var prioritySel = $('task-detail-priority');
-    if (prioritySel) prioritySel.addEventListener('change', function () {
-      saveField('priority', prioritySel.value, 'Priority updated');
-    });
+    if (titleEl) {
+      titleEl.addEventListener('focus', function () { titleWrap.classList.add('editing'); });
+      titleEl.addEventListener('blur', function () {
+        setTimeout(function () { titleWrap.classList.remove('editing'); }, 200);
+      });
+      titleEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); commitTitle(); }
+        if (e.key === 'Escape') { titleEl.textContent = originalTitle; titleEl.blur(); }
+      });
+    }
+    if (titleSaveBtn) titleSaveBtn.addEventListener('click', commitTitle);
 
-    var editTitleBtn = $('task-edit-title-btn');
-    if (editTitleBtn) editTitleBtn.addEventListener('click', function () {
-      var newTitle = window.prompt('Task title', t.title || '');
-      if (newTitle === null) return;
-      newTitle = (newTitle || '').trim();
-      if (!newTitle) { toast('Title cannot be empty'); return; }
+    function commitTitle() {
+      var newTitle = (titleEl.textContent || '').trim();
+      if (!newTitle) { titleEl.textContent = originalTitle; toast('Title cannot be empty'); return; }
+      if (newTitle === originalTitle) return;
       AppDB.updateTask(t.id, { title: newTitle }).then(function () {
         state.task.title = newTitle;
-        var el = $('task-detail-title'); if (el) el.textContent = newTitle;
-        if ($('tb-title')) $('tb-title').textContent = (t.key || '') + ' ' + newTitle;
+        originalTitle = newTitle;
+        if ($('tb-title')) $('tb-title').textContent = (t.key || '') + '  ' + newTitle;
         document.title = (t.key || '') + ' ' + newTitle + ' — Maitra Wellness';
         toast('Title updated');
+      }).catch(function (e) { titleEl.textContent = originalTitle; toast('Failed: ' + (e.message || '')); });
+    }
+
+    /* Description: click to edit */
+    var descView = $('desc-view');
+    var descEdit = $('desc-edit');
+    var descTextarea = $('desc-textarea');
+    var descSaveBtn = $('desc-save-btn');
+    var descCancelBtn = $('desc-cancel-btn');
+
+    if (descView) descView.addEventListener('click', function () {
+      descView.style.display = 'none';
+      descEdit.style.display = 'block';
+      descTextarea.value = state.task.notes || '';
+      descTextarea.focus();
+    });
+    if (descCancelBtn) descCancelBtn.addEventListener('click', closeDescEditor);
+    if (descSaveBtn) descSaveBtn.addEventListener('click', function () {
+      var newNotes = (descTextarea.value || '').trim();
+      AppDB.updateTask(t.id, { notes: newNotes }).then(function () {
+        state.task.notes = newNotes;
+        descView.innerHTML = newNotes ? esc(newNotes).replace(/\n/g, '<br>') : '<span style="color:var(--text-3)">Click to add a description...</span>';
+        closeDescEditor();
+        toast('Description saved');
       }).catch(function (e) { toast('Failed: ' + (e.message || '')); });
     });
 
-    var editDescBtn = $('task-edit-desc-btn');
-    if (editDescBtn) editDescBtn.addEventListener('click', function () {
-      var notesEl = $('task-detail-notes');
-      var current = (t.notes || '').trim();
-      var newNotes = window.prompt('Description', current);
-      if (newNotes === null) return;
-      AppDB.updateTask(t.id, { notes: (newNotes || '').trim() }).then(function () {
-        state.task.notes = (newNotes || '').trim();
-        if (notesEl) notesEl.innerHTML = state.task.notes ? esc(state.task.notes).replace(/\n/g, '<br>') : '<span class="text-muted">No description.</span>';
-        toast('Description updated');
-      }).catch(function (e) { toast('Failed: ' + (e.message || '')); });
-    });
+    function closeDescEditor() {
+      descEdit.style.display = 'none';
+      descView.style.display = '';
+    }
 
+    /* Delete */
     var deleteBtn = $('task-delete-btn');
     if (deleteBtn) deleteBtn.addEventListener('click', function () {
-      if (!window.AppModal || !AppModal.confirm) {
-        if (window.confirm('Delete this task?')) doDelete();
-        return;
+      if (window.AppModal && AppModal.confirm) {
+        AppModal.confirm('Delete Task', 'Delete "' + esc(t.title || '') + '"?', doDelete, 'Delete');
+      } else {
+        if (confirm('Delete this task?')) doDelete();
       }
-      AppModal.confirm('Delete Task', 'Delete "' + esc(t.title || '') + '"?' , function () { doDelete(); }, 'Delete');
     });
 
     function doDelete() {
@@ -195,31 +241,26 @@
     }
   }
 
+  /* ─── Auth + boot ──────────────────────────────────────────── */
   function run() {
-    if (!window.AppDB || !AppDB.ready) {
-      window.location.href = '/index.html';
-      return;
-    }
+    if (!window.AppDB || !AppDB.ready) { window.location.href = '/index.html'; return; }
     var params = new URLSearchParams(window.location.search);
     var id = params.get('id');
-    if (!id) {
-      window.location.href = '/index.html?page=tasks';
-      return;
-    }
+    if (!id) { window.location.href = '/index.html?page=tasks'; return; }
 
     var resolved = false;
     var unsub = AppDB.onAuthStateChanged && AppDB.onAuthStateChanged(function (user) {
       if (user) {
         if (resolved) return;
         resolved = true;
-        unsub && typeof unsub === 'function' && unsub();
+        if (typeof unsub === 'function') unsub();
         loadTask(user, id);
         return;
       }
       setTimeout(function () {
         if (resolved) return;
         resolved = true;
-        unsub && typeof unsub === 'function' && unsub();
+        if (typeof unsub === 'function') unsub();
         var u = AppDB.getCurrentUser && AppDB.getCurrentUser();
         if (u) loadTask(u, id);
         else window.location.href = '/index.html';
@@ -233,18 +274,13 @@
       AppDB.getTask(id),
       AppDB.getAllStaff ? AppDB.getAllStaff() : Promise.resolve([])
     ]).then(function (results) {
-      var task = results[0];
       state.staff = results[1] || [];
-      if (!task) {
-        toast('Task not found');
-        window.location.href = '/index.html?page=tasks';
-        return;
-      }
-      state.task = task;
+      if (!results[0]) { toast('Task not found'); window.location.href = '/index.html?page=tasks'; return; }
+      state.task = results[0];
       showApp();
-      renderTaskDetail();
+      renderDetail();
     }).catch(function (err) {
-      toast(err && err.message ? err.message : 'Failed to load task');
+      toast(err && err.message ? err.message : 'Failed to load');
       window.location.href = '/index.html?page=tasks';
     });
   }

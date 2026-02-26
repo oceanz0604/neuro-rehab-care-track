@@ -212,9 +212,18 @@
         </div>
         <div id="tasks-board-wrap" class="tasks-board-wrap">
           <div class="task-board" id="task-board">
-            <div class="task-board-column" data-status="todo"><div class="task-board-column-header">To Do</div><div class="task-board-cards" id="task-col-todo"></div></div>
-            <div class="task-board-column" data-status="in_progress"><div class="task-board-column-header">In Progress</div><div class="task-board-cards" id="task-col-in_progress"></div></div>
-            <div class="task-board-column" data-status="done"><div class="task-board-column-header">Done</div><div class="task-board-cards" id="task-col-done"></div></div>
+            <div class="task-board-column" data-status="todo">
+              <div class="task-board-col-hd"><span class="task-board-col-title"><span class="task-board-col-dot dot-todo"></span> To Do</span><span class="task-board-col-count" id="task-count-todo">0</span></div>
+              <div class="task-board-cards" id="task-col-todo"></div>
+            </div>
+            <div class="task-board-column" data-status="in_progress">
+              <div class="task-board-col-hd"><span class="task-board-col-title"><span class="task-board-col-dot dot-in_progress"></span> In Progress</span><span class="task-board-col-count" id="task-count-in_progress">0</span></div>
+              <div class="task-board-cards" id="task-col-in_progress"></div>
+            </div>
+            <div class="task-board-column" data-status="done">
+              <div class="task-board-col-hd"><span class="task-board-col-title"><span class="task-board-col-dot dot-done"></span> Done</span><span class="task-board-col-count" id="task-count-done">0</span></div>
+              <div class="task-board-cards" id="task-col-done"></div>
+            </div>
           </div>
         </div>
         <div id="tasks-list-wrap" class="tasks-list-wrap" style="display:none">
