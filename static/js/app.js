@@ -146,7 +146,8 @@
   function updateBreadcrumb(page) {
     var el = $('tb-breadcrumb');
     if (!el) return;
-    el.innerHTML = '<span class="bc-current">' + (PAGE_TITLES[page] || page) + '</span>';
+    var label = (page && PAGE_TITLES[page]) ? PAGE_TITLES[page] : (page || 'Dashboard');
+    el.innerHTML = '<span class="bc-current">' + label + '</span>';
   }
 
   function updateBottomNav(page) {
@@ -225,6 +226,7 @@
 
   /* ─── Navigation ────────────────────────────────────────────── */
   function navigate(page) {
+    if (!page || !PAGE_TITLES[page]) return;
     var prevPage = state.page;
     if (Pages[prevPage] && Pages[prevPage].destroy) Pages[prevPage].destroy();
 
@@ -423,11 +425,13 @@
       }
     });
 
-    // Sidebar nav
+    // Sidebar nav (only links with a valid data-page; logout has no data-page)
     document.querySelectorAll('.nav-link').forEach(function (a) {
       a.addEventListener('click', function (e) {
+        var page = a.getAttribute('data-page');
+        if (!page || !PAGE_TITLES[page]) return;
         e.preventDefault();
-        navigate(a.getAttribute('data-page'));
+        navigate(page);
       });
     });
 
@@ -469,7 +473,7 @@
           if (page === 'more') {
             $('sidebar').classList.add('open');
             $('sb-overlay').classList.add('visible');
-          } else {
+          } else if (page && PAGE_TITLES[page]) {
             navigate(page);
           }
         });
@@ -484,7 +488,11 @@
     $('sb-overlay').addEventListener('click', closeSidebar);
 
     // Logout (with confirmation)
-    $('logout-btn').addEventListener('click', function () {
+    $('logout-btn').addEventListener('click', function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var overlay = document.getElementById('modal-overlay');
+      if (overlay && overlay.classList.contains('visible')) return;
       if (!window.AppModal || !AppModal.confirm) {
         doLogout();
         return;

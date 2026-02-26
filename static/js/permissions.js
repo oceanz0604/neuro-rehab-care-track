@@ -144,6 +144,57 @@
     return hasRole(profile, minRole);
   }
 
+  /** True if profile has a "doctor" role (assigned to patients). medical_officer and above. */
+  function isDoctorRole(profile) {
+    return hasRole(profile, 'medical_officer');
+  }
+
+  /**
+   * Task RBAC.
+   * - Admins: view/edit/delete all tasks.
+   * - Doctors: view tasks linked to their patients (task.clientId -> client with profile in assignedDoctors).
+   * - Nurses/others: view tasks assigned to them or created by them.
+   * - Creator: view, edit, delete own tasks.
+   * - Assignee: edit by default (full for admin/doctor/creator; progress-only for nurses/others when assigned).
+   * @param {object} task - { clientId, createdBy, assignedTo }
+   * @param {object} client - patient object (for task.clientId) when task is linked to a patient; null otherwise.
+   */
+  function canViewTask(profile, task, client) {
+    if (!profile || !task) return false;
+    var uid = (profile.uid || '').toString().trim();
+    if (getRole(profile) === 'admin') return true;
+    if ((task.createdBy || '').toString().trim() === uid) return true;
+    if ((task.assignedTo || '').toString().trim() === uid) return true;
+    if (task.clientId && client && isAssignedDoctor(profile, client)) return true;
+    return false;
+  }
+
+  /** 'full' | 'progress' | false. Progress = only status (and description) for assignees who are not admin/doctor/creator. */
+  function canEditTaskLevel(profile, task, client) {
+    if (!profile || !task) return false;
+    var uid = (profile.uid || '').toString().trim();
+    if (getRole(profile) === 'admin') return 'full';
+    if ((task.createdBy || '').toString().trim() === uid) return 'full';
+    var assigned = (task.assignedTo || '').toString().trim() === uid;
+    if (assigned) {
+      if (isDoctorRole(profile)) return 'full';
+      return 'progress';
+    }
+    return false;
+  }
+
+  function canDeleteTask(profile, task) {
+    if (!profile || !task) return false;
+    var uid = (profile.uid || '').toString().trim();
+    if (getRole(profile) === 'admin') return true;
+    if ((task.createdBy || '').toString().trim() === uid) return true;
+    return false;
+  }
+
+  function canCreateTask(profile) {
+    return hasRole(profile, 'nurse');
+  }
+
   window.Permissions = {
     ROLE_HIERARCHY: ROLE_HIERARCHY,
     normalizeRole: normalizeRole,
@@ -164,6 +215,11 @@
     canAddDiagnosisFor: canAddDiagnosisFor,
     canViewHistoryFor: canViewHistoryFor,
     canViewOverview: canViewOverview,
-    canAddReport: canAddReport
+    canAddReport: canAddReport,
+    canViewTask: canViewTask,
+    canEditTaskLevel: canEditTaskLevel,
+    canDeleteTask: canDeleteTask,
+    canCreateTask: canCreateTask,
+    isDoctorRole: isDoctorRole
   };
 })();

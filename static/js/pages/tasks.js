@@ -22,11 +22,28 @@
     else window.location.href = '/task.html?id=' + encodeURIComponent(id);
   }
 
-  function getFilteredTasks() {
+  function getClientForTask(task, clients) {
+    if (!task || !task.clientId || !clients || !clients.length) return null;
+    return clients.filter(function (c) { return c.id === task.clientId; })[0] || null;
+  }
+
+  function getVisibleTasks(tasks, profile, clients) {
+    if (!window.Permissions || !window.Permissions.canViewTask) return tasks || [];
+    if (!profile) return [];
+    return (tasks || []).filter(function (t) {
+      var client = getClientForTask(t, clients);
+      return window.Permissions.canViewTask(profile, t, client);
+    });
+  }
+
+  function getFilteredTasks(state) {
+    var profile = (state && state.profile) || {};
+    var clients = (state && state.clients) || [];
+    var visible = getVisibleTasks(_tasks, profile, clients);
     var sf = ($('tasks-filter-status') || {}).value || '';
     var cf = ($('tasks-filter-client') || {}).value || '';
     var af = ($('tasks-filter-assignee') || {}).value || '';
-    return _tasks.filter(function (t) {
+    return visible.filter(function (t) {
       if (sf && t.status !== sf) return false;
       if (cf && (t.clientId || '') !== cf) return false;
       if (af && (t.assignedTo || '') !== af) return false;
@@ -57,9 +74,14 @@
 
   function render(state) {
     if (!$('tasks-board-wrap') && !$('tasks-list-wrap')) return;
+    state = state || {};
     function done() {
       populateFilters(state);
-      if (_currentView === 'board') renderBoard(); else renderTable(state);
+      var addBtn = $('tasks-add-btn');
+      if (addBtn && window.Permissions && window.Permissions.canCreateTask) {
+        addBtn.style.display = window.Permissions.canCreateTask(state.profile) ? '' : 'none';
+      }
+      if (_currentView === 'board') renderBoard(state); else renderTable(state);
     }
     AppDB.getTasks().then(function (list) {
       _tasks = list || [];
@@ -71,8 +93,8 @@
     });
   }
 
-  function renderBoard() {
-    var filtered = getFilteredTasks();
+  function renderBoard(state) {
+    var filtered = getFilteredTasks(state);
     STATUSES.forEach(function (status) {
       var col = $('task-col-' + status);
       var countEl = $('task-count-' + status);
@@ -111,9 +133,10 @@
   function renderTable(state) {
     var container = $('tasks-list');
     if (!container) return;
-    var filtered = getFilteredTasks();
+    var filtered = getFilteredTasks(state);
+    var visibleCount = getVisibleTasks(_tasks, (state && state.profile) || {}, (state && state.clients) || []).length;
     if (!filtered.length) {
-      container.innerHTML = '<div class="empty-state" style="padding:32px"><i class="fas fa-list-check"></i><p>' + (_tasks.length ? 'No tasks match filters' : 'No tasks yet') + '</p></div>';
+      container.innerHTML = '<div class="empty-state" style="padding:32px"><i class="fas fa-list-check"></i><p>' + (visibleCount ? 'No tasks match filters' : 'No tasks yet') + '</p></div>';
       return;
     }
     var html = '<table class="staff-table task-list-table"><thead><tr><th>Key</th><th>Title</th><th>Priority</th><th>Patient</th><th>Assignee</th><th>Due</th><th>Status</th></tr></thead><tbody>';
@@ -229,7 +252,7 @@
   }
 
   function refreshView(state) {
-    if (_currentView === 'board') renderBoard(); else renderTable(state);
+    if (_currentView === 'board') renderBoard(state); else renderTable(state);
   }
 
   /* ─── Init ─────────────────────────────────────────────────── */

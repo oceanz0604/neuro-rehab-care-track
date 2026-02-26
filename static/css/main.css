@@ -1845,6 +1845,28 @@ tr.clickable { cursor: pointer; }
   #app-shell .topbar { display: none; }
   #app-shell .main-content { margin-top: var(--safe-top); }
   #app-shell .chat-layout-wa { height: calc(100dvh - var(--safe-top) - var(--bottom-nav-h) - 60px); min-height: 280px; }
+
+  /* Blur strip behind transparent status/notification bar so content doesn’t show through */
+  #app-shell {
+    position: relative;
+  }
+  #app-shell::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--safe-top);
+    min-height: 24px;
+    z-index: 100;
+    pointer-events: none;
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(150%);
+    background: color-mix(in srgb, var(--bg) 72%, transparent);
+  }
+  [data-theme="dark"] #app-shell::before {
+    background: color-mix(in srgb, var(--bg) 80%, transparent);
+  }
   .topbar {
     left: 0;
     height: calc(var(--topbar-h) + var(--safe-top));

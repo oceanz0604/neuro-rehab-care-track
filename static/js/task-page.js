@@ -4,7 +4,7 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { user: null, profile: null, task: null, staff: [] };
+  var state = { user: null, profile: null, task: null, staff: [], client: null, editLevel: false, canDelete: false };
   var STATUS_LABELS = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' };
   var PRIORITY_ICONS = { high: 'fa-arrow-up', medium: 'fa-minus', low: 'fa-arrow-down' };
   var PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
@@ -37,6 +37,10 @@
     var p = t.priority || 'medium';
     var pIcon = PRIORITY_ICONS[p] || 'fa-minus';
     var createdStr = t.createdAt ? new Date(t.createdAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+    var editLevel = state.editLevel;
+    var canEditFull = editLevel === 'full';
+    var canEditProgress = editLevel === 'progress' || canEditFull;
+    var canDelete = state.canDelete;
 
     var patientHtml = '';
     if (t.clientId && t.clientName) {
@@ -46,6 +50,8 @@
     }
 
     var descriptionHtml = t.notes ? esc(t.notes).replace(/\n/g, '<br>') : '<span style="color:var(--text-3)">Click to add a description...</span>';
+    var titleEditable = canEditFull ? ' contenteditable="true" spellcheck="false"' : '';
+    var descClickable = canEditProgress ? '' : ' style="pointer-events:none;cursor:default"';
 
     root.innerHTML =
       '<div class="task-detail-layout">' +
@@ -58,13 +64,13 @@
           '</div>' +
 
           '<div class="task-detail-title-wrap" id="title-wrap">' +
-            '<h1 class="task-detail-title" id="task-title" contenteditable="true" spellcheck="false">' + esc(t.title || 'Untitled') + '</h1>' +
-            '<button type="button" class="btn btn-sm task-detail-title-save" id="title-save-btn"><i class="fas fa-check"></i></button>' +
+            '<h1 class="task-detail-title" id="task-title"' + titleEditable + '>' + esc(t.title || 'Untitled') + '</h1>' +
+            (canEditFull ? '<button type="button" class="btn btn-sm task-detail-title-save" id="title-save-btn"><i class="fas fa-check"></i></button>' : '') +
           '</div>' +
 
           '<div class="task-detail-desc-section">' +
             '<div class="task-detail-desc-label">Description</div>' +
-            '<div class="task-detail-desc-view" id="desc-view">' + descriptionHtml + '</div>' +
+            '<div class="task-detail-desc-view" id="desc-view"' + descClickable + '>' + descriptionHtml + '</div>' +
             '<div class="task-detail-desc-edit" id="desc-edit">' +
               '<textarea id="desc-textarea" class="fi">' + esc(t.notes || '') + '</textarea>' +
               '<div class="task-detail-desc-actions">' +
@@ -76,9 +82,9 @@
 
           '<div class="task-detail-footer-bar">' +
             '<span class="task-detail-meta-text">Created ' + esc(createdStr) + (t.createdByName ? ' by ' + esc(t.createdByName) : '') + '</span>' +
-            '<div class="task-detail-danger-actions">' +
+            (canDelete ? '<div class="task-detail-danger-actions">' +
               '<button type="button" class="btn btn-sm btn-danger" id="task-delete-btn"><i class="fas fa-trash"></i> Delete</button>' +
-            '</div>' +
+            '</div>' : '') +
           '</div>' +
         '</div>' +
 
@@ -89,35 +95,35 @@
 
             '<div class="task-detail-field">' +
               '<label>Status</label>' +
-              '<select id="td-status" class="fi">' +
+              (canEditProgress ? '<select id="td-status" class="fi">' +
                 ['todo', 'in_progress', 'done'].map(function (s) {
                   return '<option value="' + s + '"' + (t.status === s ? ' selected' : '') + '>' + esc(STATUS_LABELS[s]) + '</option>';
                 }).join('') +
-              '</select>' +
+              '</select>' : '<div class="task-detail-field-value">' + esc(STATUS_LABELS[t.status] || t.status || '') + '</div>') +
             '</div>' +
 
             '<div class="task-detail-field">' +
               '<label>Priority</label>' +
-              '<select id="td-priority" class="fi">' +
+              (canEditFull ? '<select id="td-priority" class="fi">' +
                 ['high', 'medium', 'low'].map(function (v) {
                   return '<option value="' + v + '"' + (p === v ? ' selected' : '') + '>' + esc(PRIORITY_LABELS[v]) + '</option>';
                 }).join('') +
-              '</select>' +
+              '</select>' : '<div class="task-detail-field-value">' + esc(PRIORITY_LABELS[p] || p) + '</div>') +
             '</div>' +
 
             '<div class="task-detail-field">' +
               '<label>Assignee</label>' +
-              '<select id="td-assignee" class="fi">' +
+              (canEditFull ? '<select id="td-assignee" class="fi">' +
                 '<option value="">Unassigned</option>' +
                 (state.staff || []).map(function (s) {
                   return '<option value="' + esc(s.uid) + '"' + (t.assignedTo === s.uid ? ' selected' : '') + '>' + esc(s.displayName || s.email || '') + '</option>';
                 }).join('') +
-              '</select>' +
+              '</select>' : '<div class="task-detail-field-value">' + esc(t.assignedToName || '—') + '</div>') +
             '</div>' +
 
             '<div class="task-detail-field">' +
               '<label>Due date</label>' +
-              '<input type="date" id="td-due" class="fi" value="' + esc(t.dueDate || '') + '">' +
+              (canEditFull ? '<input type="date" id="td-due" class="fi" value="' + esc(t.dueDate || '') + '">' : '<div class="task-detail-field-value">' + (t.dueDate || '—') + '</div>') +
             '</div>' +
 
             '<div class="task-detail-field">' +
@@ -163,16 +169,18 @@
     if (assigneeSel) assigneeSel.addEventListener('change', function () { saveField('assignedTo', assigneeSel.value || null, 'Assignee updated'); });
     if (dueInp) dueInp.addEventListener('change', function () { saveField('dueDate', dueInp.value || null, 'Due date updated'); });
 
-    /* Title: inline contenteditable */
+    /* Title: inline contenteditable (full edit only) */
+    var canEditFull = state.editLevel === 'full';
+    var canEditProgress = state.editLevel === 'progress' || canEditFull;
     var titleEl = $('task-title');
     var titleWrap = $('title-wrap');
     var titleSaveBtn = $('title-save-btn');
     var originalTitle = t.title || '';
 
-    if (titleEl) {
-      titleEl.addEventListener('focus', function () { titleWrap.classList.add('editing'); });
+    if (canEditFull && titleEl) {
+      titleEl.addEventListener('focus', function () { if (titleWrap) titleWrap.classList.add('editing'); });
       titleEl.addEventListener('blur', function () {
-        setTimeout(function () { titleWrap.classList.remove('editing'); }, 200);
+        setTimeout(function () { if (titleWrap) titleWrap.classList.remove('editing'); }, 200);
       });
       titleEl.addEventListener('keydown', function (e) {
         if (e.key === 'Enter') { e.preventDefault(); titleEl.blur(); commitTitle(); }
@@ -182,6 +190,7 @@
     if (titleSaveBtn) titleSaveBtn.addEventListener('click', commitTitle);
 
     function commitTitle() {
+      if (!canEditFull || !titleEl) return;
       var newTitle = (titleEl.textContent || '').trim();
       if (!newTitle) { titleEl.textContent = originalTitle; toast('Title cannot be empty'); return; }
       if (newTitle === originalTitle) return;
@@ -194,33 +203,34 @@
       }).catch(function (e) { titleEl.textContent = originalTitle; toast('Failed: ' + (e.message || '')); });
     }
 
-    /* Description: click to edit */
+    /* Description: click to edit (progress or full) */
     var descView = $('desc-view');
     var descEdit = $('desc-edit');
     var descTextarea = $('desc-textarea');
     var descSaveBtn = $('desc-save-btn');
     var descCancelBtn = $('desc-cancel-btn');
 
-    if (descView) descView.addEventListener('click', function () {
-      descView.style.display = 'none';
-      descEdit.style.display = 'block';
-      descTextarea.value = state.task.notes || '';
-      descTextarea.focus();
-    });
+    if (canEditProgress && descView) {
+      descView.addEventListener('click', function () {
+        descView.style.display = 'none';
+        if (descEdit) descEdit.style.display = 'block';
+        if (descTextarea) { descTextarea.value = state.task.notes || ''; descTextarea.focus(); }
+      });
+    }
     if (descCancelBtn) descCancelBtn.addEventListener('click', closeDescEditor);
     if (descSaveBtn) descSaveBtn.addEventListener('click', function () {
-      var newNotes = (descTextarea.value || '').trim();
+      var newNotes = (descTextarea && descTextarea.value !== undefined) ? (descTextarea.value || '').trim() : '';
       AppDB.updateTask(t.id, { notes: newNotes }).then(function () {
         state.task.notes = newNotes;
-        descView.innerHTML = newNotes ? esc(newNotes).replace(/\n/g, '<br>') : '<span style="color:var(--text-3)">Click to add a description...</span>';
+        if (descView) descView.innerHTML = newNotes ? esc(newNotes).replace(/\n/g, '<br>') : '<span style="color:var(--text-3)">Click to add a description...</span>';
         closeDescEditor();
         toast('Description saved');
       }).catch(function (e) { toast('Failed: ' + (e.message || '')); });
     });
 
     function closeDescEditor() {
-      descEdit.style.display = 'none';
-      descView.style.display = '';
+      if (descEdit) descEdit.style.display = 'none';
+      if (descView) descView.style.display = '';
     }
 
     /* Delete */
@@ -284,13 +294,39 @@
     state.user = user;
     Promise.all([
       AppDB.getTask(id),
-      AppDB.getAllStaff ? AppDB.getAllStaff() : Promise.resolve([])
+      AppDB.getAllStaff ? AppDB.getAllStaff() : Promise.resolve([]),
+      AppDB.getUserProfile ? AppDB.getUserProfile(user.uid) : Promise.resolve(null)
     ]).then(function (results) {
+      var task = results[0];
       state.staff = results[1] || [];
-      if (!results[0]) { toast('Task not found'); window.location.href = '/index.html?page=tasks'; return; }
-      state.task = results[0];
-      showApp();
-      renderDetail();
+      state.profile = results[2] || {};
+      if (!task) { toast('Task not found'); window.location.href = '/index.html?page=tasks'; return; }
+      state.task = task;
+      var clientPromise = task.clientId && AppDB.getClient ? AppDB.getClient(task.clientId) : Promise.resolve(null);
+      clientPromise.then(function (client) {
+        state.client = client || null;
+        if (window.Permissions && window.Permissions.canViewTask) {
+          if (!window.Permissions.canViewTask(state.profile, state.task, state.client)) {
+            toast('You do not have access to this task');
+            window.location.href = '/index.html?page=tasks';
+            return;
+          }
+        }
+        state.editLevel = (window.Permissions && window.Permissions.canEditTaskLevel)
+          ? window.Permissions.canEditTaskLevel(state.profile, state.task, state.client) : 'full';
+        state.canDelete = (window.Permissions && window.Permissions.canDeleteTask)
+          ? window.Permissions.canDeleteTask(state.profile, state.task) : true;
+        showApp();
+        renderDetail();
+      }).catch(function () {
+        state.client = null;
+        state.editLevel = (window.Permissions && window.Permissions.canEditTaskLevel)
+          ? window.Permissions.canEditTaskLevel(state.profile, state.task, null) : 'full';
+        state.canDelete = (window.Permissions && window.Permissions.canDeleteTask)
+          ? window.Permissions.canDeleteTask(state.profile, state.task) : true;
+        showApp();
+        renderDetail();
+      });
     }).catch(function (err) {
       toast(err && err.message ? err.message : 'Failed to load');
       window.location.href = '/index.html?page=tasks';

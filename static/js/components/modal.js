@@ -20,6 +20,7 @@
     if (overlay.parentNode !== document.body) {
       document.body.appendChild(overlay);
     }
+    overlay.style.display = 'flex';
     container.innerHTML = html;
     overlay.classList.add('visible');
     overlay.setAttribute('aria-hidden', 'false');
@@ -29,15 +30,26 @@
   }
 
   function close() {
-    if (overlay) {
-      if (document.activeElement && overlay.contains(document.activeElement)) document.activeElement.blur();
-      overlay.classList.remove('visible');
-      overlay.setAttribute('aria-hidden', 'true');
-    }
-    document.body.classList.remove('modal-open');
-    if (_onClose) { _onClose(); _onClose = null; }
+    var callback = _onClose;
+    _onClose = null;
     if (_closeTimer) clearTimeout(_closeTimer);
-    _closeTimer = setTimeout(function () { container.innerHTML = ''; _closeTimer = null; }, 250);
+    _closeTimer = null;
+    if (callback) callback();
+    document.body.classList.remove('modal-open');
+    var o = overlay;
+    var c = container;
+    if (o) {
+      if (document.activeElement && o.contains(document.activeElement)) document.activeElement.blur();
+    }
+    setTimeout(function () {
+      if (o) {
+        o.classList.remove('visible');
+        o.setAttribute('aria-hidden', 'true');
+        o.style.display = 'none';
+      }
+      if (c) c.innerHTML = '';
+      _closeTimer = null;
+    }, 0);
   }
 
   if (overlay) {
@@ -62,11 +74,23 @@
       '</div>';
     open(html, {
       onReady: function () {
-        document.getElementById('mdl-cancel').addEventListener('click', close);
-        document.getElementById('mdl-confirm').addEventListener('click', function () {
-          close();
-          if (onYes) onYes();
-        });
+        var cancelBtn = document.getElementById('mdl-cancel');
+        var confirmBtn = document.getElementById('mdl-confirm');
+        if (cancelBtn) {
+          cancelBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            close();
+          });
+        }
+        if (confirmBtn) {
+          confirmBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            close();
+            if (onYes) onYes();
+          });
+        }
       }
     });
   }
