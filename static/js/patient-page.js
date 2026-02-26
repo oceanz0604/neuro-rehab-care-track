@@ -59,8 +59,6 @@
   }
 
   function run() {
-    var backBtn = document.getElementById('topbar-back');
-    if (backBtn) backBtn.addEventListener('click', function (e) { e.preventDefault(); goBack('patients'); });
     if (!window.AppDB || !AppDB.ready) {
       window.location.href = '/index.html';
       return;

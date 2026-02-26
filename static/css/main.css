@@ -397,11 +397,9 @@ img { max-width: 100%; }
 }
 .notif-btn:hover { background: var(--bg-subtle); }
 
-/* Detail pages (patient, task) — no sidebar, back control */
-.topbar-detail { left: 0; }
-.topbar-detail .topbar-back { margin-right: 4px; }
-.patient-page .topbar-no-sidebar,
-.patient-page .topbar-detail { left: 0; }
+/* Detail pages (patient, task) — no titlebar; rely on hardware back / history */
+.patient-page .main-content,
+.task-page .main-content { margin-top: var(--safe-top); }
 .patient-page .main-content-center,
 .task-page .main-content-center { max-width: 900px; margin-left: auto; margin-right: auto; box-sizing: border-box; }
 .topbar-back {

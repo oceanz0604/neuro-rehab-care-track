@@ -263,8 +263,6 @@
 
   /* ─── Auth + boot ──────────────────────────────────────────── */
   function run() {
-    var backBtn = $('topbar-back');
-    if (backBtn) backBtn.addEventListener('click', function (e) { e.preventDefault(); goBack(); });
     if (!window.AppDB || !AppDB.ready) { window.location.href = '/index.html'; return; }
     var params = new URLSearchParams(window.location.search);
     var id = params.get('id');
