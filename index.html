@@ -68,6 +68,10 @@
         <span class="sb-brand-text" id="sb-brand-text">Maitra Wellness</span>
         <span class="sb-name" id="sb-name">Staff</span>
       </div>
+      <div class="sb-brand-actions">
+        <button type="button" class="sb-header-icon-btn" id="sidebar-refresh-btn" title="Refresh data" aria-label="Refresh"><i class="fas fa-arrows-rotate"></i></button>
+        <button type="button" class="sb-header-icon-btn" id="sidebar-theme-btn" title="Toggle theme" aria-label="Theme"><i class="fas fa-moon" id="sidebar-theme-icon"></i></button>
+      </div>
     </div>
     <nav class="sb-nav">
       <div class="nav-section-label">Main</div>
@@ -95,14 +99,6 @@
         <div class="tb-breadcrumb" id="tb-breadcrumb"><span class="bc-current">Dashboard</span></div>
       </div>
       <div class="tb-right">
-        <div style="position:relative">
-          <button type="button" class="tb-quick-add" id="tb-quick-add" title="Quick actions" aria-label="Quick actions"><i class="fas fa-plus"></i></button>
-          <div class="quick-add-menu" id="quick-add-menu">
-            <button type="button" class="quick-add-item" data-action="add-report"><i class="fas fa-file-medical"></i> Add Report</button>
-            <button type="button" class="quick-add-item" data-action="add-patient"><i class="fas fa-user-plus"></i> New Patient</button>
-            <button type="button" class="quick-add-item" data-action="add-task"><i class="fas fa-list-check"></i> Create Task</button>
-          </div>
-        </div>
         <button type="button" class="notif-btn" id="global-refresh-btn" title="Refresh data" aria-label="Refresh"><i class="fas fa-arrows-rotate"></i></button>
         <button type="button" class="theme-toggle-btn notif-btn" id="theme-toggle" title="Toggle dark/light theme" aria-label="Theme">
           <i class="fas fa-moon" id="theme-icon"></i>
@@ -133,6 +129,9 @@
         </div>
 
         <div class="dash-ordered">
+          <div class="dash-section" id="dash-my-patients-wrap">
+            <div id="dash-my-patients"></div>
+          </div>
           <div class="dash-section dash-high-risk-wrap" id="dash-high-risk-wrap">
             <div class="dash-section-hd dash-section-toggle" id="dash-high-risk-hd" aria-expanded="true">
               <h3 class="dash-section-title"><i class="fas fa-triangle-exclamation"></i> High Risk Patients</h3>
@@ -141,14 +140,7 @@
             </div>
             <div class="dash-section-body" id="risk-alerts"></div>
           </div>
-          <div class="dash-section" id="dash-updated-today-wrap">
-            <div class="dash-section-hd"><h3 class="dash-section-title"><i class="fas fa-calendar-day"></i> Patients Updated Today</h3><span class="dash-section-count" id="dash-updated-count">0</span></div>
-            <div class="dash-section-body" id="dash-updated-today"></div>
-          </div>
-          <div class="dash-section" id="dash-my-patients-wrap">
-            <div id="dash-my-patients"></div>
-          </div>
-          <div class="dash-section dash-side-card">
+          <div class="dash-section dash-side-card" id="dash-recent-activity-wrap">
             <div class="dash-side-hd dash-side-hd-primary"><i class="fas fa-clock-rotate-left"></i> Recent Activity</div>
             <div id="recent-rpts"></div>
           </div>

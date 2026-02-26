@@ -15,7 +15,113 @@
     if (greetEl) greetEl.textContent = greet + ', ' + (p.displayName || 'Staff');
     var motivEl = $('d-motivational');
     if (motivEl) {
-      var tips = ['Ready to make a difference today.', 'Your patients are counting on you.', 'Every report helps the team.', 'Small steps lead to big progress.'];
+      var tips = [
+        'Ready to make a difference today.', 'Your patients are counting on you.', 'Every report helps the team.', 'Small steps lead to big progress.',
+        'Consistency builds trust.', 'Your attention to detail matters.', 'Care today shapes recovery tomorrow.', 'One note can change a care plan.',
+        'Stay present for your patients.', 'Documentation protects everyone.', 'Kindness is part of the treatment.', 'Progress is built day by day.',
+        'You are part of something meaningful.', 'Clear notes help the whole team.', 'Rest when you need to; then give your best.', 'Every interaction counts.',
+        'Quality care starts with listening.', 'Your observations matter.', 'Teamwork makes recovery possible.', 'Celebrate small wins.',
+        'Stay curious; stay compassionate.', 'Safety and dignity first.', 'Your energy affects the room.', 'One kind word can lift a day.',
+        'Focus on what you can control.', 'Consent and respect in every step.', 'Recovery is a journey; you are a guide.', 'Document with care.',
+        'Balance effort with self-care.', 'Advocate for those who need it.', 'Clarity in notes helps continuity.', 'Patience is a clinical skill.',
+        'You make the system human.', 'Follow up; it shows you care.', 'Boundaries help you give more.', 'Every handover matters.',
+        'Learn something new today.', 'Ask when unsure.', 'Support your colleagues too.', 'Rest and hydration help you perform.',
+        'Eyes on the person, not just the chart.', 'Timely updates keep everyone aligned.', 'Your calm helps theirs.', 'Honesty builds trust.',
+        'Small gestures, big impact.', 'Prioritise; then execute.', 'Feedback is a gift.', 'Today is a fresh page.',
+        'You are enough for today.', 'Progress over perfection.', 'Speak up for safety.', 'Take a breath before the next task.',
+        'Your presence is therapeutic.', 'Consistency over intensity.', 'Team handovers save lives.', 'One task at a time.',
+        'Celebrate someone else today.', 'Notes are for the next caregiver too.', 'Rest is part of the job.', 'Clarity reduces errors.',
+        'You chose a caring profession.', 'Today’s effort matters.', 'Boundaries let you care longer.', 'Listen more than you speak.',
+        'Document the positive too.', 'Ask for help when needed.', 'Your wellbeing enables theirs.', 'Simple actions compound.',
+        'Stay organised; stay kind.', 'Recovery has no single path.', 'Your tone sets the tone.', 'Finish one thing well.',
+        'Advocate with kindness.', 'Safety checks are never wasted.', 'You are a link in the chain of care.', 'Pause before replying.',
+        'Empathy is evidence-based.', 'Clear goals, clearer progress.', 'Support families as well.', 'One good conversation changes things.',
+        'Your energy is finite; use it well.', 'Follow the plan; adjust when needed.', 'Thank a colleague today.', 'Small wins are still wins.',
+        'Document with the next shift in mind.', 'Rest your eyes and mind.', 'Consent and dignity every time.', 'You are seen and valued.',
+        'Prioritise high-risk first.', 'Handover with care.', 'One step at a time.', 'Your calm is contagious.',
+        'Notes protect the patient.', 'Team care is better care.', 'Take your break.', 'Clarity prevents harm.',
+        'You matter to your patients.', 'Stay hydrated and focused.', 'Recovery takes time; so does good care.', 'Ask the patient first.',
+        'Consistency builds confidence.', 'One kind act ripples.', 'Document accurately; it matters.', 'Support yourself to support others.',
+        'Listen before you act.', 'Safety first, always.', 'Your presence is a intervention.', 'Celebrate progress, however small.',
+        'Rest so you can give more.', 'Clear communication saves time.', 'You are part of the solution.', 'Today, do one thing well.',
+        'Advocate with respect.', 'Notes are for the future too.', 'Kindness costs nothing.', 'Prioritise and breathe.',
+        'You chose to care; that matters.', 'One task, then the next.', 'Teamwork multiplies impact.', 'Document with the reader in mind.',
+        'Take a moment for yourself.', 'Recovery is non-linear.', 'Your attitude shapes the day.', 'Follow up with care.',
+        'Small steps, big outcomes.', 'Safety checks are care.', 'You are not alone in this.', 'Clarity over speed when it counts.',
+        'Rest is part of the plan.', 'Listen to the family too.', 'One good note helps everyone.', 'Stay curious and kind.',
+        'Your wellbeing matters.', 'Consent every time.', 'Prioritise what only you can do.', 'Thank yourself for showing up.',
+        'Document the why, not just the what.', 'Recovery needs patience.', 'You make a difference.', 'Take breaks; they help.',
+        'Advocate calmly and clearly.', 'Notes enable continuity.', 'Kindness is professional.', 'One interaction at a time.',
+        'You are a critical part of the team.', 'Rest when you can.', 'Safety and dignity in every action.', 'Celebrate a win today.',
+        'Listen to understand.', 'Clear handovers help patients.', 'Your effort is enough for today.', 'Support your peers.',
+        'Document with care and clarity.', 'Recovery is a team effort.', 'You bring more than tasks.', 'Pause and prioritise.',
+        'One kind word can change a day.', 'Follow the process; improve it when needed.', 'You are valued here.', 'Take care of you too.',
+        'Notes are for the patient’s story.', 'Consistency shows you care.', 'Rest to restore.', 'Speak up with respect.',
+        'Your attention saves effort later.', 'Team support is real support.', 'Today: one priority at a time.', 'Listen first.',
+        'Document accurately and kindly.', 'Recovery takes a village.', 'You show up; that counts.', 'Breathe before the next task.',
+        'Advocate for safe, dignified care.', 'Clarity in communication is care.', 'You are enough.', 'Celebrate a colleague.',
+        'Notes protect and inform.', 'Small consistent actions matter.', 'Rest is not laziness.', 'Ask; don’t assume.',
+        'Your calm helps the whole room.', 'Handover with clarity.', 'One good decision at a time.', 'Support and be supported.',
+        'Document for the next caregiver.', 'Recovery has many paths.', 'You matter to the team.', 'Take your break fully.',
+        'Kindness is part of the protocol.', 'Prioritise safety and dignity.', 'You are a caregiver; care for you too.', 'Finish one thing well.',
+        'Listen to the person, not just the chart.', 'Clear notes are kind notes.', 'You are part of recovery.', 'Pause when overwhelmed.',
+        'Advocate with evidence and empathy.', 'Team handovers are care.', 'Today: focus on what matters most.', 'Rest and return stronger.',
+        'Your presence is part of the treatment.', 'Consistency builds trust.', 'Document with the future in mind.', 'One step, then the next.',
+        'You chose to help; that is enough.', 'Safety first; then efficiency.', 'You are a link in the chain.', 'Take a breath.',
+        'Notes help the whole team.', 'Recovery is possible.', 'You make the system humane.', 'Support yourself today.',
+        'Kindness and clarity together.', 'Prioritise; then act.', 'You are seen.', 'Celebrate progress.',
+        'Listen with full attention.', 'Document with care.', 'You are part of something bigger.', 'Rest when you need it.',
+        'Advocate with compassion.', 'Clear communication is care.', 'You matter.', 'One task done well.',
+        'Your effort enables recovery.', 'Consistency over intensity.', 'Take your break.', 'Thank a teammate.',
+        'Notes protect patients.', 'Recovery needs you.', 'You bring care to life.', 'Pause and prioritise.',
+        'Safety and dignity always.', 'You are valued.', 'Document clearly.', 'One kind act today.',
+        'Teamwork makes the difference.', 'You show up; that matters.', 'Rest to give more.', 'Listen before you act.',
+        'Your calm helps.', 'Clarity saves time and stress.', 'You are enough for today.', 'Celebrate a small win.',
+        'Document for continuity.', 'Recovery takes time.', 'You make a difference.', 'Take care of you.',
+        'Kindness first.', 'Prioritise well.', 'You are part of the team.', 'Breathe and focus.',
+        'Notes matter.', 'You are important.', 'Rest and return.', 'One step at a time.',
+        'Your work has meaning.', 'Care with intention.', 'Today is a new chance.', 'Build trust through consistency.',
+        'Document with purpose.', 'Recovery is possible every day.', 'You are part of the solution.', 'Rest restores capacity.',
+        'Listen to understand, not to reply.', 'Safety is non-negotiable.', 'One note can clarify everything.', 'Support your future self with good notes.',
+        'Kindness is never wasted.', 'Prioritise the person.', 'You are a key part of the team.', 'Take that break.',
+        'Clarity prevents errors.', 'Recovery needs patience and you.', 'Your calm is a resource.', 'Finish well, then rest.',
+        'Advocate with clarity.', 'Notes are for the patient.', 'You matter to many.', 'One interaction at a time.',
+        'Consistency shows reliability.', 'Document for the next shift.', 'You bring warmth to the system.', 'Pause when needed.',
+        'Team care is stronger care.', 'Your presence is valuable.', 'Rest to sustain care.', 'Speak up with care.',
+        'Small actions add up.', 'Follow up with intention.', 'You are enough.', 'Celebrate someone today.',
+        'Document the progress too.', 'Recovery has good days and hard days.', 'You help both.', 'Breathe and focus.',
+        'Safety and respect always.', 'You chose care; honour that.', 'Clear handovers are care.', 'One task, full attention.',
+        'Notes protect and guide.', 'You are a bridge for the patient.', 'Rest is part of the job.', 'Listen first, then act.',
+        'Kindness and competence together.', 'Prioritise what matters most.', 'You are valued.', 'Thank yourself for trying.',
+        'Document with the reader in mind.', 'Recovery is a partnership.', 'You show up; that is enough.', 'Take care of you first.',
+        'Your attention to detail helps.', 'Teamwork reduces burden.', 'Today: one priority.', 'Support and be supported.',
+        'Notes enable safe care.', 'You make the path clearer.', 'Rest so you can care.', 'One step, then the next.',
+        'Advocate with evidence.', 'Clarity is kindness.', 'You are part of recovery.', 'Pause and breathe.',
+        'Consistency builds safety.', 'Document accurately.', 'You bring hope to the process.', 'Take your break without guilt.',
+        'Listen to the whole story.', 'Recovery takes teamwork.', 'You are that team.', 'Celebrate progress.',
+        'Your effort enables outcomes.', 'Prioritise and proceed.', 'You are seen and needed.', 'Rest to give your best.',
+        'Notes are a safety net.', 'You matter to the team.', 'Kindness in every action.', 'One thing well.',
+        'Handover with care.', 'You are a critical piece.', 'Document for continuity.', 'Breathe before responding.',
+        'Recovery needs advocates.', 'You are one.', 'Take rest seriously.', 'Support your colleagues.',
+        'Clear notes, better care.', 'You make a difference daily.', 'Rest and return with focus.', 'One moment at a time.',
+        'Safety first, then speed.', 'You are trusted.', 'Document with care.', 'Celebrate a win.',
+        'Your calm helps the team.', 'Consistency is professional.', 'You are enough today.', 'Pause when overwhelmed.',
+        'Notes tell the story.', 'Recovery is ongoing.', 'You are part of it.', 'Take care of yourself.',
+        'Kindness is professional.', 'Prioritise high-impact work.', 'You are valued here.', 'Rest and recharge.',
+        'Listen with empathy.', 'Document for the future.', 'You bring care to life.', 'One good decision.',
+        'Advocate for the patient.', 'Clarity reduces risk.', 'You matter.', 'Thank a colleague.',
+        'Team handovers save time.', 'You are essential.', 'Document clearly.', 'Breathe and continue.',
+        'Recovery needs you today.', 'You show up; that counts.', 'Rest when you can.', 'Support each other.',
+        'Notes protect everyone.', 'You are part of the chain.', 'Kindness costs nothing.', 'One task at a time.',
+        'Your presence matters.', 'Consistency builds confidence.', 'You are important.', 'Take a short break.',
+        'Document with intention.', 'Recovery has many faces.', 'You see them.', 'Pause and prioritise.',
+        'Safety and dignity first.', 'You are a caregiver.', 'Care for you too.', 'Finish one thing well.',
+        'Clear communication is care.', 'You are the team.', 'Rest to restore.', 'One step forward.',
+        'Notes help the next person.', 'You make it easier.', 'Kindness is strength.', 'Prioritise and breathe.',
+        'Listen before acting.', 'You are valued and needed.', 'Document with care.', 'Celebrate today.',
+        'Recovery is possible.', 'You help make it so.', 'Rest is necessary.', 'Support the team.',
+        'Your work has impact.', 'Clarity prevents harm.', 'You are enough.', 'Take care.'
+      ];
       motivEl.textContent = tips[Math.floor(Math.random() * tips.length)];
     }
     var dateEl = $('d-date');
@@ -46,10 +152,24 @@
       }).catch(function () {});
     }
 
+    var myPatients = getMyPatients(active, state.profile || {});
+    renderMyPatientsWithList(myPatients, state);
     renderHighRiskExpandable(highRisk, state.profile || {});
-    renderUpdatedToday(active, state.recentReports || [], state);
-    renderMyPatients(active, state);
-    renderRecentReports(state.recentReports || []);
+
+    var profile = state.profile || {};
+    var isAdmin = window.Permissions && window.Permissions.getRole && window.Permissions.getRole(profile) === 'admin';
+    var isDoctor = window.Permissions && window.Permissions.getRole && (window.Permissions.getRole(profile) === 'medical_officer' || window.Permissions.getRole(profile) === 'psychiatrist');
+    var canSeeRecentActivity = isAdmin || isDoctor;
+    var recentActivityWrap = $('dash-recent-activity-wrap');
+    if (recentActivityWrap) recentActivityWrap.style.display = canSeeRecentActivity ? '' : 'none';
+    if (canSeeRecentActivity) {
+      var recentList = isAdmin ? (state.recentReports || []) : (function () {
+        var myPatientIds = {};
+        myPatients.forEach(function (c) { myPatientIds[c.id] = true; });
+        return (state.recentReports || []).filter(function (r) { return r.clientId && myPatientIds[r.clientId]; });
+      })();
+      renderRecentReports(recentList);
+    }
   }
 
   function statCardNav(icon, color, label, value, page, filterStatus, filterRisk) {
@@ -101,14 +221,12 @@
     return (name || 'U').substring(0, 2).toUpperCase();
   }
 
-  function renderMyPatients(active, state) {
-    var container = $('dash-my-patients');
-    if (!container) return;
-
-    var profile = state.profile || {};
-    var myName = (profile.displayName || '').trim();
-    var isTherapist = window.Permissions && window.Permissions.hasRole(profile, 'therapist');
-    var isDoctor = window.Permissions && (window.Permissions.hasRole(profile, 'medical_officer') || window.Permissions.hasRole(profile, 'psychiatrist'));
+  /** Returns the list of patients "owned" by the current user (for Recent Activity filtering and My Patients). */
+  function getMyPatients(active, profile) {
+    var p = profile || {};
+    var myName = (p.displayName || '').trim();
+    var isTherapist = window.Permissions && window.Permissions.hasRole(p, 'therapist');
+    var isDoctor = window.Permissions && (window.Permissions.hasRole(p, 'medical_officer') || window.Permissions.hasRole(p, 'psychiatrist'));
 
     var myPatients = [];
     if ((isTherapist || isDoctor) && myName) {
@@ -122,14 +240,18 @@
         if (tagged) myPatients.push(c);
       });
     }
+    if (!myPatients.length) myPatients = active.slice();
+    return myPatients;
+  }
 
-    if (!myPatients.length) myPatients = active;
+  function renderMyPatientsWithList(myPatients, state) {
+    var container = $('dash-my-patients');
+    if (!container) return;
 
-    myPatients.sort(function (a, b) {
-      var ra = RISK_ORDER[a.currentRisk] !== undefined ? RISK_ORDER[a.currentRisk] : 4;
-      var rb = RISK_ORDER[b.currentRisk] !== undefined ? RISK_ORDER[b.currentRisk] : 4;
-      return ra - rb;
-    });
+    var profile = state.profile || {};
+    var myName = (profile.displayName || '').trim();
+    var isTherapist = window.Permissions && window.Permissions.hasRole(profile, 'therapist');
+    var isDoctor = window.Permissions && (window.Permissions.hasRole(profile, 'medical_officer') || window.Permissions.hasRole(profile, 'psychiatrist'));
 
     var latestByClient = {};
     (state.recentReports || []).forEach(function (r) {
@@ -138,6 +260,12 @@
       if (!latestByClient[cid] || r.createdAt > latestByClient[cid].createdAt) {
         latestByClient[cid] = r;
       }
+    });
+
+    myPatients.sort(function (a, b) {
+      var ta = latestByClient[a.id] ? new Date(latestByClient[a.id].createdAt).getTime() : 0;
+      var tb = latestByClient[b.id] ? new Date(latestByClient[b.id].createdAt).getTime() : 0;
+      return tb - ta;
     });
 
     var title = (isTherapist || isDoctor) && myName ? 'My Patients' : 'Active Patients';
@@ -250,49 +378,6 @@
         if (chevron) chevron.classList.toggle('dash-section-chevron-open', !expanded);
       };
     }
-  }
-
-  /* ── Patients Updated Today ───────────────────────────────────── */
-  function renderUpdatedToday(activeList, recentReports, state) {
-    var container = $('dash-updated-today');
-    var countEl = $('dash-updated-count');
-    var wrap = $('dash-updated-today-wrap');
-    if (!container || !wrap) return;
-    var today = new Date().toDateString();
-    var clientIdsToday = {};
-    (recentReports || []).forEach(function (r) {
-      if (!r.clientId || !r.createdAt) return;
-      if (new Date(r.createdAt).toDateString() === today) clientIdsToday[r.clientId] = true;
-    });
-    var updated = (activeList || []).filter(function (c) { return clientIdsToday[c.id]; });
-    if (countEl) countEl.textContent = updated.length;
-    if (!updated.length) {
-      container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check"></i><p>No patients updated today</p></div>';
-      return;
-    }
-    var latestByClient = {};
-    (recentReports || []).forEach(function (r) {
-      var cid = r.clientId;
-      if (!cid || !clientIdsToday[cid]) return;
-      if (!latestByClient[cid] || r.createdAt > latestByClient[cid].createdAt) latestByClient[cid] = r;
-    });
-    var html = '<div class="dash-patient-strip">' + updated.map(function (c) {
-      var risk = (c.currentRisk || 'none').toLowerCase();
-      var bgClass = RISK_BG_CLASS[risk] || 'risk-none-bg';
-      var latest = latestByClient[c.id];
-      var reportLine = latest && latest.createdAt
-        ? relativeTime(latest.createdAt)
-        : 'Today';
-      return '<div class="dps-card" data-client="' + (c.id || '') + '">' +
-        '<div class="dps-avatar patient-avatar ' + bgClass + '">' + esc(initials(c.name)) + '</div>' +
-        '<div class="dps-name">' + esc(c.name || 'Unknown') + '</div>' +
-        '<div class="dps-report">' + reportLine + '</div></div>';
-    }).join('') + '</div>';
-    container.innerHTML = html;
-    container.querySelectorAll('[data-client]').forEach(function (el) {
-      var id = el.getAttribute('data-client');
-      if (id && window.CareTrack) el.addEventListener('click', function () { window.CareTrack.openPatient(id); });
-    });
   }
 
   /* ── Recent Reports — timeline feed ───────────────────────────── */

@@ -398,14 +398,12 @@
   }
   function updateThemeIcon() {
     var icon = $('theme-icon');
-    if (!icon) return;
-    if (getTheme() === 'dark') {
-      icon.className = 'fas fa-sun';
-      if (icon.parentNode) icon.parentNode.setAttribute('title', 'Switch to light theme');
-    } else {
-      icon.className = 'fas fa-moon';
-      if (icon.parentNode) icon.parentNode.setAttribute('title', 'Switch to dark theme');
-    }
+    var sidebarIcon = $('sidebar-theme-icon');
+    var isDark = getTheme() === 'dark';
+    var cls = isDark ? 'fas fa-sun' : 'fas fa-moon';
+    var title = isDark ? 'Switch to light theme' : 'Switch to dark theme';
+    if (icon) { icon.className = cls; if (icon.parentNode) icon.parentNode.setAttribute('title', title); }
+    if (sidebarIcon) { sidebarIcon.className = cls; if (sidebarIcon.parentNode) sidebarIcon.parentNode.setAttribute('title', title); }
   }
 
   /* ─── Init ──────────────────────────────────────────────────── */
@@ -454,6 +452,14 @@
     if (globalRefresh) globalRefresh.addEventListener('click', function () {
       if (window.CareTrack) window.CareTrack.refreshData();
     });
+    // Sidebar refresh & theme (mobile More menu)
+    var sidebarRefresh = $('sidebar-refresh-btn');
+    if (sidebarRefresh) sidebarRefresh.addEventListener('click', function () {
+      if (window.CareTrack) window.CareTrack.refreshData();
+      closeSidebar();
+    });
+    var sidebarTheme = $('sidebar-theme-btn');
+    if (sidebarTheme) sidebarTheme.addEventListener('click', toggleTheme);
 
     // Quick-action menu
     var qaBtn = $('tb-quick-add');
