@@ -57,6 +57,19 @@
     return parts.length > 1 ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase() : name.slice(0, 2).toUpperCase();
   }
 
+  function dueUrgency(dueDate, status) {
+    if (!dueDate || status === 'done') return '';
+    var d = new Date(dueDate);
+    if (isNaN(d.getTime())) return '';
+    d.setHours(0, 0, 0, 0);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var diff = Math.ceil((d - today) / (24 * 60 * 60 * 1000));
+    if (diff < 0) return 'overdue';
+    if (diff === 0) return 'today';
+    return '';
+  }
+
   function populateFilters(state) {
     var cs = $('tasks-filter-client');
     var as = $('tasks-filter-assignee');
@@ -117,10 +130,12 @@
     var key = t.key || ('T-' + (t.id || '').slice(-6));
     var p = t.priority || 'medium';
     var pIcon = PRIORITY_ICONS[p] || 'fa-minus';
+    var urgency = dueUrgency(t.dueDate, t.status);
+    var dueClass = urgency ? ' task-due-' + urgency : '';
     var avatar = t.assignedToName ? '<span class="task-card-avatar" title="' + esc(t.assignedToName) + '">' + initials(t.assignedToName) + '</span>' : '';
     var patientTag = t.clientName ? '<span class="task-card-tag"><i class="fas fa-hospital-user"></i> ' + esc(t.clientName) + '</span>' : '';
-    var dueTag = t.dueDate ? '<span class="task-card-tag"><i class="fas fa-calendar"></i> ' + esc(t.dueDate) + '</span>' : '';
-    return '<div class="task-card priority-card-' + p + '" data-task-id="' + esc(t.id) + '" role="button" tabindex="0">' +
+    var dueTag = t.dueDate ? '<span class="task-card-tag' + (urgency ? ' task-due-tag-' + urgency : '') + '"><i class="fas fa-calendar"></i> ' + esc(t.dueDate) + '</span>' : '';
+    return '<div class="task-card priority-card-' + p + dueClass + '" data-task-id="' + esc(t.id) + '" role="button" tabindex="0">' +
       '<div class="task-card-top">' +
         '<span class="task-card-key">' + esc(key) + '</span>' +
         '<span class="task-card-priority-icon priority-' + p + '" title="' + esc(PRIORITY_LABELS[p] || p) + '"><i class="fas ' + pIcon + '"></i></span>' +
@@ -143,13 +158,16 @@
     filtered.forEach(function (t) {
       var p = t.priority || 'medium';
       var key = t.key || ('T-' + (t.id || '').slice(-6));
-      html += '<tr class="task-list-row" data-task-id="' + esc(t.id) + '">' +
+      var urgency = dueUrgency(t.dueDate, t.status);
+      var rowClass = 'task-list-row' + (urgency ? ' task-due-' + urgency : '');
+      var dueCellClass = urgency ? ' task-due-cell-' + urgency : '';
+      html += '<tr class="' + rowClass + '" data-task-id="' + esc(t.id) + '">' +
         '<td><span class="task-list-key">' + esc(key) + '</span></td>' +
         '<td>' + esc(t.title || '—') + '</td>' +
         '<td><span class="task-priority-badge priority-' + p + '"><i class="fas ' + (PRIORITY_ICONS[p] || 'fa-minus') + '"></i> ' + esc(PRIORITY_LABELS[p] || p) + '</span></td>' +
         '<td>' + esc(t.clientName || '—') + '</td>' +
         '<td>' + esc(t.assignedToName || '—') + '</td>' +
-        '<td>' + (t.dueDate || '—') + '</td>' +
+        '<td class="task-list-due' + dueCellClass + '">' + (t.dueDate || '—') + '</td>' +
         '<td><span class="status-badge task-status-' + (t.status || 'todo') + '">' + esc(STATUS_LABELS[t.status] || t.status || 'To Do') + '</span></td>' +
       '</tr>';
     });

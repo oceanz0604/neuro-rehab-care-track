@@ -45,10 +45,13 @@
       </div>
       <div class="fg">
         <label for="l-password">Password</label>
-        <input id="l-password" type="password" class="fi" placeholder="Min. 6 characters" required autocomplete="current-password" minlength="6">
+        <div class="password-wrap">
+          <input id="l-password" type="password" class="fi" placeholder="Min. 6 characters" required autocomplete="current-password" minlength="6">
+          <button type="button" class="password-toggle" id="login-toggle-password" aria-label="Show password" title="Show password"><i class="fas fa-eye"></i></button>
+        </div>
       </div>
       <p id="login-error" class="error-msg" style="display:none"></p>
-      <button type="submit" id="login-btn" class="btn btn-block">Sign in</button>
+      <button type="submit" id="login-btn" class="btn btn-block login-btn-full">Sign in</button>
       <p class="login-hint">No account? Contact your administrator.</p>
     </form>
   </div>
@@ -117,37 +120,37 @@
           <div class="welcome-banner-date" id="d-date"></div>
         </div>
 
-        <div class="dash-grid">
-          <!-- Left column: stats + patients -->
-          <div class="dash-col-main">
-            <div class="stats-strip" id="dash-stats"></div>
-            <div class="quick-actions-row" id="dash-quick-actions">
-              <div class="quick-action-card" data-action="add-report">
-                <i class="fas fa-file-medical qa-icon-report"></i>
-                <div><div class="qa-label">Add Report</div><div class="qa-sub">Patient assessment</div></div>
-              </div>
-              <div class="quick-action-card" data-action="add-patient">
-                <i class="fas fa-user-plus qa-icon-patient"></i>
-                <div><div class="qa-label">New Patient</div><div class="qa-sub">Register admission</div></div>
-              </div>
-              <div class="quick-action-card" data-action="add-task">
-                <i class="fas fa-list-check qa-icon-task"></i>
-                <div><div class="qa-label">Create Task</div><div class="qa-sub">Assign work item</div></div>
-              </div>
+        <div class="stats-strip" id="dash-stats"></div>
+        <div class="quick-actions-row" id="dash-quick-actions">
+          <div class="quick-action-card" data-action="add-patient">
+            <i class="fas fa-user-plus qa-icon-patient"></i>
+            <div><div class="qa-label">New Patient</div><div class="qa-sub">Register admission</div></div>
+          </div>
+          <div class="quick-action-card" data-action="add-task">
+            <i class="fas fa-list-check qa-icon-task"></i>
+            <div><div class="qa-label">Create Task</div><div class="qa-sub">Assign work item</div></div>
+          </div>
+        </div>
+
+        <div class="dash-ordered">
+          <div class="dash-section dash-high-risk-wrap" id="dash-high-risk-wrap">
+            <div class="dash-section-hd dash-section-toggle" id="dash-high-risk-hd" aria-expanded="true">
+              <h3 class="dash-section-title"><i class="fas fa-triangle-exclamation"></i> High Risk Patients</h3>
+              <span class="dash-section-count" id="dash-high-risk-count">0</span>
+              <i class="fas fa-chevron-down dash-section-chevron"></i>
             </div>
+            <div class="dash-section-body" id="risk-alerts"></div>
+          </div>
+          <div class="dash-section" id="dash-updated-today-wrap">
+            <div class="dash-section-hd"><h3 class="dash-section-title"><i class="fas fa-calendar-day"></i> Patients Updated Today</h3><span class="dash-section-count" id="dash-updated-count">0</span></div>
+            <div class="dash-section-body" id="dash-updated-today"></div>
+          </div>
+          <div class="dash-section" id="dash-my-patients-wrap">
             <div id="dash-my-patients"></div>
           </div>
-
-          <!-- Right column: alerts + reports -->
-          <div class="dash-col-side">
-            <div class="dash-side-card" id="dash-risk-card">
-              <div class="dash-side-hd dash-side-hd-danger"><i class="fas fa-triangle-exclamation"></i> Risk Alerts</div>
-              <div id="risk-alerts"></div>
-            </div>
-            <div class="dash-side-card">
-              <div class="dash-side-hd dash-side-hd-primary"><i class="fas fa-clock-rotate-left"></i> Recent Reports</div>
-              <div id="recent-rpts"></div>
-            </div>
+          <div class="dash-section dash-side-card">
+            <div class="dash-side-hd dash-side-hd-primary"><i class="fas fa-clock-rotate-left"></i> Recent Activity</div>
+            <div id="recent-rpts"></div>
           </div>
         </div>
       </section>

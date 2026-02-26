@@ -18,9 +18,9 @@
 
   function dischargeDaysClass(days) {
     if (days === null) return 'discharge-days-none';
-    if (days < 0) return 'discharge-days-overdue';
-    if (days <= 7) return 'discharge-days-urgent';
-    if (days <= 14) return 'discharge-days-warning';
+    if (days < 0) return 'discharge-days-overdue';   /* red */
+    if (days <= 3) return 'discharge-days-urgent';   /* orange */
+    if (days <= 7) return 'discharge-days-warning';  /* neutral */
     return 'discharge-days-ok';
   }
 

@@ -78,6 +78,19 @@
     if (!form) return;
     _loginBound = true;
 
+    var toggleBtn = $('login-toggle-password');
+    var pwInput = $('l-password');
+    if (toggleBtn && pwInput) {
+      toggleBtn.addEventListener('click', function () {
+        var isPass = pwInput.type === 'password';
+        pwInput.type = isPass ? 'text' : 'password';
+        toggleBtn.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+        toggleBtn.title = isPass ? 'Hide password' : 'Show password';
+        var icon = toggleBtn.querySelector('i');
+        if (icon) icon.className = isPass ? 'fas fa-eye-slash' : 'fas fa-eye';
+      });
+    }
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       showLoginError('');

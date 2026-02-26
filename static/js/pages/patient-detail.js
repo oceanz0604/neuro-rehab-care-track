@@ -79,6 +79,25 @@
     renderTab(_currentTab, state);
   }
 
+  function dischargeDaysClass(days) {
+    if (days === null) return 'discharge-days-none';
+    if (days < 0) return 'discharge-days-overdue';
+    if (days <= 3) return 'discharge-days-urgent';
+    if (days <= 7) return 'discharge-days-warning';
+    return 'discharge-days-ok';
+  }
+  function getDischargeSnapshot(c) {
+    if (!c.plannedDischargeDate || (c.status || 'active') === 'discharged') return null;
+    var d = new Date(c.plannedDischargeDate);
+    if (isNaN(d.getTime())) return null;
+    d.setHours(0, 0, 0, 0);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var days = Math.ceil((d - today) / (24 * 60 * 60 * 1000));
+    var text = days < 0 ? (Math.abs(days) + ' day(s) overdue') : (days === 0 ? 'Today' : days + ' day(s) left');
+    return { text: text, class: dischargeDaysClass(days) };
+  }
+
   function headerHTML(c, state) {
     var profile = (state && state.profile) || {};
     var Perm = window.Permissions;
@@ -107,12 +126,25 @@
       '<div class="pd-rich-info"><h2>' + esc(c.name || 'Patient') + '</h2><div class="pd-rich-meta">' + metaItems.join('') + '</div></div>' +
       (actions ? '<div class="pd-rich-actions">' + actions + '</div>' : '') +
       '</div>';
+    var diagnosisStr = (c.diagnoses && c.diagnoses.length) ? c.diagnoses[c.diagnoses.length - 1] : (c.diagnosis || '—');
+    var dischargeSnap = getDischargeSnapshot(c);
+    var snapshotRows = [];
+    snapshotRows.push('<div class="pd-snapshot-item"><span class="pd-snapshot-label">Diagnosis</span><span class="pd-snapshot-value">' + esc(diagnosisStr) + '</span></div>');
+    snapshotRows.push('<div class="pd-snapshot-item"><span class="pd-snapshot-label">Risk</span>' + riskBadge + '</div>');
+    if (dischargeSnap) {
+      snapshotRows.push('<div class="pd-snapshot-item"><span class="pd-snapshot-label">Discharge</span><span class="discharge-days ' + dischargeSnap.class + '">' + esc(dischargeSnap.text) + '</span></div>');
+    } else if (c.plannedDischargeDate) {
+      snapshotRows.push('<div class="pd-snapshot-item"><span class="pd-snapshot-label">Planned Discharge</span><span class="pd-snapshot-value">' + esc(c.plannedDischargeDate) + '</span></div>');
+    }
+    var snapshotHtml = '<div class="pd-clinical-snapshot">' +
+      '<div class="pd-snapshot-title"><i class="fas fa-clipboard-user"></i> Clinical snapshot</div>' +
+      '<div class="pd-snapshot-grid">' + snapshotRows.join('') + '</div></div>';
     var rows = [];
     if (c.gender) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Gender</span><span class="patient-detail-value">' + esc(c.gender) + '</span></div>');
     if (c.plannedDischargeDate) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Planned Discharge</span><span class="patient-detail-value">' + esc(c.plannedDischargeDate) + '</span></div>');
     if (c.status === 'discharged' && c.dischargeDate) rows.push('<div class="patient-detail-row"><span class="patient-detail-label">Final Discharge</span><span class="patient-detail-value">' + esc(c.dischargeDate) + '</span></div>');
     var detailsHtml = rows.length ? '<div class="patient-details-vertical" style="margin-top:0">' + rows.join('') + '</div>' : '';
-    return richHeader + detailsHtml;
+    return richHeader + snapshotHtml + detailsHtml;
   }
 
   function bindTabs() {
@@ -434,19 +466,32 @@
       var html = diagnosisBlock(diagnosisEntries || []);
       html += sections.map(function (sec) {
         var item = bySection[sec];
-        var dt = '—', sub = '—', bodyHtml = '<p class="status-empty">No report yet.</p>';
+        var dt = '—', sub = '—', bodyHtml = '<p class="status-empty">No report yet.</p>', summaryLine = 'No report yet.';
         if (item && item.report) {
           var r = item.report;
           dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
           sub = r.submittedByName || '—';
           bodyHtml = formatPayloadHorizontal(sec, r.payload || {});
+          summaryLine = summarizePayload(sec, r.payload || {});
         }
-        return '<div class="latest-summary-item status-section-item">' +
-          '<div class="latest-summary-hd"><span class="risk-badge risk-' + sectionColor(sec) + '">' + capitalize(sec) + '</span>' +
-          '<span style="font-size:.8rem;color:var(--text-3)">' + dt + ' · ' + esc(sub) + '</span></div>' +
+        return '<div class="status-section-item status-section-collapsible collapsed">' +
+          '<button type="button" class="status-section-head" aria-expanded="false">' +
+          '<span class="risk-badge risk-' + sectionColor(sec) + '">' + capitalize(sec) + '</span>' +
+          '<span class="status-section-meta">' + dt + ' · ' + esc(sub) + '</span>' +
+          '<span class="status-section-summary">' + esc(summaryLine) + '</span>' +
+          '<i class="fas fa-chevron-down status-section-chevron"></i></button>' +
           '<div class="status-section-detail">' + bodyHtml + '</div></div>';
       }).join('');
       bodyEl.innerHTML = html;
+      bodyEl.querySelectorAll('.status-section-collapsible .status-section-head').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var section = btn.closest('.status-section-collapsible');
+          if (section) {
+            section.classList.toggle('collapsed');
+            btn.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+          }
+        });
+      });
     }
 
     function finish(bySection, diagnosisEntries) {
@@ -621,6 +666,9 @@
         var diagOpts = diagnosisOptions.slice();
         existingDiag.forEach(function (d) { if (d && diagOpts.indexOf(d) === -1) diagOpts.push(d); });
         bindMultiselect('dh-diag', diagOpts, existingDiag);
+
+        var notesEl = document.getElementById('dh-notes');
+        if (notesEl) setTimeout(function () { notesEl.focus(); }, 50);
 
         document.getElementById('dh-cancel').addEventListener('click', AppModal.close);
         document.getElementById('dh-save').addEventListener('click', function () {

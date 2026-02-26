@@ -46,8 +46,9 @@
       }).catch(function () {});
     }
 
+    renderHighRiskExpandable(highRisk, state.profile || {});
+    renderUpdatedToday(active, state.recentReports || [], state);
     renderMyPatients(active, state);
-    renderRiskAlerts(active, state.profile || {});
     renderRecentReports(state.recentReports || []);
   }
 
@@ -189,19 +190,19 @@
     });
   }
 
-  /* ── Risk Alerts ──────────────────────────────────────────────── */
-  function renderRiskAlerts(activeList, profile) {
-    var highRiskOnly = (activeList || []).filter(function (c) {
-      return (c.currentRisk || '').toLowerCase() === 'high';
-    });
+  /* ── High Risk (expandable, top section) ──────────────────────── */
+  function renderHighRiskExpandable(highRiskList, profile) {
     var container = $('risk-alerts');
-    var riskCard = $('dash-risk-card');
-
-    if (!highRiskOnly.length) {
-      if (riskCard) riskCard.style.display = 'none';
+    var wrap = $('dash-high-risk-wrap');
+    var countEl = $('dash-high-risk-count');
+    var hd = $('dash-high-risk-hd');
+    if (!wrap) return;
+    if (!highRiskList.length) {
+      wrap.style.display = 'none';
       return;
     }
-    if (riskCard) riskCard.style.display = '';
+    wrap.style.display = '';
+    if (countEl) countEl.textContent = highRiskList.length;
 
     var myName = (profile.displayName || '').trim();
     var isDoctorOrTherapist = window.Permissions &&
@@ -213,28 +214,84 @@
       return doctors.some(function (d) { return (d || '').trim() === myName; });
     }
 
-    container.innerHTML = highRiskOnly.map(function (c) {
-      var bgClass = 'risk-high-bg';
-      var diagDisplay = (c.diagnosis && c.diagnosis.trim()) ? c.diagnosis : (c.diagnoses && c.diagnoses.length ? (c.diagnoses[0] || '') : '') || '—';
-      var yourPatient = isYourPatient(c);
-      return '<div class="risk-alert-item clickable" data-client="' + (c.id || '') + '">' +
-        '<div class="risk-alert-avatar patient-avatar ' + bgClass + '">' + esc(initials(c.name)) + '</div>' +
-        '<div class="risk-alert-body">' +
-          '<div class="risk-alert-name">' + esc(c.name || 'Unknown') +
-            (yourPatient ? ' <span class="badge-your-patient">Your patient</span>' : '') +
+    if (container) {
+      container.innerHTML = highRiskList.map(function (c) {
+        var bgClass = 'risk-high-bg';
+        var diagDisplay = (c.diagnosis && c.diagnosis.trim()) ? c.diagnosis : (c.diagnoses && c.diagnoses.length ? (c.diagnoses[0] || '') : '') || '—';
+        var yourPatient = isYourPatient(c);
+        return '<div class="risk-alert-item clickable" data-client="' + (c.id || '') + '">' +
+          '<div class="risk-alert-avatar patient-avatar ' + bgClass + '">' + esc(initials(c.name)) + '</div>' +
+          '<div class="risk-alert-body">' +
+            '<div class="risk-alert-name">' + esc(c.name || 'Unknown') +
+              (yourPatient ? ' <span class="badge-your-patient">Your patient</span>' : '') +
+            '</div>' +
+            '<div class="risk-alert-detail">' + esc(diagDisplay) + '</div>' +
           '</div>' +
-          '<div class="risk-alert-detail">' + esc(diagDisplay) + '</div>' +
-        '</div>' +
-        '<i class="fas fa-chevron-right risk-alert-arrow"></i>' +
-      '</div>';
-    }).join('');
+          '<i class="fas fa-chevron-right risk-alert-arrow"></i>' +
+        '</div>';
+      }).join('');
 
+      container.querySelectorAll('[data-client]').forEach(function (el) {
+        var id = el.getAttribute('data-client');
+        if (!id) return;
+        el.addEventListener('click', function () {
+          if (window.CareTrack) window.CareTrack.openPatient(id);
+        });
+      });
+    }
+
+    if (hd) {
+      var body = wrap && wrap.querySelector('.dash-section-body');
+      var chevron = hd.querySelector('.dash-section-chevron');
+      hd.onclick = function () {
+        var expanded = hd.getAttribute('aria-expanded') !== 'false';
+        hd.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+        if (body) body.style.display = expanded ? 'none' : '';
+        if (chevron) chevron.classList.toggle('dash-section-chevron-open', !expanded);
+      };
+    }
+  }
+
+  /* ── Patients Updated Today ───────────────────────────────────── */
+  function renderUpdatedToday(activeList, recentReports, state) {
+    var container = $('dash-updated-today');
+    var countEl = $('dash-updated-count');
+    var wrap = $('dash-updated-today-wrap');
+    if (!container || !wrap) return;
+    var today = new Date().toDateString();
+    var clientIdsToday = {};
+    (recentReports || []).forEach(function (r) {
+      if (!r.clientId || !r.createdAt) return;
+      if (new Date(r.createdAt).toDateString() === today) clientIdsToday[r.clientId] = true;
+    });
+    var updated = (activeList || []).filter(function (c) { return clientIdsToday[c.id]; });
+    if (countEl) countEl.textContent = updated.length;
+    if (!updated.length) {
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-calendar-check"></i><p>No patients updated today</p></div>';
+      return;
+    }
+    var latestByClient = {};
+    (recentReports || []).forEach(function (r) {
+      var cid = r.clientId;
+      if (!cid || !clientIdsToday[cid]) return;
+      if (!latestByClient[cid] || r.createdAt > latestByClient[cid].createdAt) latestByClient[cid] = r;
+    });
+    var html = '<div class="dash-patient-strip">' + updated.map(function (c) {
+      var risk = (c.currentRisk || 'none').toLowerCase();
+      var bgClass = RISK_BG_CLASS[risk] || 'risk-none-bg';
+      var latest = latestByClient[c.id];
+      var reportLine = latest && latest.createdAt
+        ? relativeTime(latest.createdAt)
+        : 'Today';
+      return '<div class="dps-card" data-client="' + (c.id || '') + '">' +
+        '<div class="dps-avatar patient-avatar ' + bgClass + '">' + esc(initials(c.name)) + '</div>' +
+        '<div class="dps-name">' + esc(c.name || 'Unknown') + '</div>' +
+        '<div class="dps-report">' + reportLine + '</div></div>';
+    }).join('') + '</div>';
+    container.innerHTML = html;
     container.querySelectorAll('[data-client]').forEach(function (el) {
       var id = el.getAttribute('data-client');
-      if (!id) return;
-      el.addEventListener('click', function () {
-        if (window.CareTrack) window.CareTrack.openPatient(id);
-      });
+      if (id && window.CareTrack) el.addEventListener('click', function () { window.CareTrack.openPatient(id); });
     });
   }
 

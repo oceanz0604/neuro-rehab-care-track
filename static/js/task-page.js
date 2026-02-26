@@ -10,6 +10,18 @@
   var PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+  function dueUrgency(dueDate, status) {
+    if (!dueDate || status === 'done') return '';
+    var d = new Date(dueDate);
+    if (isNaN(d.getTime())) return '';
+    d.setHours(0, 0, 0, 0);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var diff = Math.ceil((d - today) / (24 * 60 * 60 * 1000));
+    if (diff < 0) return 'overdue';
+    if (diff === 0) return 'today';
+    return '';
+  }
   function toast(msg) {
     var el = $('toast'); if (!el) return;
     el.textContent = msg; el.setAttribute('data-show', 'true');
@@ -121,7 +133,7 @@
               '</select>' : '<div class="task-detail-field-value">' + esc(t.assignedToName || '—') + '</div>') +
             '</div>' +
 
-            '<div class="task-detail-field">' +
+            '<div class="task-detail-field task-detail-due-wrap' + (dueUrgency(t.dueDate, t.status) ? ' task-due-' + dueUrgency(t.dueDate, t.status) : '') + '">' +
               '<label>Due date</label>' +
               (canEditFull ? '<input type="date" id="td-due" class="fi" value="' + esc(t.dueDate || '') + '">' : '<div class="task-detail-field-value">' + (t.dueDate || '—') + '</div>') +
             '</div>' +
