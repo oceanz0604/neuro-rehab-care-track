@@ -251,8 +251,8 @@
     renderCurrentPage();
     if (page === 'comms') updateChatBadge();
 
-    var currentUrlPage = getPageFromUrl();
-    var replace = (currentUrlPage === page) || (!currentUrlPage && page === 'dashboard');
+    /* Replace URL so tab switches don't pile up history; back goes to previous page. If we're the only entry, push once so back can go to previous tab. */
+    var replace = history.length > 1;
     updateUrlForPage(page, replace);
   }
 

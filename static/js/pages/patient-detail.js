@@ -119,7 +119,8 @@
     $('pd-tabs').querySelectorAll('.tab-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         _currentTab = btn.getAttribute('data-tab');
-        setTabInUrl(_currentTab, false);
+        /* Replace only so back goes to index (patients), not to previous tab. */
+        setTabInUrl(_currentTab, true);
         $('pd-tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.classList.remove('active'); });
         btn.classList.add('active');
         renderTab(_currentTab, window.CareTrack.getState());

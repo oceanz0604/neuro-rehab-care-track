@@ -30,10 +30,11 @@ service cloud.firestore {
       allow read, write: if isAuth();
     }
 
-    // User profiles: any authenticated user can read/write their own; admins can read/write any
+    // User profiles: all authenticated staff can read (for assignee/doctor dropdowns); own write or admin
     match /userProfiles/{uid} {
-      allow read, write: if isAuth() && request.auth.uid == uid;
-      allow read, write: if isAdmin();
+      allow read: if isAuth();
+      allow write: if isAuth() && request.auth.uid == uid;
+      allow write: if isAdmin();
 
       // Per-user config (legacy); only the owner
       match /config/{docId} {
