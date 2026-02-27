@@ -1454,7 +1454,7 @@ tr.clickable { cursor: pointer; }
 .urgent-toggle.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
 
 /* WhatsApp-like chat UI */
-#page-comms { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 0; }
+#page-comms.page.active { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 0; }
 #page-comms .main-content { flex: 1; min-height: 0; padding: 0; }
 .wa-chat {
   display: flex; flex-direction: column; height: calc(100vh - var(--safe-top) - 100px);
