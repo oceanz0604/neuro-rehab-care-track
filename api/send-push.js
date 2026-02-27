@@ -6,6 +6,16 @@ function looksLikeUid(s) {
   return typeof s === 'string' && s.length >= 20 && /^[a-zA-Z0-9_-]+$/.test(s);
 }
 
+/** Get all FCM tokens for a profile (supports single fcmToken or fcmTokens array for multiple devices). */
+function getTokensFromProfile(profile) {
+  if (!profile) return [];
+  const fromArray = profile.fcmTokens && Array.isArray(profile.fcmTokens) ? profile.fcmTokens.filter(Boolean) : [];
+  const single = profile.fcmToken ? [profile.fcmToken] : [];
+  const seen = new Set();
+  [...fromArray, ...single].forEach(t => { if (t && !seen.has(t)) seen.add(t); });
+  return [...seen];
+}
+
 async function getFcmTokensForAssignedDoctors(db, assignedDoctors, excludeUserId) {
   if (!assignedDoctors || !Array.isArray(assignedDoctors) || assignedDoctors.length === 0) return { tokens: [], resolvedCount: 0 };
   const tokens = [];
@@ -35,7 +45,7 @@ async function getFcmTokensForAssignedDoctors(db, assignedDoctors, excludeUserId
       seenUids.add(uid);
       resolvedCount++;
       const profile = byUid.get(uid);
-      if (profile && profile.fcmToken) tokens.push(profile.fcmToken);
+      tokens.push(...getTokensFromProfile(profile));
     }
   }
   return { tokens, resolvedCount };
@@ -51,8 +61,7 @@ async function getFcmTokensForUids(db, uids, excludeUserId) {
   const snap = await db.collection('userProfiles').get();
   snap.docs.forEach(doc => {
     if (set.has(doc.id)) {
-      const d = doc.data();
-      if (d && d.fcmToken) tokens.push(d.fcmToken);
+      tokens.push(...getTokensFromProfile(doc.data()));
     }
   });
   return { tokens };
@@ -65,7 +74,7 @@ async function getAllFcmTokensExcept(db, excludeUserId) {
   snap.docs.forEach(doc => {
     if (doc.id === excludeUserId) return;
     const d = doc.data();
-    if (d && d.fcmToken && (d.isActive !== false)) tokens.push(d.fcmToken);
+    if (d && d.isActive !== false) tokens.push(...getTokensFromProfile(d));
   });
   return { tokens };
 }

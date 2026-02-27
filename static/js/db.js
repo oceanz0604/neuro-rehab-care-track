@@ -68,12 +68,22 @@
     return db.collection('userProfiles').doc(uid).set(data, { merge: true });
   }
 
+  var FCM_TOKENS_MAX = 10;
   function saveFcmToken(uid, token) {
     if (!uid || !token) return Promise.resolve();
-    return db.collection('userProfiles').doc(uid).set({
-      fcmToken: token,
-      fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    var ref = db.collection('userProfiles').doc(uid);
+    return ref.get().then(function (snap) {
+      var data = snap.exists ? snap.data() : {};
+      var tokens = (data.fcmTokens && Array.isArray(data.fcmTokens)) ? data.fcmTokens.slice() : (data.fcmToken ? [data.fcmToken] : []);
+      var t = String(token).trim();
+      if (tokens.indexOf(t) === -1) tokens.push(t);
+      if (tokens.length > FCM_TOKENS_MAX) tokens = tokens.slice(-FCM_TOKENS_MAX);
+      return ref.set({
+        fcmToken: t,
+        fcmTokens: tokens,
+        fcmTokenUpdatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    });
   }
 
   /* ─── Normalize legacy Firestore data to expected shape ───────── */
