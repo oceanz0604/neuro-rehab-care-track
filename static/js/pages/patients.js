@@ -416,8 +416,22 @@
       createdBy: (AppDB.getCurrentUser() || {}).uid || ''
     };
     document.getElementById('ap-save').disabled = true;
+    var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
+    var profile = (state && state.profile) || {};
+    var user = AppDB.getCurrentUser() || {};
     AppDB.addClient(data)
-      .then(function () { AppModal.close(); window.CareTrack.toast('Patient registered'); window.CareTrack.refreshData(); })
+      .then(function (ref) {
+        if (ref && ref.id && window.AppPush && AppPush.triggerPush) {
+          AppPush.triggerPush({
+            clientId: ref.id,
+            type: 'patient_created',
+            clientName: data.name,
+            addedBy: user.uid,
+            addedByName: profile.displayName || ''
+          });
+        }
+        AppModal.close(); window.CareTrack.toast('Patient registered'); window.CareTrack.refreshData();
+      })
       .catch(function (e) { window.CareTrack.toast('Error: ' + e.message); document.getElementById('ap-save').disabled = false; });
   }
 

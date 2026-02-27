@@ -287,6 +287,16 @@
         if (!text) return;
         commentSubmit.disabled = true;
         AppDB.addTaskComment(t.id, text, (state.profile && state.profile.displayName) || '').then(function () {
+          if (window.AppPush && AppPush.triggerPush) {
+            AppPush.triggerPush({
+              taskId: t.id,
+              type: 'task_comment',
+              taskTitle: t.title,
+              addedBy: (AppDB.getCurrentUser() || {}).uid,
+              addedByName: (state.profile && state.profile.displayName) || '',
+              text: text.slice(0, 100)
+            });
+          }
           commentInput.value = '';
           commentSubmit.disabled = false;
           loadTaskComments();

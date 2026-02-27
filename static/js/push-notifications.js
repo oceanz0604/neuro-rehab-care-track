@@ -63,10 +63,12 @@
       });
   }
 
-  /** Call push API after report or diagnosis save (no Blaze required). Payload: { clientId, type, ... } */
+  /** Call push API. Payload: { type, ... } with clientId (patient), taskId (task), or type:'chat_message'+channel (chat). */
   function triggerPush(payload) {
     var url = typeof PUSH_API_URL === 'string' ? PUSH_API_URL.trim() : '';
-    if (!url || !payload || !payload.clientId || !payload.type) return;
+    if (!url || !payload || !payload.type) return;
+    var hasTarget = payload.clientId || payload.taskId || (payload.type === 'chat_message' && payload.channel);
+    if (!hasTarget) return;
     var user = typeof firebase !== 'undefined' && firebase.auth && firebase.auth().currentUser;
     if (!user) return;
     user.getIdToken().then(function (token) {

@@ -24,10 +24,22 @@
 </div>
 
 <div id="patient-app" class="patient-app" hidden>
+  <header class="patient-page-topbar" id="patient-page-topbar">
+    <button type="button" class="patient-topbar-back" id="patient-back-btn" aria-label="Back"><i class="fas fa-arrow-left"></i></button>
+    <h2 class="patient-topbar-title" id="pd-tb-title">Patient</h2>
+    <div class="patient-topbar-actions">
+      <button type="button" class="btn btn-sm btn-ghost" id="patient-share-btn" aria-label="Copy patient link" title="Copy link"><i class="fas fa-share-nodes"></i></button>
+      <button type="button" class="btn btn-sm btn-ghost" id="patient-edit-btn" style="display:none"><i class="fas fa-pen"></i> Edit</button>
+      <button type="button" class="btn btn-sm btn-danger" id="patient-discharge-btn" style="display:none"><i class="fas fa-right-from-bracket"></i> Discharge</button>
+    </div>
+  </header>
   <main class="main-content main-content-center">
+    <button type="button" id="pd-add-report-btn" style="display:none" aria-hidden="true"></button>
     <div id="pd-header"></div>
-    <div class="tab-bar" id="pd-tabs"></div>
-    <div id="pd-content"></div>
+    <div class="pd-main-card">
+      <div class="tab-bar" id="pd-tabs"></div>
+      <div id="pd-content"></div>
+    </div>
   </main>
   <button type="button" class="mobile-fab" id="mobile-fab-report" title="Add Report"><i class="fas fa-file-medical"></i></button>
 </div>

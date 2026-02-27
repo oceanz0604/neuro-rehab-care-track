@@ -39,6 +39,7 @@
     getState: getState,
     toast: toast,
     navigate: navigate,
+    goBack: goBack,
     openPatient: openPatient,
     refreshData: refreshData
   };

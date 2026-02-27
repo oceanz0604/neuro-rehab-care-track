@@ -212,18 +212,22 @@
         <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="reports-table"></div></div>
       </section>
 
-      <!-- ── Team Chat ── -->
+      <!-- ── Team Chat (WhatsApp-like) ── -->
       <section class="page" id="page-comms">
-        <div class="chat-layout chat-layout-wa">
-          <div class="chat-main">
-            <div class="channel-list channel-list-pinned" id="channel-list"></div>
-            <div class="chat-header" id="chat-header"><i class="fas fa-hashtag" style="color:var(--text-3);font-size:.75rem"></i> General Ward</div>
-            <div class="msg-list" id="msg-list"></div>
-            <div class="chat-compose chat-compose-fixed">
-              <input type="text" id="msg-in" placeholder="Type a message..." autocomplete="off">
-              <button type="button" class="urgent-toggle" id="urgent-toggle" title="Mark as urgent"><i class="fas fa-exclamation-triangle"></i></button>
-              <button type="button" class="btn btn-sm" id="send-msg"><i class="fas fa-paper-plane"></i></button>
+        <div class="wa-chat">
+          <div class="wa-chat-header">
+            <div class="wa-chat-header-title" id="chat-header">General Ward</div>
+            <div class="wa-chat-header-actions">
+              <button type="button" class="wa-chat-header-btn" aria-label="Search"><i class="fas fa-search"></i></button>
+              <button type="button" class="wa-chat-header-btn" aria-label="More"><i class="fas fa-ellipsis-v"></i></button>
             </div>
+          </div>
+          <div class="wa-channels" id="channel-list"></div>
+          <div class="wa-msg-list" id="msg-list"></div>
+          <div class="wa-compose">
+            <button type="button" class="wa-urgent-btn" id="urgent-toggle" title="Mark as urgent"><i class="fas fa-exclamation-circle"></i></button>
+            <input type="text" id="msg-in" class="wa-compose-input" placeholder="Type a message" autocomplete="off">
+            <button type="button" class="wa-send-btn" id="send-msg" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
           </div>
         </div>
       </section>

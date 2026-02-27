@@ -137,6 +137,13 @@
 [data-theme="dark"] .report-entry { background: var(--card); border-left-color: var(--border); }
 [data-theme="dark"] .collapsible-head { background: var(--bg-subtle); }
 [data-theme="dark"] .channel-list-pinned { background: var(--bg-subtle); }
+[data-theme="dark"] .wa-chat { --wa-chat-bg: #1a1d21; --wa-header-bg: #0d9488; --wa-sent-bg: #005c4b; --wa-compose-bg: #1f2c34; --wa-sender-color: #25d366; }
+[data-theme="dark"] .wa-chat-header, [data-theme="dark"] .wa-channels { background: #0d9488; }
+[data-theme="dark"] .wa-channels .channel-item.active { background: rgba(255,255,255,.2); color: #fff; }
+[data-theme="dark"] .wa-msg-list .msg-bubble.theirs { background: #2a2f33; color: var(--text); }
+[data-theme="dark"] .wa-msg-list .msg-bubble.mine { background: #005c4b; color: #e9edef; }
+[data-theme="dark"] .wa-compose-input, [data-theme="dark"] .wa-urgent-btn { background: #2a2f33; color: var(--text); }
+[data-theme="dark"] .wa-send-btn { background: #0d9488; }
 [data-theme="dark"] .empty-state { color: var(--text-3); }
 [data-theme="dark"] .welcome-banner { background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #0d9488 100%); }
 [data-theme="dark"] .quick-action-card { background: var(--card); border-color: var(--border); }
@@ -977,6 +984,71 @@ img { max-width: 100%; }
 .task-topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .task-topbar-actions .btn { padding: 6px 12px; font-size: .85rem; }
 
+/* Patient detail top bar (same layout as task) */
+.patient-app { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; min-width: 0; padding-top: var(--safe-top); }
+.patient-app .main-content { margin-top: 0; padding-top: 12px; }
+.patient-page-topbar {
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+  padding: 12px 16px; padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right));
+  border-bottom: 1px solid var(--border); background: var(--card);
+}
+.patient-topbar-back {
+  display: flex; align-items: center; justify-content: center; width: 40px; height: 40px;
+  border: none; border-radius: var(--radius); background: transparent; color: var(--text); cursor: pointer; transition: background .15s;
+}
+.patient-topbar-back:hover { background: var(--bg-subtle); color: var(--primary); }
+.patient-topbar-title {
+  flex: 1; min-width: 0; margin: 0; font-size: 1rem; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.patient-topbar-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.patient-topbar-actions .btn { padding: 6px 12px; font-size: .85rem; }
+
+/* Patient header card — left: image + name; right: admission, diagnosis list, doctors list */
+.pd-header-card {
+  display: flex; align-items: flex-start; flex-wrap: wrap;
+  padding: 20px; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  margin-bottom: 20px; box-shadow: var(--shadow-sm);
+  gap: 0;
+}
+.pd-header-card-left {
+  flex: 0 0 50%; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: flex-start; gap: 12px;
+  min-width: 0; padding-right: 20px;
+}
+.pd-header-avatar {
+  width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; font-weight: 700; color: #fff;
+}
+.pd-header-name { font-size: 1.25rem; font-weight: 700; margin: 0; color: var(--text); word-break: break-word; }
+.pd-header-card-right {
+  flex: 0 0 50%; box-sizing: border-box;
+  min-width: 0; padding-left: 20px;
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.pd-header-detail-row { display: flex; flex-direction: column; gap: 2px; }
+.pd-header-block { display: flex; flex-direction: column; gap: 4px; }
+.pd-header-label { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); }
+.pd-header-value { font-size: .9rem; color: var(--text); }
+.pd-header-detail-lines { display: flex; flex-direction: column; gap: 2px; }
+.pd-header-detail-line { font-size: .9rem; color: var(--text-2); line-height: 1.4; }
+.pd-header-detail-muted { color: var(--text-3); }
+.pd-header-card .discharge-days-overdue,
+.pd-header-card .discharge-days-urgent,
+.pd-header-card .discharge-days-warning,
+.pd-header-card .discharge-days-ok,
+.pd-header-card .discharge-days-none { padding: 2px 8px; border-radius: var(--radius); font-size: .85em; font-weight: 600; }
+
+/* Patient detail: single card for tabs + content (Overview / Comments / History) */
+.pd-main-card {
+  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 20px; margin-bottom: 20px; box-shadow: var(--shadow-sm);
+}
+.pd-main-card .tab-bar { margin-bottom: 20px; }
+.pd-main-card #pd-content { padding: 0; }
+
 /* Task detail comments */
 .task-detail-comments { margin-top: 20px; }
 .task-detail-comments-hd { font-size: .85rem; font-weight: 700; color: var(--text); margin-bottom: 12px; }
@@ -1381,6 +1453,97 @@ tr.clickable { cursor: pointer; }
 }
 .urgent-toggle.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
 
+/* WhatsApp-like chat UI */
+#page-comms { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 0; }
+#page-comms .main-content { flex: 1; min-height: 0; padding: 0; }
+.wa-chat {
+  display: flex; flex-direction: column; height: calc(100vh - var(--safe-top) - 100px);
+  min-height: 360px; background: var(--wa-chat-bg, #e5ddd5);
+  border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+.wa-chat-header {
+  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 14px; background: var(--wa-header-bg, #075e54);
+  color: #fff;
+}
+.wa-chat-header-title { font-size: 1.05rem; font-weight: 600; letter-spacing: .01em; }
+.wa-chat-header-actions { display: flex; align-items: center; gap: 4px; }
+.wa-chat-header-btn {
+  width: 40px; height: 40px; border: none; background: transparent; color: rgba(255,255,255,.9);
+  border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; transition: background .15s ease;
+}
+.wa-chat-header-btn:hover { background: rgba(255,255,255,.15); }
+.wa-channels {
+  flex-shrink: 0; display: flex; gap: 8px; padding: 10px 14px;
+  background: var(--wa-header-bg, #075e54); overflow-x: auto; -webkit-overflow-scrolling: touch;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+.wa-channels .channel-item {
+  flex: 0 0 auto; padding: 6px 14px; border-radius: 18px; white-space: nowrap;
+  font-size: .85rem; color: rgba(255,255,255,.9); cursor: pointer;
+  background: rgba(255,255,255,.15); border: none;
+  display: inline-flex; align-items: center; gap: 6px; transition: background .15s ease;
+}
+.wa-channels .channel-item:hover { background: rgba(255,255,255,.25); }
+.wa-channels .channel-item.active { background: #fff; color: #075e54; font-weight: 600; }
+.wa-channels .channel-unread {
+  background: #25d366; color: #fff; font-size: .7rem; font-weight: 700;
+  min-width: 18px; padding: 2px 6px; border-radius: 10px; text-align: center; margin-left: 4px;
+}
+.wa-msg-list {
+  flex: 1; overflow-y: auto; padding: 12px 16px 8px; display: flex; flex-direction: column; gap: 4px;
+  min-height: 0; background: var(--wa-chat-bg, #e8e4df);
+}
+.wa-msg-list .msg-wrap { display: flex; flex-direction: column; align-items: flex-start; max-width: 85%; }
+.wa-msg-list .msg-wrap.mine { align-items: flex-end; align-self: flex-end; }
+.wa-msg-list .msg-sender {
+  font-size: .75rem; color: var(--wa-sender-color, #0a6e5c); font-weight: 600; margin-bottom: 2px; margin-left: 12px;
+}
+.wa-msg-list .msg-bubble {
+  padding: 8px 12px 6px; border-radius: 18px; font-size: .9rem; line-height: 1.4;
+  max-width: 100%; word-wrap: break-word; position: relative;
+  display: inline-flex; flex-wrap: wrap; align-items: flex-end; gap: 4px 8px;
+  box-shadow: 0 1px 1px rgba(0,0,0,.08);
+}
+.wa-msg-list .msg-bubble.theirs {
+  background: #fff; color: var(--text); border-bottom-left-radius: 4px;
+}
+.wa-msg-list .msg-bubble.mine {
+  background: var(--wa-sent-bg, #dcf8c6); color: var(--text); border-bottom-right-radius: 4px;
+}
+.wa-msg-list .msg-bubble.urgent { background: #fff3cd; border: 1px solid #ffc107; }
+.wa-msg-list .msg-bubble.mine.urgent { background: #f8d7da; border: 1px solid #f5c6cb; }
+.wa-msg-list .msg-text { flex: 1 1 100%; }
+.wa-msg-list .msg-time { font-size: .7rem; color: var(--text-3); opacity: .85; }
+.wa-msg-list .msg-urgent-icon { margin-right: 4px; font-size: .75rem; }
+.wa-compose {
+  flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 10px 14px 14px;
+  background: var(--wa-compose-bg, #f0f2f5);
+}
+.wa-compose-input {
+  flex: 1; padding: 10px 16px; border: none; border-radius: 24px; font-size: .9rem;
+  background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  transition: box-shadow .15s ease;
+}
+.wa-compose-input::placeholder { color: var(--text-3); }
+.wa-compose-input:focus { outline: none; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+.wa-urgent-btn {
+  width: 40px; height: 40px; border: none; background: #fff; border-radius: 50%;
+  color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 1.1rem; box-shadow: 0 1px 2px rgba(0,0,0,.08); transition: color .15s ease, background .15s ease;
+}
+.wa-urgent-btn:hover { color: var(--accent); }
+.wa-urgent-btn.active { background: var(--accent-bg); color: var(--accent); }
+.wa-send-btn {
+  width: 44px; height: 44px; border: none; background: var(--wa-header-bg, #075e54);
+  color: #fff; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; transition: transform .1s ease, opacity .15s ease;
+}
+.wa-send-btn:hover { opacity: .95; transform: scale(1.05); }
+.wa-msg-list .empty-state { padding: 24px; text-align: center; color: var(--text-2); }
+.wa-msg-list .empty-state i { font-size: 2rem; opacity: .5; margin-bottom: 8px; display: block; }
+
 /* ─── Family Report ───────────────────────────────────────────── */
 .fr-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .fr-controls select, .fr-controls input { padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: .85rem; }
@@ -1762,16 +1925,15 @@ tr.clickable { cursor: pointer; }
 .status-section-item .report-detail-table { margin-top: 4px; }
 .status-section-collapsible .status-section-head {
   width: 100%; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; text-align: left;
-  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg-subtle);
+  padding: 10px 12px; border: none; border-radius: var(--radius); background: var(--bg-subtle);
   cursor: pointer; font: inherit; color: inherit;
 }
 .status-section-collapsible .status-section-head:hover { background: var(--card); }
-.status-section-collapsible .status-section-meta { font-size: .8rem; color: var(--text-3); }
-.status-section-collapsible .status-section-summary { flex: 1; min-width: 0; font-size: .85rem; color: var(--text-2); }
+.status-section-collapsible .status-section-meta { font-size: .8rem; color: var(--text-3); flex: 1; min-width: 0; }
 .status-section-collapsible .status-section-chevron { font-size: .7rem; color: var(--text-3); transition: transform var(--transition); flex-shrink: 0; }
 .status-section-collapsible:not(.collapsed) .status-section-chevron { transform: rotate(-180deg); }
 .status-section-collapsible.collapsed .status-section-detail { display: none; }
-.status-section-collapsible .status-section-detail { padding-left: 12px; padding-top: 8px; border-left: 2px solid var(--border); margin-left: 4px; }
+.status-section-collapsible .status-section-detail { padding: 10px 0 0 0; margin-top: 4px; }
 .status-inline {
   display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline;
   font-size: .88rem; color: var(--text-2); line-height: 1.5;
@@ -2001,7 +2163,8 @@ tr.clickable { cursor: pointer; }
   #app-shell .topbar { display: none; }
   #app-shell { padding-top: var(--safe-top); }
   #app-shell .main-content { margin-top: 0; }
-  #app-shell .chat-layout-wa { height: calc(100dvh - var(--safe-top) - var(--bottom-nav-h) - 60px); min-height: 280px; }
+  #app-shell .chat-layout-wa,
+#app-shell .wa-chat { height: calc(100dvh - var(--safe-top) - var(--bottom-nav-h) - 60px); min-height: 280px; }
 
   .task-app,
   .patient-app { padding-top: var(--safe-top); }
@@ -2086,6 +2249,9 @@ tr.clickable { cursor: pointer; }
   .quick-action-card { min-width: 120px; padding: 12px; }
   .pd-rich-header { flex-direction: column; text-align: center; padding: 16px; }
   .pd-rich-actions { width: 100%; justify-content: center; }
+  .pd-header-card { padding: 16px; flex-wrap: nowrap; min-width: 0; }
+  .pd-header-card-left { padding-right: 12px; }
+  .pd-header-card-right { padding-left: 12px; }
   .staff-grid { grid-template-columns: 1fr; }
   .admin-nav { gap: 2px; padding: 3px; }
   .admin-nav-item { padding: 7px 10px; font-size: .78rem; }
@@ -2140,7 +2306,7 @@ tr.clickable { cursor: pointer; }
 
 /* ─── Print ───────────────────────────────────────────────────── */
 @media print {
-  .sidebar, .topbar, .sb-overlay, .chat-compose, .modal-overlay, #toast,
+  .sidebar, .topbar, .sb-overlay, .chat-compose, .wa-compose, .modal-overlay, #toast,
   .btn, .list-toolbar, .tab-bar, .patient-actions, .bottom-nav, .mobile-fab { display: none !important; }
   .main-wrap { margin-left: 0; padding-top: 0; }
   .main-content { margin-top: 0; padding: 0; max-width: none; }

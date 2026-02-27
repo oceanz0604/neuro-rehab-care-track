@@ -286,36 +286,39 @@
 
   function updateClientRisk(id, level) { return updateClient(id, { currentRisk: level }); }
 
-  /* ─── Diagnosis history ──────────────────────────────────────── */
+  /* ─── Diagnosis history (consultation notes) — RTDB ────────────── */
   function getClientDiagnosisHistory(clientId, limit) {
-    return db.collection('clients').doc(clientId).collection('diagnosisHistory')
-      .orderBy('createdAt', 'desc')
-      .limit(limit || 50)
-      .get()
-      .then(function (snap) {
-        return snap.docs.map(function (d) {
-          var o = d.data(); o.id = d.id;
-          if (o.fromDate && o.fromDate.toDate) o.fromDate = o.fromDate.toDate().toISOString().slice(0, 10);
-          if (o.toDate && o.toDate.toDate) o.toDate = o.toDate.toDate().toISOString().slice(0, 10);
-          if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
-          return o;
-        });
+    if (!clientId) return Promise.resolve([]);
+    if (!rtdb) return Promise.resolve([]);
+    var ref = rtdb.ref('clientDiagnosisHistory/' + clientId).orderByChild('createdAt').limitToLast(limit || 50);
+    return ref.once('value').then(function (snap) {
+      var list = [];
+      snap.forEach(function (child) {
+        var o = child.val();
+        o.id = child.key;
+        if (o.fromDate && typeof o.fromDate === 'string' && o.fromDate.length > 10) o.fromDate = o.fromDate.slice(0, 10);
+        if (o.createdAt != null && typeof o.createdAt === 'number') o.createdAt = new Date(o.createdAt).toISOString();
+        list.push(o);
       });
+      list.reverse();
+      return list;
+    });
   }
 
   function addClientDiagnosisEntry(clientId, data) {
+    if (!rtdb) return Promise.reject(new Error('Realtime Database not available'));
     var user = getCurrentUser();
-    var doc = {
+    var payload = {
       diagnosis: data.diagnosis || '',
       fromDate: data.fromDate || new Date().toISOString().slice(0, 10),
       notes: data.notes || '',
       addedBy: user ? user.uid : '',
       addedByName: data.addedByName || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: firebase.database.ServerValue.TIMESTAMP
     };
-    return db.collection('clients').doc(clientId).collection('diagnosisHistory').add(doc).then(function (ref) {
+    return rtdb.ref('clientDiagnosisHistory/' + clientId).push(payload).then(function (ref) {
       cacheClear('clients');
-      logAudit('diagnosis_history_add', 'client', clientId, { entryId: ref.id }).catch(function () {});
+      logAudit('diagnosis_history_add', 'client', clientId, { entryId: ref.key }).catch(function () {});
       return ref;
     });
   }

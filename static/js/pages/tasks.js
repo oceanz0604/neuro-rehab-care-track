@@ -199,6 +199,17 @@
 
     if (taskId) {
       AppDB.updateTask(taskId, data).then(function () {
+        if (window.AppPush && AppPush.triggerPush) {
+          var task = _tasks.find(function (t) { return t.id === taskId; });
+          AppPush.triggerPush({
+            taskId: taskId,
+            type: 'task_updated',
+            taskTitle: (task && task.title) || data.title,
+            assignedTo: data.assignedTo !== undefined ? data.assignedTo : (task && task.assignedTo),
+            addedBy: (AppDB.getCurrentUser() || {}).uid,
+            addedByName: profile.displayName || ''
+          });
+        }
         var i = _tasks.findIndex(function (t) { return t.id === taskId; });
         if (i !== -1) _tasks[i] = Object.assign({}, _tasks[i], data);
         AppModal.close();
@@ -208,6 +219,17 @@
     } else {
       data.createdByName = profile.displayName || '';
       AppDB.addTask(data).then(function (ref) {
+        if (window.AppPush && AppPush.triggerPush) {
+          AppPush.triggerPush({
+            taskId: ref.id,
+            type: 'task_created',
+            taskTitle: data.title,
+            createdBy: (AppDB.getCurrentUser() || {}).uid,
+            createdByName: profile.displayName || '',
+            assignedTo: data.assignedTo,
+            assignedToName: data.assignedToName || ''
+          });
+        }
         _tasks.unshift(Object.assign({ id: ref.id, key: 'T-' + (ref.id.length >= 6 ? ref.id.slice(-6).toUpperCase() : ref.id), createdAt: new Date().toISOString() }, data));
         AppModal.close();
         refreshView(state);

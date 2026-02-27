@@ -106,11 +106,20 @@
         var mine = m.senderId === userId;
         var ts = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
         var urgentCls = m.isUrgent ? ' urgent' : '';
-        return '<div class="msg-wrap' + (mine ? ' mine' : '') + '">' +
-          '<div class="msg-bubble' + (mine ? ' mine' : ' theirs') + urgentCls + '">' +
-            (m.isUrgent ? '<i class="fas fa-exclamation-triangle" style="color:var(--accent);margin-right:4px;font-size:.75rem"></i>' : '') +
-            esc(m.text) +
-            '<div class="msg-meta">' + esc(m.sender) + ' &middot; ' + ts + '</div>' +
+        if (mine) {
+          return '<div class="msg-wrap mine">' +
+            '<div class="msg-bubble mine' + urgentCls + '">' +
+              (m.isUrgent ? '<span class="msg-urgent-icon"><i class="fas fa-exclamation-circle"></i></span>' : '') +
+              '<span class="msg-text">' + esc(m.text) + '</span>' +
+              '<span class="msg-time">' + ts + '</span>' +
+            '</div></div>';
+        }
+        return '<div class="msg-wrap theirs">' +
+          '<span class="msg-sender">' + esc(m.sender) + '</span>' +
+          '<div class="msg-bubble theirs' + urgentCls + '">' +
+            (m.isUrgent ? '<span class="msg-urgent-icon"><i class="fas fa-exclamation-circle"></i></span>' : '') +
+            '<span class="msg-text">' + esc(m.text) + '</span>' +
+            '<span class="msg-time">' + ts + '</span>' +
           '</div></div>';
       }).join('');
       var ml = $('msg-list');
@@ -131,6 +140,15 @@
       senderId: (state.user || {}).uid || '',
       isUrgent: _isUrgent
     }).then(function () {
+      if (window.AppPush && AppPush.triggerPush) {
+        AppPush.triggerPush({
+          type: 'chat_message',
+          channel: _channel,
+          senderId: (state.user || {}).uid || '',
+          sender: profile.displayName || (state.user || {}).email || 'Staff',
+          text: text.slice(0, 100)
+        });
+      }
       inp.value = '';
       if (_isUrgent) {
         _isUrgent = false;
