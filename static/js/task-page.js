@@ -4,10 +4,24 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { user: null, profile: null, task: null, staff: [], client: null, editLevel: false, canDelete: false, isEditing: false };
+  var state = { user: null, profile: null, task: null, staff: [], clients: [], client: null, editLevel: false, canDelete: false, isEditing: false };
   var STATUS_LABELS = { todo: 'To Do', in_progress: 'In Progress', done: 'Done' };
   var PRIORITY_ICONS = { high: 'fa-arrow-up', medium: 'fa-minus', low: 'fa-arrow-down' };
   var PRIORITY_LABELS = { high: 'High', medium: 'Medium', low: 'Low' };
+  var TASK_CATEGORIES = [
+    { value: '', label: 'Uncategorized' },
+    { value: 'clinical', label: 'Clinical' },
+    { value: 'administrative', label: 'Administrative' },
+    { value: 'follow_up', label: 'Follow-up' },
+    { value: 'medication', label: 'Medication' },
+    { value: 'documentation', label: 'Documentation' },
+    { value: 'other', label: 'Other' }
+  ];
+  function categoryLabel(val) {
+    if (!val) return '—';
+    var c = TASK_CATEGORIES.find(function (x) { return x.value === val; });
+    return c ? c.label : val;
+  }
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
   function dueUrgency(dueDate, status) {
@@ -89,7 +103,8 @@
     var key = t.key || t.id;
     var p = t.priority || 'medium';
     var createdDateStr = t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-    var canEdit = !!state.editLevel;
+    var canEditFull = state.editLevel === 'full';
+    var canEditStatus = state.editLevel === 'full' || state.editLevel === 'progress';
     var canDelete = state.canDelete;
 
     var patientHtml = '';
@@ -106,6 +121,34 @@
     var dueWrapClass = dueUrgency(t.dueDate, t.status) ? ' task-detail-due-wrap task-due-' + dueUrgency(t.dueDate, t.status) : '';
     var patientItem = '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Patient</span><span class="task-detail-meta-value">' + patientHtml + '</span></div>';
 
+    var statusOpts = [{ v: 'todo', l: 'To Do' }, { v: 'in_progress', l: 'In Progress' }, { v: 'done', l: 'Done' }];
+    var priorityOpts = [{ v: 'high', l: 'High' }, { v: 'medium', l: 'Medium' }, { v: 'low', l: 'Low' }];
+    var catOpts = TASK_CATEGORIES.map(function (c) { return { v: c.value, l: c.label }; });
+    function getPillClass(field, val) {
+      if (field === 'priority') return 'pill pill-priority-' + (val || 'medium');
+      if (field === 'status') return 'pill pill-status-' + (val || 'todo');
+      return 'pill task-detail-pill-category';
+    }
+    function pillDropdownHtml(field, opts, current, currentLabel) {
+      var triggerPillClass = getPillClass(field, current);
+      var optsHtml = opts.map(function (o) {
+        var optPillClass = getPillClass(field, o.v);
+        return '<div class="pill-option" role="option" tabindex="-1" data-value="' + esc(o.v) + '" data-label="' + esc(o.l) + '">' +
+          '<span class="pill-option-label"><span class="' + optPillClass + '">' + esc(o.l) + '</span></span></div>';
+      }).join('');
+      return '<div class="task-detail-pill-dropdown" data-field="' + esc(field) + '">' +
+        '<button type="button" class="pill-trigger task-detail-pill-trigger" aria-haspopup="listbox" aria-expanded="false">' +
+        '<span class="task-detail-pill-value ' + triggerPillClass + '" data-value="' + esc(current) + '">' + esc(currentLabel) + '</span>' +
+        '<i class="fas fa-chevron-down pill-chevron" aria-hidden="true"></i></button>' +
+        '<div class="pill-dropdown-panel task-detail-pill-panel" role="listbox" hidden>' + optsHtml + '</div></div>';
+    }
+    var priorityLabel = (PRIORITY_LABELS[p] || p);
+    var statusLabel = (STATUS_LABELS[statusVal] || statusVal);
+    var categoryLabelCur = categoryLabel(t.category) || 'Uncategorized';
+    var priorityValue = canEditFull ? pillDropdownHtml('priority', priorityOpts, p, priorityLabel) : priorityBlock;
+    var statusValue = canEditStatus ? pillDropdownHtml('status', statusOpts, statusVal, statusLabel) : statusBlock;
+    var categoryValue = canEditFull ? pillDropdownHtml('category', catOpts, t.category || '', categoryLabelCur) : esc(categoryLabelCur);
+
     root.innerHTML =
       '<div class="task-detail-card">' +
         '<div class="task-detail-title-wrap">' +
@@ -115,13 +158,14 @@
           '<div class="task-detail-desc-view">' + descriptionHtml + '</div>' +
         '</div>' +
         '<div class="task-detail-meta-row task-detail-meta-row-1">' +
-          '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Priority</span><div class="task-detail-meta-value">' + priorityBlock + '</div></div>' +
+          '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Priority</span><div class="task-detail-meta-value">' + priorityValue + '</div></div>' +
           '<div class="task-detail-meta-item task-detail-meta-cell task-detail-meta-due' + dueWrapClass + '"><span class="task-detail-meta-label">Due date</span><div class="task-detail-meta-value">' + (t.dueDate || '—') + '</div></div>' +
           patientItem +
         '</div>' +
         '<div class="task-detail-meta-row task-detail-meta-row-2">' +
           '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Assignee</span><div class="task-detail-meta-value">' + esc(t.assignedToName || '—') + '</div></div>' +
-          '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Status</span><div class="task-detail-meta-value">' + statusBlock + '</div></div>' +
+          '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Status</span><div class="task-detail-meta-value">' + statusValue + '</div></div>' +
+          '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Category</span><div class="task-detail-meta-value">' + categoryValue + '</div></div>' +
         '</div>' +
         '<div class="task-detail-created">Created on ' + esc(createdDateStr) + (t.createdByName ? ' by ' + esc(t.createdByName) : '') + '</div>' +
         '<hr class="task-detail-sep" />' +
@@ -140,10 +184,63 @@
 
     var editBtn = $('task-edit-btn');
     var delBtn = $('task-delete-btn');
-    if (editBtn) { editBtn.style.display = canEdit ? '' : 'none'; editBtn.textContent = ''; editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit'; }
+    if (editBtn) { editBtn.style.display = canEditFull ? '' : 'none'; editBtn.textContent = ''; editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit'; }
     if (delBtn) delBtn.style.display = canDelete ? '' : 'none';
 
+    bindInlineSelects();
     loadTaskComments();
+  }
+
+  function bindInlineSelects() {
+    var t = state.task;
+    if (!t) return;
+    var root = $('task-detail-root');
+    if (!root) return;
+    var openPanels = [];
+    root.querySelectorAll('.task-detail-pill-dropdown').forEach(function (wrap) {
+      var field = wrap.getAttribute('data-field');
+      var trigger = wrap.querySelector('.task-detail-pill-trigger');
+      var panel = wrap.querySelector('.task-detail-pill-panel');
+      var pillEl = wrap.querySelector('.task-detail-pill-value');
+      if (!trigger || !panel || !pillEl) return;
+      openPanels.push({ wrap: wrap, panel: panel, trigger: trigger });
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var open = !panel.hidden;
+        panel.hidden = open;
+        trigger.setAttribute('aria-expanded', open ? 'false' : 'true');
+      });
+      panel.querySelectorAll('.pill-option').forEach(function (opt) {
+        opt.addEventListener('click', function () {
+          var value = opt.getAttribute('data-value');
+          var label = opt.getAttribute('data-label') || value;
+          if (field === 'category') value = (value || '').trim();
+          if (field === 'status') value = value || 'todo';
+          if (field === 'priority') value = value || 'medium';
+          var payload = {};
+          payload[field] = value;
+          AppDB.updateTask(t.id, payload).then(function () {
+            state.task[field] = value;
+            pillEl.setAttribute('data-value', value);
+            pillEl.textContent = label;
+            pillEl.className = 'task-detail-pill-value ' + (field === 'priority' ? 'pill pill-priority-' + value : field === 'status' ? 'pill pill-status-' + value : 'pill task-detail-pill-category');
+            panel.hidden = true;
+            trigger.setAttribute('aria-expanded', 'false');
+            toast('Updated');
+          }).catch(function (e) {
+            toast('Update failed: ' + (e.message || ''));
+          });
+        });
+      });
+    });
+    document.addEventListener('click', function closeAllPillPanels(e) {
+      openPanels.forEach(function (p) {
+        if (p.panel.hidden) return;
+        if (p.wrap.contains(e.target)) return;
+        p.panel.hidden = true;
+        p.trigger.setAttribute('aria-expanded', 'false');
+      });
+    });
   }
 
   /* ─── Render: edit mode (form, no comments) ─────────────────── */
@@ -180,12 +277,29 @@
     var dueRow = canEditFull
       ? '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-due">Due date</label><input type="date" id="task-edit-due" class="fi" value="' + esc(t.dueDate || '') + '"></div>'
       : '';
+    var assigneeLabel = t.assignedToName ? esc(t.assignedToName) : '<span class="multiselect-placeholder">Select...</span>';
     var assigneeRow = canEditFull
-      ? '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-assignee">Assignee</label><select id="task-edit-assignee" class="fi"><option value="">Unassigned</option>' +
-        (state.staff || []).map(function (s) {
-          return '<option value="' + esc(s.uid) + '"' + (t.assignedTo === s.uid ? ' selected' : '') + '>' + esc(s.displayName || s.email || '') + '</option>';
-        }).join('') + '</select></div>'
+      ? '<div class="task-edit-field"><label class="task-edit-label">Assignee</label>' +
+        '<input type="hidden" id="task-edit-assignee" value="' + esc(t.assignedTo || '') + '">' +
+        '<div class="multiselect-wrap" id="task-edit-assignee-ms"><button type="button" class="multiselect-trigger fi" id="task-edit-assignee-trigger">' + assigneeLabel + '</button>' +
+        '<div class="multiselect-panel" id="task-edit-assignee-panel"><input type="text" class="multiselect-search fi" id="task-edit-assignee-search" placeholder="Search..." autocomplete="off">' +
+        '<div class="multiselect-options" id="task-edit-assignee-options"></div></div></div></div>'
       : '';
+    var categoryOpts = TASK_CATEGORIES.map(function (c) {
+      return '<option value="' + esc(c.value) + '"' + ((t.category || '') === c.value ? ' selected' : '') + '>' + esc(c.label) + '</option>';
+    }).join('');
+    var categoryRow = canEditFull
+      ? '<div class="task-edit-field"><label class="task-edit-label" for="task-edit-category">Category</label><select id="task-edit-category" class="fi">' + categoryOpts + '</select></div>'
+      : '';
+    var clients = state.clients || [];
+    var clientLabel = t.clientName ? esc(t.clientName) : '<span class="multiselect-placeholder">Select...</span>';
+    var patientRow = canEditFull
+      ? '<div class="task-edit-field"><label class="task-edit-label">Patient</label>' +
+        '<input type="hidden" id="task-edit-client" value="' + esc(t.clientId || '') + '">' +
+        '<div class="multiselect-wrap" id="task-edit-client-ms"><button type="button" class="multiselect-trigger fi" id="task-edit-client-trigger">' + clientLabel + '</button>' +
+        '<div class="multiselect-panel" id="task-edit-client-panel"><input type="text" class="multiselect-search fi" id="task-edit-client-search" placeholder="Search..." autocomplete="off">' +
+        '<div class="multiselect-options" id="task-edit-client-options"></div></div></div></div>'
+      : '<div class="task-edit-readonly"><span class="task-edit-meta-label">Patient</span> ' + patientHtml + '</div>';
 
     root.innerHTML =
       '<div class="task-detail-card task-edit-card">' +
@@ -194,11 +308,9 @@
           titleRow +
           descRow +
           '<div class="task-edit-meta-row">' +
-            statusRow + priorityRow + dueRow + assigneeRow +
+            statusRow + priorityRow + dueRow + assigneeRow + categoryRow +
           '</div>' +
-          '<div class="task-edit-readonly">' +
-            '<span class="task-edit-meta-label">Patient</span> ' + patientHtml +
-          '</div>' +
+          patientRow +
           '<div class="task-edit-actions">' +
             '<button type="button" class="btn btn-primary" id="task-edit-save"><i class="fas fa-check"></i> Save</button>' +
             '<button type="button" class="btn btn-ghost" id="task-edit-cancel">Cancel</button>' +
@@ -211,6 +323,56 @@
     var delBtn = $('task-delete-btn');
     if (editBtn) editBtn.style.display = 'none';
     if (delBtn) delBtn.style.display = 'none';
+    if (canEditFull) {
+      bindTaskEditSingleSelect('task-edit-assignee', [{ value: '', label: 'Unassigned' }].concat((state.staff || []).map(function (s) { return { value: s.uid, label: s.displayName || s.email || '' }; })), t.assignedTo || '');
+      bindTaskEditSingleSelect('task-edit-client', [{ value: '', label: 'None' }].concat(clients.filter(function (c) { return c.status === 'active'; }).map(function (c) { return { value: c.id, label: c.name || '' }; })), t.clientId || '');
+    }
+  }
+
+  function bindTaskEditSingleSelect(id, options, selectedValue) {
+    var wrap = document.getElementById(id + '-ms');
+    var trigger = document.getElementById(id + '-trigger');
+    var panel = document.getElementById(id + '-panel');
+    var optionsContainer = document.getElementById(id + '-options');
+    var searchInp = document.getElementById(id + '-search');
+    var hiddenInput = document.getElementById(id);
+    if (!wrap || !trigger || !panel || !optionsContainer || !hiddenInput) return;
+    var opts = options || [];
+    optionsContainer.innerHTML = opts.map(function (o) {
+      return '<div class="single-select-option" data-value="' + esc(o.value) + '" data-label="' + esc(o.label || '') + '">' + esc(o.label || o.value || '') + '</div>';
+    }).join('');
+    function filterOptions() {
+      var q = (searchInp && searchInp.value) ? searchInp.value.trim().toLowerCase() : '';
+      optionsContainer.querySelectorAll('.single-select-option').forEach(function (el) {
+        var text = (el.getAttribute('data-label') || el.textContent || '').toLowerCase();
+        el.style.display = !q || text.indexOf(q) !== -1 ? '' : 'none';
+      });
+    }
+    if (searchInp) {
+      searchInp.addEventListener('input', filterOptions);
+      searchInp.addEventListener('focus', function (e) { e.stopPropagation(); });
+    }
+    function setSelected(val, label) {
+      hiddenInput.value = val || '';
+      trigger.innerHTML = (label || '').trim() ? esc(label) : '<span class="multiselect-placeholder">Select...</span>';
+    }
+    var selected = opts.filter(function (o) { return (o.value || '') === (selectedValue || ''); })[0];
+    setSelected(selectedValue || '', selected ? (selected.label || '') : '');
+    optionsContainer.querySelectorAll('.single-select-option').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var val = el.getAttribute('data-value');
+        var label = el.getAttribute('data-label') || el.textContent || '';
+        setSelected(val, label);
+        wrap.classList.remove('open');
+      });
+    });
+    trigger.addEventListener('click', function () {
+      wrap.classList.toggle('open');
+      if (searchInp && wrap.classList.contains('open')) { searchInp.value = ''; filterOptions(); searchInp.focus(); }
+    });
+    document.addEventListener('click', function (e) {
+      if (!wrap.contains(e.target)) wrap.classList.remove('open');
+    });
   }
 
   function renderDetail() {
@@ -285,7 +447,7 @@
       commentSubmit.addEventListener('click', function () {
         var text = (commentInput.value || '').trim();
         if (!text) return;
-        commentSubmit.disabled = true;
+        if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(commentSubmit, true, 'Adding...');
         AppDB.addTaskComment(t.id, text, (state.profile && state.profile.displayName) || '').then(function () {
           if (window.AppPush && AppPush.triggerPush) {
             AppPush.triggerPush({
@@ -298,11 +460,11 @@
             });
           }
           commentInput.value = '';
-          commentSubmit.disabled = false;
+          if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(commentSubmit, false);
           loadTaskComments();
           toast('Comment added');
         }).catch(function (e) {
-          commentSubmit.disabled = false;
+          if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(commentSubmit, false);
           toast('Failed: ' + (e.message || ''));
         });
       });
@@ -355,16 +517,24 @@
           var s = (state.staff || []).filter(function (x) { return x.uid === payload.assignedTo; })[0];
           payload.assignedToName = s ? (s.displayName || s.email || '') : '';
         }
+        var categoryEl = $('task-edit-category');
+        if (categoryEl) payload.category = (categoryEl.value || '').trim();
+        var clientEl = $('task-edit-client');
+        if (clientEl) {
+          payload.clientId = clientEl.value || null;
+          var cl = (state.clients || []).filter(function (x) { return x.id === payload.clientId; })[0];
+          payload.clientName = cl ? (cl.name || '') : '';
+        }
       }
 
-      saveBtn.disabled = true;
+      if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(saveBtn, true, 'Saving...');
       AppDB.updateTask(t.id, payload).then(function () {
         Object.keys(payload).forEach(function (k) { state.task[k] = payload[k]; });
         state.isEditing = false;
         renderDetail();
         toast('Task saved');
       }).catch(function (e) {
-        saveBtn.disabled = false;
+        if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(saveBtn, false);
         toast('Save failed: ' + (e.message || ''));
       });
     });
@@ -412,11 +582,13 @@
     Promise.all([
       AppDB.getTask(id),
       AppDB.getAllStaff ? AppDB.getAllStaff() : Promise.resolve([]),
-      AppDB.getUserProfile ? AppDB.getUserProfile(user.uid) : Promise.resolve(null)
+      AppDB.getUserProfile ? AppDB.getUserProfile(user.uid) : Promise.resolve(null),
+      AppDB.getClients ? AppDB.getClients() : Promise.resolve([])
     ]).then(function (results) {
       var task = results[0];
       state.staff = results[1] || [];
       state.profile = results[2] || {};
+      state.clients = results[3] || [];
       if (!task) { toast('Task not found'); window.location.href = getBaseUrl() + 'index.html?page=tasks'; return; }
       state.task = task;
       var clientPromise = task.clientId && AppDB.getClient ? AppDB.getClient(task.clientId) : Promise.resolve(null);

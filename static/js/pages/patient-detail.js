@@ -247,6 +247,7 @@
 
         document.getElementById('ep-cancel').addEventListener('click', AppModal.close);
         document.getElementById('ep-save').addEventListener('click', function () {
+          var epSave = document.getElementById('ep-save');
           var diagnoses = getMultiselectValues('ep-diag');
           var assignedDoctors = getMultiselectValues('ep-doctors');
           var data = {
@@ -260,6 +261,7 @@
             assignedTherapist: assignedDoctors[0] || ''
           };
           if (!data.name) { window.CareTrack.toast('Name required'); return; }
+          if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(epSave, true, 'Saving...');
           AppDB.updateClient(_client.id, data).then(function () {
             if (window.AppPush && AppPush.triggerPush) {
               var user = AppDB.getCurrentUser() || {};
@@ -275,7 +277,7 @@
             window.CareTrack.refreshData().then(function () {
               window.CareTrack.openPatient(_client.id);
             });
-          }).catch(function (e) { window.CareTrack.toast('Error: ' + e.message); });
+          }).catch(function (e) { if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(epSave, false); window.CareTrack.toast('Error: ' + e.message); });
         });
       }
     });
@@ -371,10 +373,19 @@
       return '<option value="' + esc(s.key) + '" data-icon="' + (sec ? sec.icon : '') + '">' + esc(s.label) + '</option>';
     }).join('');
     el.innerHTML = '<div class="pd-add-report-inline">' +
-      '<h3 class="card-hd" style="margin-bottom:14px"><i class="fas fa-file-medical"></i> Add Report</h3>' +
-      '<div class="fg pd-add-report-section-row" style="margin-bottom:14px"><label>Section</label>' +
-      '<div class="pd-add-report-section-wrap"><span id="pd-add-report-section-icon" class="pd-add-report-section-icon"><i class="fas ' + firstIcon + '"></i></span>' +
-      '<select id="pd-add-report-section" class="fi">' + sectionOptions + '</select></div></div>' +
+      '<div class="pd-add-report-section-row" style="margin-bottom:14px">' +
+      '<div class="pd-add-report-section-pill-wrap" id="pd-add-report-section-pill-wrap">' +
+      '<button type="button" class="pill-trigger pd-add-report-section-trigger" id="pd-add-report-section-trigger" aria-haspopup="listbox" aria-expanded="false">' +
+      '<span class="pill pd-add-report-section-pill" id="pd-add-report-section-pill"><i class="fas ' + firstIcon + '"></i> ' + esc(firstSection.label) + '</span>' +
+      '<i class="fas fa-chevron-down pill-chevron" aria-hidden="true"></i></button>' +
+      '<select id="pd-add-report-section" class="sr-only" aria-hidden="true">' + sectionOptions + '</select>' +
+      '<div class="pill-dropdown-panel pd-add-report-section-panel" id="pd-add-report-section-panel" role="listbox" hidden>' +
+      allowedSections.map(function (s) {
+        var sec = REPORT_SECTIONS.find(function (x) { return x.key === s.key; });
+        var icon = sec ? sec.icon : '';
+        return '<div class="pill-option" role="option" tabindex="-1" data-value="' + esc(s.key) + '" data-icon="' + esc(icon) + '" data-label="' + esc(s.label) + '"><span class="pill-option-label"><i class="fas ' + icon + '"></i> ' + esc(s.label) + '</span></div>';
+      }).join('') +
+      '</div></div></div>' +
       '<div id="pd-add-report-form-wrap"><div class="empty-state" style="padding:20px;margin:0"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
       '<div class="modal-actions" style="margin-top:16px;flex-wrap:wrap;gap:8px">' +
       '<button type="button" class="btn btn-ghost" id="pd-add-report-cancel">Cancel</button>' +
@@ -382,11 +393,11 @@
     var formWrap = document.getElementById('pd-add-report-form-wrap');
     var sectionSelect = document.getElementById('pd-add-report-section');
     if (!formWrap || !sectionSelect) return;
-    function updateSectionIcon(sectionKey) {
-      var iconEl = document.getElementById('pd-add-report-section-icon');
-      if (iconEl) {
+    function updateSectionDisplay(sectionKey) {
+      var pillEl = document.getElementById('pd-add-report-section-pill');
+      if (pillEl) {
         var sec = REPORT_SECTIONS.find(function (x) { return x.key === sectionKey; });
-        iconEl.innerHTML = sec ? '<i class="fas ' + sec.icon + '"></i>' : '';
+        pillEl.innerHTML = sec ? '<i class="fas ' + sec.icon + '"></i> ' + esc(sec.label) : '';
       }
     }
     function goToOverview() {
@@ -396,7 +407,7 @@
       renderTab('overview', window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state);
     }
     function renderForm(sectionKey) {
-      updateSectionIcon(sectionKey);
+      updateSectionDisplay(sectionKey);
       formWrap.innerHTML = '<div class="empty-state" style="padding:20px;margin:0"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
       var params = getParams(sectionKey, state);
       AppDB.getLatestReport(_client.id, sectionKey).then(function (report) {
@@ -417,7 +428,7 @@
           });
         });
         if (saveBtn) saveBtn.addEventListener('click', function () {
-          var p = doSaveReport(card, sectionKey, params, state);
+          var p = doSaveReport(card, sectionKey, params, state, saveBtn);
           if (p && p.then) p.then(function () { _cachedReports100 = { clientId: null, docs: [] }; if (window.CareTrack.refreshData) window.CareTrack.refreshData(); goToOverview(); });
         });
       }).catch(function () {
@@ -436,13 +447,44 @@
           });
         });
         if (saveBtn) saveBtn.addEventListener('click', function () {
-          var p = doSaveReport(card, sectionKey, params, state);
+          var p = doSaveReport(card, sectionKey, params, state, saveBtn);
           if (p && p.then) p.then(function () { _cachedReports100 = { clientId: null, docs: [] }; if (window.CareTrack.refreshData) window.CareTrack.refreshData(); goToOverview(); });
         });
       });
     }
     renderForm(sectionSelect.value);
     sectionSelect.addEventListener('change', function () { renderForm(sectionSelect.value); });
+    var trigger = document.getElementById('pd-add-report-section-trigger');
+    var panel = document.getElementById('pd-add-report-section-panel');
+    if (trigger && panel) {
+      trigger.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var wasOpen = !panel.hidden;
+        panel.hidden = wasOpen;
+        trigger.setAttribute('aria-expanded', panel.hidden ? 'false' : 'true');
+      });
+      panel.querySelectorAll('.pill-option').forEach(function (opt) {
+        opt.addEventListener('click', function () {
+          var val = opt.getAttribute('data-value');
+          var icon = opt.getAttribute('data-icon') || '';
+          var label = opt.getAttribute('data-label') || '';
+          if (sectionSelect.value !== val) {
+            sectionSelect.value = val;
+            sectionSelect.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          var pillEl = document.getElementById('pd-add-report-section-pill');
+          if (pillEl) pillEl.innerHTML = '<i class="fas ' + icon + '"></i> ' + esc(label);
+          panel.hidden = true;
+          trigger.setAttribute('aria-expanded', 'false');
+        });
+      });
+      document.addEventListener('click', function closePanel(e) {
+        if (panel.hidden) return;
+        if (trigger.contains(e.target) || panel.contains(e.target)) return;
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+      });
+    }
     var cancelBtn = document.getElementById('pd-add-report-cancel');
     if (cancelBtn) cancelBtn.addEventListener('click', goToOverview);
   }
@@ -492,7 +534,7 @@
     function sendNote() {
       var text = (input && input.value) ? input.value.trim() : '';
       if (!text) return;
-      sendBtn.disabled = true;
+      if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(sendBtn, true, 'Adding...');
       AppDB.addClientNote(_client.id, { text: text, addedByName: displayName }).then(function () {
         if (window.AppPush && AppPush.triggerPush) {
           var user = AppDB.getCurrentUser() || {};
@@ -506,11 +548,11 @@
           });
         }
         input.value = '';
-        sendBtn.disabled = false;
+        if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(sendBtn, false);
         loadPatientNotes();
       }).catch(function (e) {
         if (window.CareTrack.toast) window.CareTrack.toast('Failed to add note: ' + (e.message || ''));
-        sendBtn.disabled = false;
+        if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(sendBtn, false);
       });
     }
     if (sendBtn) sendBtn.addEventListener('click', sendNote);
@@ -600,15 +642,13 @@
 
     function renderStatus(bodyEl, bySection, diagnosisEntries) {
       var html = diagnosisBlock(diagnosisEntries || []);
-      html += sections.map(function (sec) {
+      var sectionsWithReport = sections.filter(function (sec) { return bySection[sec] && bySection[sec].report; });
+      html += sectionsWithReport.map(function (sec) {
         var item = bySection[sec];
-        var dt = '—', sub = '—', bodyHtml = '<p class="status-empty">No report yet.</p>';
-        if (item && item.report) {
-          var r = item.report;
-          dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-          sub = r.submittedByName || '—';
-          bodyHtml = formatPayloadHorizontal(sec, r.payload || {});
-        }
+        var r = item.report;
+        var dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
+        var sub = r.submittedByName || '—';
+        var bodyHtml = formatPayloadHorizontal(sec, r.payload || {});
         return '<div class="status-section-item status-section-collapsible collapsed">' +
           '<button type="button" class="status-section-head" aria-expanded="false">' +
           '<span class="risk-badge risk-' + sectionColor(sec) + '">' + capitalize(sec) + '</span>' +
@@ -707,8 +747,8 @@
         });
         if (saveBtn) saveBtn.addEventListener('click', function () {
           if (!_reportDirty[s.key]) return;
-          doSaveReport(card, s.key, getParams(s.key, state), state);
-          _reportDirty[s.key] = false; saveBtn.disabled = true;
+          _reportDirty[s.key] = false;
+          doSaveReport(card, s.key, getParams(s.key, state), state, saveBtn);
         });
       });
     }).catch(function () {
@@ -806,12 +846,14 @@
 
         document.getElementById('dh-cancel').addEventListener('click', AppModal.close);
         document.getElementById('dh-save').addEventListener('click', function () {
+          var dhSave = document.getElementById('dh-save');
           var selected = getMultiselectValues('dh-diag');
           var diagnosis = selected.join(', ');
           var fromDate = (document.getElementById('dh-from') || {}).value || '';
           var notes = (document.getElementById('dh-notes') || {}).value || '';
           if (!diagnosis.trim()) { window.CareTrack.toast('Select at least one diagnosis'); return; }
           var profile = (state && state.profile) || {};
+          if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(dhSave, true, 'Saving...');
           AppDB.addClientDiagnosisEntry(_client.id, { diagnosis: diagnosis.trim(), fromDate: fromDate, notes: notes.trim(), addedByName: profile.displayName || '' }).then(function () {
             if (window.AppPush && AppPush.triggerPush) {
               AppPush.triggerPush({
@@ -833,7 +875,7 @@
                 if (el && typeof renderTab === 'function') renderTab('overview', window.CareTrack.getState());
               }
             });
-          }).catch(function (e) { window.CareTrack.toast('Error: ' + e.message); });
+          }).catch(function (e) { if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(dhSave, false); window.CareTrack.toast('Error: ' + e.message); });
         });
       }
     });
@@ -857,7 +899,7 @@
       return '<option value="' + esc(s.key) + '" data-icon="' + (sec ? sec.icon : '') + '">' + esc(s.label) + '</option>';
     }).join('');
     var html = '<div class="modal-card modal-card-wide"><h3 class="modal-title">Add Report</h3>' +
-      '<div class="fg pd-add-report-section-row" style="margin-bottom:14px"><label>Section</label>' +
+      '<div class="pd-add-report-section-row" style="margin-bottom:14px">' +
       '<div class="pd-add-report-section-wrap"><span id="pd-add-report-section-icon" class="pd-add-report-section-icon"><i class="fas ' + firstIcon + '"></i></span>' +
       '<select id="pd-add-report-section" class="fi">' + sectionOptions + '</select></div></div>' +
       '<div id="pd-add-report-form-wrap"><div class="empty-state" style="padding:20px;margin:0"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
@@ -906,7 +948,7 @@
               });
             });
             if (saveBtn) saveBtn.addEventListener('click', function () {
-              var p = doSaveReport(card, sectionKey, params, state);
+              var p = doSaveReport(card, sectionKey, params, state, saveBtn);
               if (p && p.then) p.then(function () {
                 AppModal.close();
                 _cachedReports100 = { clientId: null, docs: [] };
@@ -941,7 +983,7 @@
               });
             });
             if (saveBtn) saveBtn.addEventListener('click', function () {
-              var p = doSaveReport(card, sectionKey, params, state);
+              var p = doSaveReport(card, sectionKey, params, state, saveBtn);
               if (p && p.then) p.then(function () {
                 AppModal.close();
                 _cachedReports100 = { clientId: null, docs: [] };
@@ -1137,12 +1179,12 @@
 
     var saveBtn = card.querySelector('.ct-save') || document.getElementById('ct-save');
     if (saveBtn) saveBtn.addEventListener('click', function () {
-      doSaveReport(card, section, params, state);
-      if (saveBtn) saveBtn.disabled = true;
+      doSaveReport(card, section, params, state, saveBtn);
     });
   }
 
-  function doSaveReport(card, section, params, state) {
+  function doSaveReport(card, section, params, state, saveBtn) {
+    if (saveBtn && window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(saveBtn, true, 'Saving...');
     var payload = {};
     if (section === 'psychiatric' || section === 'behavioral') {
       payload.ratings = {};
@@ -1208,7 +1250,7 @@
           return AppDB.updateClientRisk(_client.id, highest).then(function () { window.CareTrack.refreshData(); });
         }
       }
-    }).catch(function (e) { window.CareTrack.toast('Save failed: ' + e.message); });
+    }).catch(function (e) { if (saveBtn && window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(saveBtn, false); window.CareTrack.toast('Save failed: ' + e.message); });
   }
 
   function computeHighestRisk(levels) {
@@ -1378,20 +1420,31 @@
   }
 
   function formatPayloadHorizontal(section, p) {
-    var items = [];
+    var rows = [];
+    function addRow(label, value, className) {
+      if (value === undefined || value === '') return;
+      var cls = 'status-detail-row' + (className ? ' ' + className : '');
+      rows.push('<div class="' + cls + '"><span class="status-detail-label">' + esc(label) + '</span><span class="status-detail-value">' + esc(String(value)) + '</span></div>');
+    }
     if (section === 'psychiatric' || section === 'behavioral') {
       var r = p.ratings || {};
-      Object.keys(r).sort().forEach(function (k) { items.push('<span class="status-kv">' + esc(k) + ': ' + r[k] + '/5</span>'); });
+      var keys = Object.keys(r).sort();
+      keys.forEach(function (k) { addRow(k, r[k] + '/5'); });
+      if (keys.length) {
+        var sum = keys.reduce(function (a, k) { return a + (Number(r[k]) || 0); }, 0);
+        var avg = (sum / keys.length).toFixed(1);
+        addRow('Average', avg + '/5', 'average-row');
+      }
     } else if (section === 'adl' || section === 'risk') {
       var l = p.levels || {};
-      Object.keys(l).sort().forEach(function (k) { items.push('<span class="status-kv">' + esc(k) + ': ' + esc(l[k]) + '</span>'); });
+      Object.keys(l).sort().forEach(function (k) { addRow(k, l[k]); });
     } else if (section === 'therapeutic') {
       var a = p.activities || {};
       Object.keys(a).forEach(function (name) {
         var act = a[name] || {};
         var att = act.attendance || '—';
         var eng = act.engagement || '—';
-        items.push('<span class="status-kv">' + esc(name) + ': ' + esc(att) + ' / ' + esc(eng) + '</span>');
+        addRow(name, att + ' / ' + eng);
       });
     } else if (section === 'medication') {
       var medKeys = ['medicationGiven', 'compliance', 'sideEffects', 'prnGiven', 'prnReason', 'labDue', 'bp', 'pulse', 'temp', 'weight'];
@@ -1399,14 +1452,14 @@
         var v = p[k];
         if (v === undefined || v === '') return;
         var label = k.replace(/([A-Z])/g, ' $1').replace(/^./, function (s) { return s.toUpperCase(); });
-        items.push('<span class="status-kv">' + esc(label) + ': ' + esc(v) + '</span>');
+        addRow(label, v);
       });
     }
-    if (p.restraintUsed) items.push('<span class="status-kv">Restraint: ' + esc(p.restraintUsed) + '</span>');
-    if (p.restraintJustification) items.push('<span class="status-kv">Restraint justification: ' + esc(p.restraintJustification) + '</span>');
-    if (p.interventionTaken) items.push('<span class="status-kv">Intervention: ' + esc(p.interventionTaken) + '</span>');
-    if (p.notes) items.push('<span class="status-kv">Notes: ' + esc(p.notes) + '</span>');
-    return items.length ? '<div class="status-inline">' + items.join('') + '</div>' : '<p class="status-empty">No details recorded.</p>';
+    if (p.restraintUsed) addRow('Restraint', p.restraintUsed);
+    if (p.restraintJustification) addRow('Restraint justification', p.restraintJustification);
+    if (p.interventionTaken) addRow('Intervention', p.interventionTaken);
+    if (p.notes) addRow('Notes', p.notes);
+    return rows.length ? '<div class="status-detail-list">' + rows.join('') + '</div>' : '<p class="status-empty">No details recorded.</p>';
   }
 
   function getLatestReportPerSection(docs) {
@@ -1532,7 +1585,7 @@
   }
 
   function sectionColor(s) {
-    var m = { psychiatric: 'medium', behavioral: 'low', medication: 'medium', adl: 'none', therapeutic: 'low', risk: 'high' };
+    var m = { psychiatric: 'medium', behavioral: 'low', medication: 'medium', adl: 'adl', therapeutic: 'low', risk: 'high' };
     return m[s] || 'none';
   }
 

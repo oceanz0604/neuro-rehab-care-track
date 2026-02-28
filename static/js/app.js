@@ -585,6 +585,19 @@
   else init();
 
   /* ─── Public API ────────────────────────────────────────────── */
+  /** Set a button into loading state (spinner + label) or restore it. Use for modal save/create actions. */
+  function setButtonLoading(btn, loading, loadingLabel) {
+    if (!btn) return;
+    if (loading) {
+      btn.disabled = true;
+      btn.dataset.originalButtonHtml = btn.innerHTML;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> ' + (loadingLabel || 'Saving...');
+    } else {
+      btn.disabled = false;
+      btn.innerHTML = btn.dataset.originalButtonHtml || btn.textContent || '';
+    }
+  }
+
   window.CareTrack = {
     navigate: navigate,
     openPatient: openPatient,
@@ -592,6 +605,7 @@
     refreshData: refreshData,
     getState: function () { return state; },
     getBaseUrl: getBaseUrl,
-    toast: toast
+    toast: toast,
+    setButtonLoading: setButtonLoading
   };
 })();

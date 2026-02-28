@@ -260,6 +260,7 @@
     cacheClear('clients');
     data.status = data.status || 'active';
     data.currentRisk = data.currentRisk || 'none';
+    Object.keys(data).forEach(function (k) { if (data[k] === undefined) delete data[k]; });
     if (data.admissionDays != null && data.admissionDate) {
       var d = new Date(data.admissionDate + 'T12:00:00');
       d.setDate(d.getDate() + (parseInt(data.admissionDays, 10) || 0));
@@ -467,6 +468,7 @@
     o.id = d.id;
     o.key = 'T-' + (d.id.length >= 6 ? d.id.slice(-6).toUpperCase() : d.id);
     if (!o.priority) o.priority = 'medium';
+    if (o.category === undefined) o.category = '';
     if (o.dueDate && o.dueDate.toDate) o.dueDate = o.dueDate.toDate().toISOString().slice(0, 10);
     if (o.createdAt && o.createdAt.toDate) o.createdAt = o.createdAt.toDate().toISOString();
     if (o.updatedAt && o.updatedAt.toDate) o.updatedAt = o.updatedAt.toDate().toISOString();
@@ -493,6 +495,7 @@
     if (!title) return Promise.reject(new Error('Title is required'));
     var doc = {
       title: title,
+      category: (data.category && String(data.category).trim()) ? String(data.category).trim() : '',
       dueDate: data.dueDate && String(data.dueDate).trim() ? String(data.dueDate).trim() : null,
       status: data.status === 'in_progress' || data.status === 'done' ? data.status : 'todo',
       priority: (data.priority === 'high' || data.priority === 'medium' || data.priority === 'low') ? data.priority : 'medium',
@@ -517,6 +520,7 @@
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
     if (data.title !== undefined) doc.title = (data.title || '').trim();
+    if (data.category !== undefined) doc.category = (data.category && String(data.category).trim()) ? String(data.category).trim() : '';
     if (data.dueDate !== undefined) doc.dueDate = data.dueDate || null;
     if (data.status !== undefined) doc.status = data.status || 'todo';
     if (data.priority !== undefined) doc.priority = (data.priority === 'high' || data.priority === 'medium' || data.priority === 'low') ? data.priority : 'medium';

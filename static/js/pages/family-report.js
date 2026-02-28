@@ -414,16 +414,16 @@
     btn.addEventListener('click', function () {
       var ta = document.getElementById('fr-progress-note');
       var value = (ta && ta.value) ? ta.value.trim() : '';
-      btn.disabled = true;
+      if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(btn, true, 'Saving...');
       AppDB.updateClient(client.id, { progressReportNote: value }).then(function () {
         if (window.CareTrack) {
           window.CareTrack.toast('Note saved');
           window.CareTrack.refreshData();
         }
-        btn.disabled = false;
+        if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(btn, false);
       }).catch(function (e) {
         if (window.CareTrack) window.CareTrack.toast('Error: ' + (e && e.message ? e.message : 'Save failed'));
-        btn.disabled = false;
+        if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(btn, false);
       });
     });
   }
@@ -444,19 +444,22 @@
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
     var btn = document.getElementById('fr-export-pdf');
-    if (btn) { btn.disabled = true; btn.textContent = 'Generating…'; }
+    if (btn && window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(btn, true, 'Generating…');
     html2pdf().set(opt).from(el).save().then(function () {
       if (btn) {
         var s = STRINGS[_lang];
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-file-pdf"></i> ' + (s && s.exportPdf ? s.exportPdf : 'Export PDF');
+        if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(btn, false);
+        else { btn.disabled = false; btn.innerHTML = '<i class="fas fa-file-pdf"></i> ' + (s && s.exportPdf ? s.exportPdf : 'Export PDF'); }
       }
       if (window.CareTrack) window.CareTrack.toast('PDF downloaded.');
     }).catch(function (err) {
       if (btn) {
-        var s = STRINGS[_lang];
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-file-pdf"></i> ' + (s && s.exportPdf ? s.exportPdf : 'Export PDF');
+        if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(btn, false);
+        else {
+          var s = STRINGS[_lang];
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-file-pdf"></i> ' + (s && s.exportPdf ? s.exportPdf : 'Export PDF');
+        }
       }
       if (window.CareTrack) window.CareTrack.toast(err && err.message ? err.message : 'PDF export failed.');
     });

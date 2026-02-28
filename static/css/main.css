@@ -182,7 +182,8 @@ body {
   position: relative;
   transition: background-color .25s ease, color .2s ease;
 }
-body.modal-open { overflow: hidden; }
+body.modal-open { overflow: hidden; overscroll-behavior: none; }
+body.modal-open .modal-overlay { overscroll-behavior: contain; }
 a { color: var(--primary); text-decoration: none; }
 button { cursor: pointer; font-family: inherit; }
 input, select, textarea { font-family: inherit; font-size: .93rem; }
@@ -534,6 +535,11 @@ img { max-width: 100%; }
 }
 .multiselect-panel label:hover { background: var(--grey-bg); }
 .multiselect-panel input[type="checkbox"] { width: 16px; height: 16px; flex-shrink: 0; }
+.multiselect-panel .single-select-option {
+  display: flex; align-items: center; padding: 8px 10px; cursor: pointer;
+  font-size: .88rem; border-radius: var(--radius-sm); transition: background var(--transition);
+}
+.multiselect-panel .single-select-option:hover { background: var(--grey-bg); }
 
 /* Dashboard — Risk Alerts & Recent Reports */
 .risk-alert-row {
@@ -746,6 +752,7 @@ img { max-width: 100%; }
 .risk-low { background: var(--green-bg); color: var(--green); }
 .risk-medium { background: var(--amber-bg); color: var(--amber); }
 .risk-high { background: var(--accent-bg); color: var(--accent); }
+.risk-adl { background: var(--primary-bg); color: var(--primary); }
 
 /* ─── Patients card grid ─────────────────────────────────────── */
 .patients-card-grid {
@@ -852,8 +859,8 @@ img { max-width: 100%; }
   font-size: .8rem;
 }
 .discharge-days-overdue { background: var(--accent-bg); color: var(--accent); }
-.discharge-days-urgent { background: var(--amber-bg); color: var(--amber); }
-.discharge-days-warning { background: var(--grey-bg); color: var(--text-2); }
+.discharge-days-urgent { background: var(--accent-bg); color: var(--accent); }
+.discharge-days-warning { background: var(--amber-bg); color: var(--amber); }
 .discharge-days-ok { background: var(--green-bg); color: var(--green); }
 .discharge-days-none { color: var(--text-3); background: transparent; }
 .discharge-status-delayed { background: var(--amber-bg); color: var(--amber); }
@@ -934,7 +941,12 @@ img { max-width: 100%; }
 .task-card-tag.task-due-tag-today { color: var(--amber); font-weight: 600; }
 .task-card:hover { box-shadow: var(--shadow); border-color: var(--primary); border-left-color: var(--primary); transform: translateY(-2px); }
 .task-card-top { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+.task-card-key-wrap { display: inline-flex; align-items: center; gap: 6px; flex: 1; min-width: 0; }
 .task-card-key { font-size: .72rem; color: var(--text-3); font-weight: 600; font-family: 'Courier New', monospace; }
+.task-card-you-badge {
+  font-size: .65rem; font-weight: 700; padding: 2px 6px; border-radius: var(--radius-pill);
+  background: var(--primary-bg); color: var(--primary); flex-shrink: 0;
+}
 .task-card-priority-icon { font-size: .72rem; }
 .task-card-priority-icon.priority-high { color: var(--accent); }
 .task-card-priority-icon.priority-medium { color: var(--amber); }
@@ -961,6 +973,24 @@ img { max-width: 100%; }
 .task-priority-badge.priority-high { background: var(--accent-bg); color: var(--accent); }
 .task-priority-badge.priority-medium { background: var(--amber-bg); color: var(--amber); }
 .task-priority-badge.priority-low { background: var(--green-bg); color: var(--green); }
+.task-status-badge {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: var(--radius-pill);
+  font-size: .72rem; font-weight: 600; white-space: nowrap;
+}
+.task-status-badge.status-todo { background: var(--bg-subtle); color: var(--text-2); }
+.task-status-badge.status-in_progress { background: var(--primary-bg); color: var(--primary); }
+.task-status-badge.status-done { background: var(--green-bg); color: var(--green); }
+.task-list-table { table-layout: fixed; min-width: 960px; width: 100%; }
+.task-list-table td { white-space: nowrap; overflow: hidden; }
+.task-list-table .task-list-title { text-overflow: ellipsis; }
+.task-list-table .task-col-key { width: 100px; min-width: 100px; }
+.task-list-table .task-col-title { width: 220px; min-width: 180px; }
+.task-list-table .task-col-category { width: 110px; min-width: 100px; }
+.task-list-table .task-col-status { width: 100px; min-width: 90px; }
+.task-list-table .task-col-priority { width: 90px; min-width: 85px; }
+.task-list-table .task-col-due { width: 95px; min-width: 90px; }
+.task-list-table .task-col-assignee { width: 120px; min-width: 100px; }
+.task-list-table .task-col-patient { width: 120px; min-width: 100px; }
 
 /* ═══ Task detail page (task.html) — single card ═══════════════════════════════ */
 .task-page .topbar-no-sidebar,
@@ -1168,11 +1198,19 @@ img { max-width: 100%; }
 }
 .pill-status-todo { background: #64748b; color: #fff; }
 .pill-status-in_progress { background: var(--amber); color: #1c1917; }
-.pill-status-done { background: var(--green); color: #fff; }
+.pill-status-done { background: var(--green); color: #1c1917; }
 .pill-priority-high { background: var(--accent); color: #fff; }
 .pill-priority-medium { background: var(--amber); color: #1c1917; }
-.pill-priority-low { background: var(--green); color: #fff; }
+.pill-priority-low { background: var(--green); color: #1c1917; }
+.task-detail-pill-category { background: var(--bg-subtle); color: var(--text-2); }
 .pill-chevron { font-size: .65rem; color: var(--text-3); }
+.task-detail-pill-trigger {
+  display: inline-flex; align-items: center; gap: 2px; padding: 0; border: none; border-radius: 999px;
+  cursor: pointer; font: inherit; background: transparent;
+}
+.task-detail-pill-trigger .task-detail-pill-value { flex-shrink: 0; }
+.task-detail-pill-trigger .pill-chevron { padding: 0 6px; opacity: .85; }
+.task-detail-pill-trigger:hover .pill-chevron { opacity: 1; }
 .pill-dropdown-panel {
   position: absolute; left: 0; top: 100%; margin-top: 4px; min-width: 180px;
   background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
@@ -1259,6 +1297,17 @@ tr.clickable { cursor: pointer; }
   background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
 }
 .filter-select:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(20,184,166,.1); }
+
+.pt-filter-btn {
+  padding: 8px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+  font-size: .85rem; font-weight: 500; color: var(--text-2); background: var(--card);
+  cursor: pointer; transition: background .15s, border-color .15s, color .15s;
+}
+.pt-filter-btn:hover { background: var(--bg-subtle); border-color: var(--text-3); }
+.pt-filter-btn.active,
+.pt-filter-btn[aria-pressed="true"] {
+  background: var(--primary-bg); color: var(--primary); border-color: var(--primary);
+}
 
 /* ─── Patient Detail ──────────────────────────────────────────── */
 #page-patient-detail > #pd-header { width: 100%; max-width: 100%; box-sizing: border-box; }
@@ -1795,6 +1844,12 @@ body:has(#page-comms.page.active) .wa-msg-list {
 .pd-add-report-section-wrap { display: flex; align-items: center; gap: 10px; }
 .pd-add-report-section-icon { color: var(--text-2); font-size: 1rem; }
 .pd-add-report-section-wrap .fi { flex: 1; min-width: 0; }
+.pd-add-report-section-pill-wrap { position: relative; display: inline-block; }
+.pd-add-report-section-trigger { background: var(--bg-subtle); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 6px 12px; color: var(--text); }
+.pd-add-report-section-trigger .pill { background: transparent; color: inherit; font-size: .8rem; text-transform: none; letter-spacing: 0; }
+[data-theme="dark"] .pd-add-report-section-trigger { color: var(--text); }
+[data-theme="dark"] .pd-add-report-section-trigger .pill { color: var(--text); }
+.pd-add-report-section-panel.pill-dropdown-panel { min-width: 200px; }
 .modal-sub { font-size: .88rem; color: var(--text-3); margin-bottom: 16px; }
 
 .list-item {
@@ -1838,6 +1893,7 @@ body:has(#page-comms.page.active) .wa-msg-list {
   opacity: 0;
   pointer-events: none;
   transition: opacity .2s ease;
+  overscroll-behavior: contain;
 }
 .modal-overlay.visible {
   opacity: 1;
@@ -1866,6 +1922,8 @@ body:has(#page-comms.page.active) .wa-msg-list {
   overflow-x: hidden;
   overflow-wrap: break-word;
   word-break: break-word;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   animation: modalSlideUp .2s cubic-bezier(.4,0,.2,1);
 }
 @keyframes modalSlideUp {
@@ -1884,8 +1942,9 @@ body:has(#page-comms.page.active) .wa-msg-list {
 .modal-card .rating-row,
 .modal-card .adl-row { min-width: 0; overflow-x: hidden; }
 
-/* Constrain inputs in modals so date/inputs don't overflow on mobile */
-.modal-card .fg { min-width: 0; }
+/* Constrain inputs in modals so date/inputs don't overflow on mobile; reduce vertical gap between fields */
+.modal-card .fg { min-width: 0; margin-bottom: 8px; }
+.modal-card .fg:last-child { margin-bottom: 0; }
 .modal-card .fg .fi,
 .modal-card .fg input,
 .modal-card .fg select,
@@ -2011,7 +2070,27 @@ body:has(#page-comms.page.active) .wa-msg-list {
 .status-section-collapsible .status-section-chevron { font-size: .7rem; color: var(--text-3); transition: transform var(--transition); flex-shrink: 0; }
 .status-section-collapsible:not(.collapsed) .status-section-chevron { transform: rotate(-180deg); }
 .status-section-collapsible.collapsed .status-section-detail { display: none; }
-.status-section-collapsible .status-section-detail { padding: 10px 0 0 0; margin-top: 4px; }
+.status-section-collapsible .status-section-detail { padding: 4px 0 0 0; margin-top: 2px; margin-left: 12px; }
+.status-detail-list {
+  display: flex; flex-direction: column; gap: 0;
+  font-size: .82rem;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  overflow: hidden;
+}
+.status-detail-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 6px 12px;
+  min-height: 32px; box-sizing: border-box;
+}
+.status-detail-row.average-row {
+  border-top: 1px solid var(--border);
+  font-weight: 600;
+}
+.status-detail-label { font-weight: 500; color: var(--text-2); flex: 1; min-width: 0; margin-right: 12px; }
+.status-detail-value { color: var(--text); font-weight: 600; flex-shrink: 0; text-align: right; }
 .status-inline {
   display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: baseline;
   font-size: .88rem; color: var(--text-2); line-height: 1.5;

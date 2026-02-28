@@ -131,10 +131,24 @@
     var active = clients.filter(function (c) { return c.status === 'active'; });
     var highRisk = active.filter(function (c) { return c.currentRisk === 'high'; });
 
+    function daysUntilDischarge(plannedDischargeDate) {
+      if (!plannedDischargeDate) return null;
+      var d = new Date(plannedDischargeDate);
+      d.setHours(0, 0, 0, 0);
+      var today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return Math.ceil((d - today) / (24 * 60 * 60 * 1000));
+    }
+    var dischargeSoonCount = active.filter(function (c) {
+      var days = daysUntilDischarge(c.plannedDischargeDate);
+      return days !== null && days >= 0 && days <= 7;
+    }).length;
+
     var taskCounts = { pendingOnYou: 0, createdByYou: 0 };
     function buildStats(tc) {
       var html = statCardNav('fa-hospital-user', 'teal', 'Active Patients', active.length, 'patients', 'active', '') +
-        statCardNav('fa-triangle-exclamation', 'red', 'High Risk', highRisk.length, 'patients', 'active', 'high');
+        statCardNav('fa-triangle-exclamation', 'red', 'High Risk', highRisk.length, 'patients', 'active', 'high') +
+        statCardNav('fa-calendar-days', 'amber', 'Discharge within 7 Days', dischargeSoonCount, 'patients', 'active', '');
       if (tc.pendingOnYou > 0) html += statCardNav('fa-list-check', 'teal', 'Pending on you', tc.pendingOnYou, 'tasks', '', '');
       if (tc.createdByYou > 0) html += statCardNav('fa-user-pen', 'amber', 'Created by you (pending)', tc.createdByYou, 'tasks', '', '');
       return html;

@@ -169,6 +169,7 @@
             <option value="medium">Medium</option>
             <option value="low">Low</option>
           </select>
+          <button type="button" class="pt-filter-btn" id="pt-filter-discharging-soon" aria-pressed="false">Discharging Soon</button>
         </div>
         <div id="patients-table" class="patients-card-grid"></div>
       </section>
@@ -250,13 +251,44 @@
         <div id="fr-prev" class="fr-preview" hidden></div>
       </section>
 
-      <!-- ── Tasks (Kanban board) ── -->
+      <!-- ── Tasks (Board / List) ── -->
       <section class="page" id="page-tasks">
         <div class="page-toolbar">
           <div class="page-toolbar-left">
             <h1 class="pg-title" style="margin:0">Tasks</h1>
+            <div class="tasks-view-toggle" role="tablist" aria-label="View">
+              <button type="button" class="tasks-view-btn active" id="tasks-view-board" data-view="board" role="tab" aria-selected="true"><i class="fas fa-columns"></i> Board</button>
+              <button type="button" class="tasks-view-btn" id="tasks-view-list" data-view="list" role="tab" aria-selected="false"><i class="fas fa-list"></i> List</button>
+            </div>
           </div>
           <button type="button" class="btn btn-sm" id="tasks-add-btn"><i class="fas fa-plus"></i> Create</button>
+        </div>
+        <div id="tasks-filters" class="page-filters tasks-list-filters" style="display:none">
+          <select class="filter-select" id="task-filter-category" title="Category">
+            <option value="">All categories</option>
+            <option value="__none__">Uncategorized</option>
+            <option value="clinical">Clinical</option>
+            <option value="administrative">Administrative</option>
+            <option value="follow_up">Follow-up</option>
+            <option value="medication">Medication</option>
+            <option value="documentation">Documentation</option>
+            <option value="other">Other</option>
+          </select>
+          <select class="filter-select" id="task-filter-status" title="Status">
+            <option value="">All statuses</option>
+            <option value="todo">To Do</option>
+            <option value="in_progress">In Progress</option>
+            <option value="done">Done</option>
+          </select>
+          <select class="filter-select" id="task-filter-priority" title="Priority">
+            <option value="">All priorities</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+          <select class="filter-select" id="task-filter-assignee" title="Assignee">
+            <option value="">All assignees</option>
+          </select>
         </div>
         <div id="tasks-board-wrap" class="tasks-board-wrap">
           <div class="task-board" id="task-board">
@@ -273,6 +305,36 @@
               <div class="task-board-cards" id="task-col-done"></div>
             </div>
           </div>
+        </div>
+        <div id="tasks-list-wrap" class="tasks-list-wrap" style="display:none">
+          <div class="table-wrap">
+            <table class="task-list-table" id="task-list-table">
+              <colgroup>
+                <col class="task-col-key" />
+                <col class="task-col-title" />
+                <col class="task-col-category" />
+                <col class="task-col-status" />
+                <col class="task-col-priority" />
+                <col class="task-col-due" />
+                <col class="task-col-assignee" />
+                <col class="task-col-patient" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Key</th>
+                  <th>Title</th>
+                  <th>Category</th>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Due</th>
+                  <th>Assignee</th>
+                  <th>Patient</th>
+                </tr>
+              </thead>
+              <tbody id="task-list-tbody"></tbody>
+            </table>
+          </div>
+          <div id="task-list-empty" class="empty-state" style="display:none; padding:32px"><i class="fas fa-inbox"></i><p>No tasks match the filters.</p></div>
         </div>
       </section>
 
@@ -378,7 +440,7 @@
 <script src="static/js/permissions.js"></script>
 <script src="static/js/rtdb.js"></script>
 <script src="static/js/components/modal.js"></script>
-<script src="static/js/components/report-modal.js"></script>
+    <script src="static/js/components/report-modal.js"></script>
 <script src="static/js/pages/dashboard.js"></script>
 <script src="static/js/pages/patients.js"></script>
 <script src="static/js/pages/reports.js"></script>

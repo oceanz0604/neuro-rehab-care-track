@@ -65,6 +65,11 @@
     var q = ($('pt-search') || {}).value || '';
     var filterStatus = ($('pt-filter-status') || {}).value || '';
     var filterRisk = ($('pt-filter-risk') || {}).value || '';
+    var dischargingSoonBtn = $('pt-filter-discharging-soon');
+    var filterDischargingSoon = dischargingSoonBtn ? dischargingSoonBtn.getAttribute('aria-pressed') === 'true' : false;
+    if (dischargingSoonBtn) {
+      dischargingSoonBtn.classList.toggle('active', filterDischargingSoon);
+    }
     var isDoctorOrTherapist = window.Permissions && (
       window.Permissions.hasRole(profile, 'therapist') ||
       window.Permissions.hasRole(profile, 'medical_officer') ||
@@ -90,6 +95,11 @@
         var risk = (c.currentRisk || 'none').toLowerCase();
         if (risk === 'none') risk = 'low';
         if (filterRisk !== risk) return false;
+      }
+      if (filterDischargingSoon) {
+        if ((c.status || 'active') === 'discharged') return false;
+        var days = daysUntilDischarge(c.plannedDischargeDate);
+        if (days === null || days < 0 || days > 7) return false;
       }
       return true;
     });
@@ -394,8 +404,8 @@
   function saveNewPatient() {
     var name = (document.getElementById('ap-name') || {}).value || '';
     var admissionDate = (document.getElementById('ap-admission') || {}).value || '';
-    if (!name.trim()) { window.CareTrack.toast('Full name is required'); return; }
-    if (!admissionDate) { window.CareTrack.toast('Admission date is required'); return; }
+    if (!name.trim()) { if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Full name is required'); return; }
+    if (!admissionDate) { if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Admission date is required'); return; }
     var diagnoses = getMultiselectValues('ap-diag');
     var assignedDoctors = getMultiselectValues('ap-doctors');
     var admissionDaysRaw = (document.getElementById('ap-admission-days') || {}).value || '';
@@ -408,7 +418,7 @@
       diagnoses: diagnoses,
       admissionDate: admissionDate,
       plannedDischargeDate: (document.getElementById('ap-planned-discharge') || {}).value || '',
-      admissionDays: admissionDays || undefined,
+      admissionDays: admissionDays != null ? admissionDays : null,
       legalStatus: (document.getElementById('ap-legal') || {}).value || '',
       emergencyContact: (document.getElementById('ap-emergency') || {}).value || '',
       consent: (document.getElementById('ap-consent') || {}).value || '',
@@ -418,10 +428,24 @@
       roomNumber: (document.getElementById('ap-room') || {}).value || '',
       createdBy: (AppDB.getCurrentUser() || {}).uid || ''
     };
-    document.getElementById('ap-save').disabled = true;
+    var saveBtn = document.getElementById('ap-save');
+    if (saveBtn) {
+      if (window.CareTrack && window.CareTrack.setButtonLoading) {
+        window.CareTrack.setButtonLoading(saveBtn, true, 'Saving...');
+      } else {
+        saveBtn.disabled = true;
+        saveBtn.dataset.originalButtonHtml = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin" aria-hidden="true"></i> Saving...';
+      }
+    }
     var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
     var profile = (state && state.profile) || {};
     var user = AppDB.getCurrentUser() || {};
+    if (!window.AppDB || typeof window.AppDB.addClient !== 'function') {
+      if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = saveBtn.dataset.originalButtonHtml || 'Save Patient'; }
+      if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Database not available');
+      return;
+    }
     AppDB.addClient(data)
       .then(function (ref) {
         if (ref && ref.id && window.AppPush && AppPush.triggerPush) {
@@ -433,9 +457,22 @@
             addedByName: profile.displayName || ''
           });
         }
-        AppModal.close(); window.CareTrack.toast('Patient registered'); window.CareTrack.refreshData();
+        AppModal.close();
+        if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Patient registered');
+        if (window.CareTrack && window.CareTrack.refreshData) window.CareTrack.refreshData();
       })
-      .catch(function (e) { window.CareTrack.toast('Error: ' + e.message); document.getElementById('ap-save').disabled = false; });
+      .catch(function (e) {
+        if (saveBtn) {
+          if (window.CareTrack && window.CareTrack.setButtonLoading) {
+            window.CareTrack.setButtonLoading(saveBtn, false);
+          } else {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = saveBtn.dataset.originalButtonHtml || 'Save Patient';
+          }
+        }
+        var msg = (e && (e.message || e.code)) || 'Save failed';
+        if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Error: ' + msg);
+      });
   }
 
   function init() {
@@ -446,6 +483,13 @@
     var filterRisk = $('pt-filter-risk');
     if (filterStatus) filterStatus.addEventListener('change', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
     if (filterRisk) filterRisk.addEventListener('change', function () { if (window.CareTrack) render(window.CareTrack.getState()); });
+    var dischargingSoon = $('pt-filter-discharging-soon');
+    if (dischargingSoon) dischargingSoon.addEventListener('click', function () {
+      var pressed = this.getAttribute('aria-pressed') !== 'true';
+      this.setAttribute('aria-pressed', pressed);
+      this.classList.toggle('active', pressed);
+      if (window.CareTrack) render(window.CareTrack.getState());
+    });
   }
 
   window.Pages = window.Pages || {};

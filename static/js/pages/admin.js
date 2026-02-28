@@ -214,8 +214,8 @@
             if (errEl) { errEl.textContent = 'Valid email and password (at least 6 characters) are required.'; errEl.style.display = 'block'; }
             return;
           }
-          document.getElementById('as-save').disabled = true;
-          document.getElementById('as-save').textContent = 'Creating...';
+          var asSave = document.getElementById('as-save');
+          if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(asSave, true, 'Creating...');
           AppDB.createStaffAccount(email, pw, { displayName: name, role: role })
             .then(function () {
               AppModal.close();
@@ -225,8 +225,7 @@
             .catch(function (e) {
               var msg = e.message || e.code || 'Could not create account. Try again.';
               if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
-              document.getElementById('as-save').disabled = false;
-              document.getElementById('as-save').textContent = 'Create Account';
+              if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(asSave, false);
             });
         });
       }
@@ -257,12 +256,14 @@
       onReady: function () {
         document.getElementById('es-cancel').addEventListener('click', AppModal.close);
         document.getElementById('es-save').addEventListener('click', function () {
+          var esSave = document.getElementById('es-save');
           var role = (document.getElementById('es-role') && document.getElementById('es-role').value) || currentRole;
           var newPw = (document.getElementById('es-pw').value || '').trim();
           var profileData = { displayName: vv('es-name'), role: role, roles: [role] };
           var currentUid = (AppDB.getCurrentUser && AppDB.getCurrentUser()) ? AppDB.getCurrentUser().uid : null;
           var isSelf = currentUid === uid;
 
+          if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(esSave, true, 'Saving...');
           AppDB.updateStaffProfile(uid, profileData)
             .then(function () {
               if (newPw.length >= 6) {
@@ -282,6 +283,7 @@
               render(window.CareTrack.getState());
             })
             .catch(function (e) {
+              if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(esSave, false);
               if (e.code === 'auth/requires-recent-login') {
                 window.CareTrack.toast('Re-sign in and try again to change password.');
               } else {
