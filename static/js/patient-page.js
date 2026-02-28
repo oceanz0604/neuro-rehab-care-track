@@ -5,7 +5,7 @@
 (function () {
   'use strict';
   var $ = function (id) { return document.getElementById(id); };
-  var state = { user: null, profile: null, clients: [], selectedClient: null, selectedClientData: null };
+  var state = { user: null, profile: null, clients: [], config: {}, selectedClient: null, selectedClientData: null };
 
   function getState() { return state; }
   function toast(msg) {
@@ -97,14 +97,42 @@
     });
   }
 
+  function loadConfig() {
+    var defaults = (window.Pages && window.Pages.settings && window.Pages.settings.DEFAULTS) || {};
+    var icd11Diagnosis = (window.Pages && window.Pages.settings && window.Pages.settings.ICD11_DIAGNOSIS_OPTIONS) || [];
+    var configPromise = AppDB.getOrgConfig ? AppDB.getOrgConfig() : Promise.resolve({});
+    return configPromise.then(function (cfg) {
+      state.config = cfg || {};
+      Object.keys(defaults).forEach(function (k) {
+        if (k === 'diagnosisOptions') {
+          var saved = state.config.diagnosisOptions && Array.isArray(state.config.diagnosisOptions) ? state.config.diagnosisOptions : [];
+          var merged = icd11Diagnosis.slice();
+          var inIcd11 = {};
+          icd11Diagnosis.forEach(function (s) { inIcd11[s] = true; });
+          saved.forEach(function (s) {
+            var v = (s || '').trim();
+            if (v && !inIcd11[v]) { inIcd11[v] = true; merged.push(v); }
+          });
+          state.config.diagnosisOptions = merged;
+        } else if (!state.config[k] || !Array.isArray(state.config[k])) {
+          state.config[k] = (defaults[k] || []).slice();
+        }
+      });
+    }).catch(function () {
+      state.config = {};
+      if (defaults.diagnosisOptions) state.config.diagnosisOptions = defaults.diagnosisOptions.slice();
+    });
+  }
+
   function loadPatient(user, id) {
     state.user = user;
     Promise.all([
+      loadConfig(),
       AppDB.getUserProfile(user.uid),
       AppDB.getClient(id)
     ]).then(function (results) {
-      state.profile = results[0] || {};
-      var client = results[1];
+      state.profile = results[1] || {};
+      var client = results[2];
       if (!client) {
         toast('Patient not found');
         state.selectedClient = id;
@@ -125,14 +153,7 @@
         if (bcName) bcName.textContent = client.name;
       }
       var fab = document.getElementById('mobile-fab-report');
-      if (fab && client && client.status !== 'discharged') {
-        fab.addEventListener('click', function () {
-          var addBtn = document.getElementById('pd-add-report-btn');
-          if (addBtn) addBtn.click();
-        });
-      } else if (fab) {
-        fab.style.display = 'none';
-      }
+      if (fab) fab.style.display = 'none'; /* Add Report is now a tab, same as web */
     }).catch(function (err) {
       toast(err && err.message ? err.message : 'Failed to load');
       window.location.href = getBaseUrl() + 'index.html?page=patients';

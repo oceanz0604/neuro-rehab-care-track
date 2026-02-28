@@ -12,6 +12,7 @@
   var _latestReports = {};
   var _cachedReports100 = { clientId: null, docs: [] };
 
+  var ADD_REPORT_TAB = { key: 'add-report', label: 'Add Report', icon: 'fa-file-medical' };
   var ALL_TABS = [
     { key: 'overview',  label: 'Overview',   icon: 'fa-id-card' },
     { key: 'diagnosis', label: 'Diagnosis',  icon: 'fa-stethoscope' },
@@ -24,6 +25,7 @@
     var Perm = window.Permissions;
     if (!Perm) return ALL_TABS.filter(function (t) { return t.key === 'overview'; });
     var tabs = [];
+    if (Perm.canAddReport(profile) && client && client.status !== 'discharged') tabs.push(ADD_REPORT_TAB);
     if (Perm.canViewOverview(profile)) tabs.push(ALL_TABS[0]); /* Overview */
     if (Perm.canViewOverview(profile)) tabs.push(ALL_TABS[1]); /* Diagnosis */
     if (Perm.canViewOverview(profile)) tabs.push(ALL_TABS[2]); /* Comments */
@@ -68,8 +70,10 @@
     var canDischarge = Perm && Perm.canDischargePatientFor(profile, _client);
     var editBtn = $('patient-edit-btn');
     var dischargeBtn = $('patient-discharge-btn');
+    var addReportBtn = $('pd-add-report-btn');
     if (editBtn) { editBtn.style.display = canEdit ? '' : 'none'; }
     if (dischargeBtn) { dischargeBtn.style.display = canDischarge && _client.status !== 'discharged' ? '' : 'none'; }
+    if (addReportBtn) { addReportBtn.style.display = 'none'; /* Add Report is now a tab */ }
     bindTopbarActions();
     if (_client.id !== _lastRenderedClientId) {
       _lastRenderedClientId = _client.id;
@@ -227,7 +231,10 @@
         selectedDiag.forEach(function (d) { if (d && diagOpts.indexOf(d) === -1) diagOpts.push(d); });
         bindMultiselect('ep-diag', diagOpts, selectedDiag);
         AppDB.getAllStaff().then(function (staff) {
-          var doctorOptions = staff.filter(function (s) { return s.isActive !== false; })
+          var Perm = window.Permissions;
+          var doctorOptions = staff.filter(function (s) {
+            return s.isActive !== false && Perm && Perm.canBeAssignedAsDoctor(s);
+          })
             .map(function (s) { return s.displayName || s.email || ''; })
             .filter(Boolean);
           var selectedDoctors = (c.assignedDoctors && c.assignedDoctors.length ? c.assignedDoctors : (c.assignedTherapist ? [c.assignedTherapist] : []));
@@ -339,11 +346,105 @@
   /* ─── Tab rendering ────────────────────────────────────────── */
   function renderTab(tab, state) {
     var el = $('pd-content');
-    if (tab === 'overview')  { renderOverview(el); return; }
-    if (tab === 'diagnosis') { renderDiagnosisTab(el); return; }
+    if (tab === 'add-report') { renderAddReportTab(el, state); return; }
+    if (tab === 'overview')   { renderOverview(el); return; }
+    if (tab === 'diagnosis')  { renderDiagnosisTab(el); return; }
     if (tab === 'notes')     { renderNotesTab(el, state); return; }
     if (tab === 'history')   { renderHistory(el); return; }
     renderClinicalTab(el, tab, state);
+  }
+
+  function renderAddReportTab(el, state) {
+    if (!_client) return;
+    var profile = (state && state.profile) || {};
+    var allowedSections = REPORT_SECTIONS.filter(function (s) {
+      return window.Permissions && window.Permissions.canSubmitSection(profile, s.key);
+    });
+    if (!allowedSections.length) {
+      el.innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i><p>You cannot add reports for this patient.</p></div>';
+      return;
+    }
+    var firstSection = allowedSections[0];
+    var firstIcon = firstSection ? (REPORT_SECTIONS.find(function (x) { return x.key === firstSection.key; }) || {}).icon || 'fa-file-lines' : 'fa-file-lines';
+    var sectionOptions = allowedSections.map(function (s) {
+      var sec = REPORT_SECTIONS.find(function (x) { return x.key === s.key; });
+      return '<option value="' + esc(s.key) + '" data-icon="' + (sec ? sec.icon : '') + '">' + esc(s.label) + '</option>';
+    }).join('');
+    el.innerHTML = '<div class="pd-add-report-inline">' +
+      '<h3 class="card-hd" style="margin-bottom:14px"><i class="fas fa-file-medical"></i> Add Report</h3>' +
+      '<div class="fg pd-add-report-section-row" style="margin-bottom:14px"><label>Section</label>' +
+      '<div class="pd-add-report-section-wrap"><span id="pd-add-report-section-icon" class="pd-add-report-section-icon"><i class="fas ' + firstIcon + '"></i></span>' +
+      '<select id="pd-add-report-section" class="fi">' + sectionOptions + '</select></div></div>' +
+      '<div id="pd-add-report-form-wrap"><div class="empty-state" style="padding:20px;margin:0"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
+      '<div class="modal-actions" style="margin-top:16px;flex-wrap:wrap;gap:8px">' +
+      '<button type="button" class="btn btn-ghost" id="pd-add-report-cancel">Cancel</button>' +
+      '<span id="pd-add-report-save-wrap"></span></div></div>';
+    var formWrap = document.getElementById('pd-add-report-form-wrap');
+    var sectionSelect = document.getElementById('pd-add-report-section');
+    if (!formWrap || !sectionSelect) return;
+    function updateSectionIcon(sectionKey) {
+      var iconEl = document.getElementById('pd-add-report-section-icon');
+      if (iconEl) {
+        var sec = REPORT_SECTIONS.find(function (x) { return x.key === sectionKey; });
+        iconEl.innerHTML = sec ? '<i class="fas ' + sec.icon + '"></i>' : '';
+      }
+    }
+    function goToOverview() {
+      _currentTab = 'overview';
+      setTabInUrl('overview', true);
+      $('pd-tabs').querySelectorAll('.tab-btn').forEach(function (b) { b.classList.toggle('active', b.getAttribute('data-tab') === 'overview'); });
+      renderTab('overview', window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : state);
+    }
+    function renderForm(sectionKey) {
+      updateSectionIcon(sectionKey);
+      formWrap.innerHTML = '<div class="empty-state" style="padding:20px;margin:0"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+      var params = getParams(sectionKey, state);
+      AppDB.getLatestReport(_client.id, sectionKey).then(function (report) {
+        var payload = (report && report.payload) ? report.payload : {};
+        var formHtml = getSectionFormHtml(sectionKey, params, payload);
+        var notesVal = (payload && payload.notes) ? esc(payload.notes) : '';
+        var cardInner = formHtml + '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3">' + notesVal + '</textarea></div>';
+        formWrap.innerHTML = '<div class="card ct-card" data-section="' + sectionKey + '">' + cardInner + '</div>';
+        var card = formWrap.querySelector('.ct-card');
+        var saveWrap = document.getElementById('pd-add-report-save-wrap');
+        if (saveWrap) { saveWrap.innerHTML = ''; var sb = document.createElement('button'); sb.type = 'button'; sb.className = 'btn ct-save'; sb.setAttribute('data-section', sectionKey); sb.innerHTML = '<i class="fas fa-save"></i> Save Report'; saveWrap.appendChild(sb); }
+        var saveBtn = saveWrap ? saveWrap.querySelector('.ct-save') : null;
+        card.querySelectorAll('.rating-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var param = btn.getAttribute('data-param');
+            card.querySelectorAll('.rating-btn[data-param="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
+            btn.classList.add('selected');
+          });
+        });
+        if (saveBtn) saveBtn.addEventListener('click', function () {
+          var p = doSaveReport(card, sectionKey, params, state);
+          if (p && p.then) p.then(function () { _cachedReports100 = { clientId: null, docs: [] }; if (window.CareTrack.refreshData) window.CareTrack.refreshData(); goToOverview(); });
+        });
+      }).catch(function () {
+        var payload = {};
+        var formHtml = getSectionFormHtml(sectionKey, params, payload);
+        formWrap.innerHTML = '<div class="card ct-card" data-section="' + sectionKey + '">' + formHtml + '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3"></textarea></div></div>';
+        var card = formWrap.querySelector('.ct-card');
+        var saveWrap = document.getElementById('pd-add-report-save-wrap');
+        if (saveWrap) { saveWrap.innerHTML = ''; var sb = document.createElement('button'); sb.type = 'button'; sb.className = 'btn ct-save'; sb.setAttribute('data-section', sectionKey); sb.innerHTML = '<i class="fas fa-save"></i> Save Report'; saveWrap.appendChild(sb); }
+        var saveBtn = saveWrap ? saveWrap.querySelector('.ct-save') : null;
+        card.querySelectorAll('.rating-btn').forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var param = btn.getAttribute('data-param');
+            card.querySelectorAll('.rating-btn[data-param="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
+            btn.classList.add('selected');
+          });
+        });
+        if (saveBtn) saveBtn.addEventListener('click', function () {
+          var p = doSaveReport(card, sectionKey, params, state);
+          if (p && p.then) p.then(function () { _cachedReports100 = { clientId: null, docs: [] }; if (window.CareTrack.refreshData) window.CareTrack.refreshData(); goToOverview(); });
+        });
+      });
+    }
+    renderForm(sectionSelect.value);
+    sectionSelect.addEventListener('change', function () { renderForm(sectionSelect.value); });
+    var cancelBtn = document.getElementById('pd-add-report-cancel');
+    if (cancelBtn) cancelBtn.addEventListener('click', goToOverview);
   }
 
   function collapsible(id, title, bodyHtml, expanded) {
@@ -760,7 +861,9 @@
       '<div class="pd-add-report-section-wrap"><span id="pd-add-report-section-icon" class="pd-add-report-section-icon"><i class="fas ' + firstIcon + '"></i></span>' +
       '<select id="pd-add-report-section" class="fi">' + sectionOptions + '</select></div></div>' +
       '<div id="pd-add-report-form-wrap"><div class="empty-state" style="padding:20px;margin:0"><i class="fas fa-spinner fa-spin"></i> Loading...</div></div>' +
-      '<div class="modal-actions" style="margin-top:16px"><button type="button" class="btn btn-ghost" id="pd-add-report-cancel">Cancel</button></div></div>';
+      '<div class="modal-actions" style="margin-top:16px;flex-wrap:wrap;gap:8px">' +
+      '<button type="button" class="btn btn-ghost" id="pd-add-report-cancel">Cancel</button>' +
+      '<span id="pd-add-report-save-wrap"></span></div></div>';
     AppModal.open(html, {
       onReady: function () {
         var formWrap = document.getElementById('pd-add-report-form-wrap');
@@ -781,11 +884,20 @@
             var formHtml = getSectionFormHtml(sectionKey, params, payload);
             var notesVal = (payload && payload.notes) ? esc(payload.notes) : '';
             var cardInner = formHtml +
-              '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3">' + notesVal + '</textarea></div>' +
-              '<div style="margin-top:14px"><button type="button" class="btn ct-save" data-section="' + esc(sectionKey) + '"><i class="fas fa-save"></i> Save Report</button></div>';
+              '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3">' + notesVal + '</textarea></div>';
             formWrap.innerHTML = '<div class="card ct-card" data-section="' + sectionKey + '">' + cardInner + '</div>';
             var card = formWrap.querySelector('.ct-card');
-            var saveBtn = card.querySelector('.ct-save');
+            var saveWrap = document.getElementById('pd-add-report-save-wrap');
+            if (saveWrap) {
+              saveWrap.innerHTML = '';
+              var saveBtn = document.createElement('button');
+              saveBtn.type = 'button';
+              saveBtn.className = 'btn ct-save';
+              saveBtn.setAttribute('data-section', sectionKey);
+              saveBtn.innerHTML = '<i class="fas fa-save"></i> Save Report';
+              saveWrap.appendChild(saveBtn);
+            }
+            var saveBtn = saveWrap ? saveWrap.querySelector('.ct-save') : null;
             card.querySelectorAll('.rating-btn').forEach(function (btn) {
               btn.addEventListener('click', function () {
                 var param = btn.getAttribute('data-param');
@@ -808,10 +920,19 @@
             var formHtml = getSectionFormHtml(sectionKey, params, payload);
             formWrap.innerHTML = '<div class="card ct-card" data-section="' + sectionKey + '">' +
               formHtml +
-              '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3"></textarea></div>' +
-              '<div style="margin-top:14px"><button type="button" class="btn ct-save" data-section="' + esc(sectionKey) + '"><i class="fas fa-save"></i> Save Report</button></div></div>';
+              '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3"></textarea></div></div>';
             var card = formWrap.querySelector('.ct-card');
-            var saveBtn = card.querySelector('.ct-save');
+            var saveWrap = document.getElementById('pd-add-report-save-wrap');
+            if (saveWrap) {
+              saveWrap.innerHTML = '';
+              var saveBtnEl = document.createElement('button');
+              saveBtnEl.type = 'button';
+              saveBtnEl.className = 'btn ct-save';
+              saveBtnEl.setAttribute('data-section', sectionKey);
+              saveBtnEl.innerHTML = '<i class="fas fa-save"></i> Save Report';
+              saveWrap.appendChild(saveBtnEl);
+            }
+            var saveBtn = saveWrap ? saveWrap.querySelector('.ct-save') : null;
             card.querySelectorAll('.rating-btn').forEach(function (btn) {
               btn.addEventListener('click', function () {
                 var param = btn.getAttribute('data-param');

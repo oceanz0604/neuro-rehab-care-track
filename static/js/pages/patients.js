@@ -321,7 +321,10 @@
       : (window.Pages && window.Pages.settings && window.Pages.settings.ICD11_DIAGNOSIS_OPTIONS) || [];
     bindMultiselect('ap-diag', diagnosisOptions, []);
     AppDB.getAllStaff().then(function (staff) {
-      var doctorOptions = staff.filter(function (s) { return s.isActive !== false; })
+      var Perm = window.Permissions;
+      var doctorOptions = staff.filter(function (s) {
+        return s.isActive !== false && Perm && Perm.canBeAssignedAsDoctor(s);
+      })
         .map(function (s) { return s.displayName || s.email || ''; })
         .filter(Boolean);
       bindMultiselect('ap-doctors', doctorOptions, []);

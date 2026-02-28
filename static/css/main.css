@@ -235,8 +235,10 @@ img { max-width: 100%; }
 .fg { margin-bottom: 16px; }
 .fg label { display: block; font-size: .8rem; font-weight: 600; color: var(--text-2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: .04em; }
 .fi {
-  width: 100%; padding: 10px 14px; border: 1.5px solid var(--border);
+  width: 100%; max-width: 100%; min-width: 0;
+  padding: 10px 14px; border: 1.5px solid var(--border);
   border-radius: var(--radius-sm); font-size: .93rem;
+  box-sizing: border-box;
   transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
   background: var(--bg);
 }
@@ -1457,17 +1459,52 @@ tr.clickable { cursor: pointer; }
 }
 .urgent-toggle.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
 
-/* WhatsApp-like chat UI */
-#page-comms.page.active { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: 0; }
-#page-comms .main-content { flex: 1; min-height: 0; padding: 0; }
+/* WhatsApp-like chat UI — fixed viewport layer so only .wa-msg-list scrolls (fixes iOS PWA page scroll) */
+#page-comms.page.active {
+  position: fixed;
+  top: var(--safe-top);
+  left: 0;
+  right: 0;
+  bottom: var(--bottom-nav-h);
+  width: 100%;
+  height: calc(100dvh - var(--safe-top) - var(--bottom-nav-h));
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg);
+  padding: 0;
+}
+/* Prevent body scroll when chat is open (iOS PWA) */
+body:has(#page-comms.page.active) {
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+body:has(#page-comms.page.active) .wa-msg-list {
+  touch-action: pan-y;
+}
+.main-content:has>(#page-comms.page.active) {
+  overflow: hidden;
+  padding: 0;
+}
 .wa-chat {
-  display: flex; flex-direction: column; height: calc(100vh - var(--safe-top) - 100px);
-  min-height: 360px; background: var(--wa-chat-bg, #e5ddd5);
-  border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: var(--wa-chat-bg, #e5ddd5);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
 }
 .wa-chat-header {
-  flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 16px 14px; background: var(--wa-header-bg, #075e54);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 14px;
+  background: var(--wa-header-bg, #075e54);
   color: #fff;
 }
 .wa-chat-header-title { font-size: 1.05rem; font-weight: 600; letter-spacing: .01em; }
@@ -1479,9 +1516,15 @@ tr.clickable { cursor: pointer; }
 }
 .wa-chat-header-btn:hover { background: rgba(255,255,255,.15); }
 .wa-channels {
-  flex-shrink: 0; display: flex; gap: 8px; padding: 10px 14px;
-  background: var(--wa-header-bg, #075e54); overflow-x: auto; -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--wa-header-bg, #075e54);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-top: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
 }
 .wa-channels .channel-item {
   flex: 0 0 auto; padding: 6px 14px; border-radius: 18px; white-space: nowrap;
@@ -1496,8 +1539,16 @@ tr.clickable { cursor: pointer; }
   min-width: 18px; padding: 2px 6px; border-radius: 10px; text-align: center; margin-left: 4px;
 }
 .wa-msg-list {
-  flex: 1; overflow-y: auto; padding: 12px 16px 8px; display: flex; flex-direction: column; gap: 4px;
-  min-height: 0; background: var(--wa-chat-bg, #e8e4df);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: clip;
+  padding: 12px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--wa-chat-bg, #e8e4df);
+  -webkit-overflow-scrolling: touch;
 }
 .wa-msg-list .msg-wrap { display: flex; flex-direction: column; align-items: flex-start; max-width: 85%; }
 .wa-msg-list .msg-wrap.mine { align-items: flex-end; align-self: flex-end; }
@@ -1520,11 +1571,25 @@ tr.clickable { cursor: pointer; }
 .wa-msg-list .msg-bubble.mine.urgent { background: #b91c1c; border: 1px solid #991b1b; color: #fff; }
 .wa-msg-list .msg-bubble.mine.urgent .msg-time { color: rgba(255,255,255,.9); }
 .wa-msg-list .msg-text { flex: 1 1 100%; }
+.wa-msg-list .msg-link {
+  color: #0a6e5c;
+  text-decoration: underline;
+  word-break: break-all;
+}
+.wa-msg-list .msg-link:hover { color: #075e54; opacity: 0.9; }
+[data-theme="dark"] .wa-msg-list .msg-link { color: #2dd4bf; }
+[data-theme="dark"] .wa-msg-list .msg-link:hover { color: #5eead4; }
 .wa-msg-list .msg-time { font-size: .7rem; color: var(--text-3); opacity: .85; }
 .wa-msg-list .msg-urgent-icon { margin-right: 4px; font-size: .75rem; }
 .wa-compose {
-  flex-shrink: 0; display: flex; align-items: center; gap: 10px; padding: 10px 14px 14px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px 14px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
   background: var(--wa-compose-bg, #f0f2f5);
+  box-shadow: 0 -2px 10px rgba(0,0,0,.06);
 }
 .wa-compose-input {
   flex: 1; padding: 10px 16px; border: none; border-radius: 24px; font-size: .9rem;
@@ -1818,6 +1883,14 @@ tr.clickable { cursor: pointer; }
 .modal-card .form-grid,
 .modal-card .rating-row,
 .modal-card .adl-row { min-width: 0; overflow-x: hidden; }
+
+/* Constrain inputs in modals so date/inputs don't overflow on mobile */
+.modal-card .fg { min-width: 0; }
+.modal-card .fg .fi,
+.modal-card .fg input,
+.modal-card .fg select,
+.modal-card .fg textarea { max-width: 100%; min-width: 0; box-sizing: border-box; }
+.modal-card input[type="date"] { min-width: 0; max-width: 100%; }
 
 /* Modal on mobile: same approach, margin from overlay padding */
 @media (max-width: 768px) {
@@ -2168,8 +2241,8 @@ tr.clickable { cursor: pointer; }
   #app-shell .topbar { display: none; }
   #app-shell { padding-top: var(--safe-top); }
   #app-shell .main-content { margin-top: 0; }
-  #app-shell .chat-layout-wa,
-#app-shell .wa-chat { height: calc(100dvh - var(--safe-top) - var(--bottom-nav-h) - 60px); min-height: 280px; }
+  /* Chat page: same full-screen layout on mobile; no fixed height so flex fills space */
+  #app-shell .wa-chat { flex: 1; min-height: 0; }
 
   .task-app,
   .patient-app { padding-top: var(--safe-top); }

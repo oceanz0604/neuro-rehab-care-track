@@ -110,7 +110,7 @@
           return '<div class="msg-wrap mine">' +
             '<div class="msg-bubble mine' + urgentCls + '">' +
               (m.isUrgent ? '<span class="msg-urgent-icon"><i class="fas fa-exclamation-circle"></i></span>' : '') +
-              '<span class="msg-text">' + esc(m.text) + '</span>' +
+              '<span class="msg-text">' + linkify(m.text) + '</span>' +
               '<span class="msg-time">' + ts + '</span>' +
             '</div></div>';
         }
@@ -118,7 +118,7 @@
           '<span class="msg-sender">' + esc(m.sender) + '</span>' +
           '<div class="msg-bubble theirs' + urgentCls + '">' +
             (m.isUrgent ? '<span class="msg-urgent-icon"><i class="fas fa-exclamation-circle"></i></span>' : '') +
-            '<span class="msg-text">' + esc(m.text) + '</span>' +
+            '<span class="msg-text">' + linkify(m.text) + '</span>' +
             '<span class="msg-time">' + ts + '</span>' +
           '</div></div>';
       }).join('');
@@ -180,6 +180,20 @@
   function getUnreadPerChannel() { return Object.assign({}, _unread); }
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+  /** Turn plain text into HTML with URLs as clickable links (escaped for XSS safety). */
+  function linkify(s) {
+    if (s == null || s === '') return '';
+    var str = String(s);
+    var urlRegex = /(https?:\/\/[^\s<>"']+)/gi;
+    var parts = str.split(urlRegex);
+    return parts.map(function (p) {
+      if (p && /^https?:\/\//i.test(p)) {
+        return '<a href="' + esc(p) + '" target="_blank" rel="noopener noreferrer" class="msg-link">' + esc(p) + '</a>';
+      }
+      return esc(p);
+    }).join('');
+  }
 
   window.Pages = window.Pages || {};
   window.Pages.comms = {

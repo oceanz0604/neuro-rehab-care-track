@@ -149,6 +149,13 @@
     return hasRole(profile, 'medical_officer');
   }
 
+  /** True if profile can appear in "Assigned doctor(s)" dropdown (doctors, psychiatrists, psychologists, therapists, admin only). */
+  function canBeAssignedAsDoctor(profile) {
+    if (!profile) return false;
+    var role = getRole(profile);
+    return role === 'admin' || role === 'psychiatrist' || role === 'psychologist' || role === 'therapist' || role === 'medical_officer';
+  }
+
   /**
    * Task RBAC.
    * - Admins: view/edit/delete all tasks.
@@ -220,6 +227,7 @@
     canEditTaskLevel: canEditTaskLevel,
     canDeleteTask: canDeleteTask,
     canCreateTask: canCreateTask,
-    isDoctorRole: isDoctorRole
+    isDoctorRole: isDoctorRole,
+    canBeAssignedAsDoctor: canBeAssignedAsDoctor
   };
 })();
