@@ -224,7 +224,10 @@
             </div>
           </div>
           <div class="wa-channels" id="channel-list"></div>
-          <div class="wa-msg-list" id="msg-list"></div>
+          <div class="wa-msg-list" id="msg-list">
+            <div class="wa-date-popup" id="wa-date-popup" aria-hidden="true" hidden></div>
+            <div class="wa-msg-list-inner" id="msg-list-content"></div>
+          </div>
           <div class="wa-compose">
             <button type="button" class="wa-urgent-btn" id="urgent-toggle" title="Mark as urgent"><i class="fas fa-exclamation-circle"></i></button>
             <input type="text" id="msg-in" class="wa-compose-input" placeholder="Type a message" autocomplete="off">
@@ -366,25 +369,29 @@
             <div id="staff-table"></div>
           </div>
           <div id="admin-parameters-wrap" style="display:none">
-            <div class="collapsible-section parameters-outer-section" id="parameters-section-report">
-              <button type="button" class="collapsible-head" aria-expanded="true" data-toggle-collapse="parameters-section-report"><i class="fas fa-chevron-down"></i><span><i class="fas fa-file-lines"></i> Report</span></button>
+            <div class="admin-tab-scroll" id="admin-parameters-scroll">
+            <div class="collapsible-section parameters-outer-section collapsed" id="parameters-section-report">
+              <button type="button" class="collapsible-head" aria-expanded="false" data-toggle-collapse="parameters-section-report"><i class="fas fa-chevron-down"></i><span><i class="fas fa-file-lines"></i> Report</span></button>
               <div class="collapsible-body"><div id="report-params-content"></div></div>
             </div>
-            <div class="collapsible-section parameters-outer-section" id="parameters-section-ward-beds">
-              <button type="button" class="collapsible-head" aria-expanded="true" data-toggle-collapse="parameters-section-ward-beds"><i class="fas fa-chevron-down"></i><span><i class="fas fa-bed"></i> Wards &amp; Beds</span></button>
+            <div class="collapsible-section parameters-outer-section collapsed" id="parameters-section-ward-beds">
+              <button type="button" class="collapsible-head" aria-expanded="false" data-toggle-collapse="parameters-section-ward-beds"><i class="fas fa-chevron-down"></i><span><i class="fas fa-bed"></i> Wards &amp; Beds</span></button>
               <div class="collapsible-body"><div id="ward-beds-content"></div></div>
             </div>
-            <div class="collapsible-section parameters-outer-section" id="parameters-section-diagnosis">
-              <button type="button" class="collapsible-head" aria-expanded="true" data-toggle-collapse="parameters-section-diagnosis"><i class="fas fa-chevron-down"></i><span><i class="fas fa-stethoscope"></i> Diagnosis</span></button>
+            <div class="collapsible-section parameters-outer-section collapsed" id="parameters-section-diagnosis">
+              <button type="button" class="collapsible-head" aria-expanded="false" data-toggle-collapse="parameters-section-diagnosis"><i class="fas fa-chevron-down"></i><span><i class="fas fa-stethoscope"></i> Diagnosis</span></button>
               <div class="collapsible-body"><div id="diagnosis-options-content"></div></div>
+            </div>
             </div>
           </div>
           <div id="admin-audit-wrap" style="display:none">
             <div class="admin-section-bar">
               <div><h2 class="admin-section-title">Audit Log</h2><p class="admin-section-desc">Recent actions: report saves, patient admissions, discharges.</p></div>
             </div>
+            <div class="admin-tab-scroll" id="admin-audit-scroll">
             <div class="card" style="padding:0;overflow:hidden"><div class="table-wrap" id="audit-table"></div></div>
             <button type="button" class="btn btn-outline btn-sm" id="audit-load-more" style="margin-top:12px;display:none">Load more entries</button>
+            </div>
           </div>
         </div>
       </section>

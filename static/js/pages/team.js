@@ -86,7 +86,8 @@
 
   function subscribeToChannel(state) {
     if (!AppChat || !AppChat.ready) {
-      $('msg-list').innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Chat unavailable — Realtime Database not configured.</p></div>';
+      var contentEl = $('msg-list-content');
+      if (contentEl) contentEl.innerHTML = '<div class="empty-state"><i class="fas fa-exclamation-circle"></i><p>Chat unavailable — Realtime Database not configured.</p></div>';
       return;
     }
     var profile = state.profile || {};
@@ -98,30 +99,42 @@
         msgs.forEach(function (m) { if (m.timestamp > maxTs) maxTs = m.timestamp; });
         if (maxTs > (_lastSeenTs[_channel] || 0)) _lastSeenTs[_channel] = maxTs;
       }
+      var contentEl = $('msg-list-content');
+      if (!contentEl) return;
       if (!msgs.length) {
-        $('msg-list').innerHTML = '<div class="empty-state" style="padding:24px"><i class="fas fa-comments"></i><p>No messages yet. Start the conversation!</p></div>';
+        contentEl.innerHTML = '<div class="empty-state" style="padding:24px"><i class="fas fa-comments"></i><p>No messages yet. Start the conversation!</p></div>';
         return;
       }
-      $('msg-list').innerHTML = msgs.map(function (m) {
+      var prevDateKey = '';
+      var html = '';
+      msgs.forEach(function (m) {
+        var dateKey = getDateKey(m.timestamp);
+        if (dateKey && dateKey !== prevDateKey) {
+          html += '<div class="wa-date-sep" data-date="' + esc(dateKey) + '">' + esc(getDateLabel(m.timestamp)) + '</div>';
+          prevDateKey = dateKey;
+        }
         var mine = m.senderId === userId;
         var ts = m.timestamp ? new Date(m.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
         var urgentCls = m.isUrgent ? ' urgent' : '';
+        var dateAttr = dateKey ? ' data-date="' + esc(dateKey) + '"' : '';
         if (mine) {
-          return '<div class="msg-wrap mine">' +
+          html += '<div class="msg-wrap mine"' + dateAttr + '>' +
             '<div class="msg-bubble mine' + urgentCls + '">' +
               (m.isUrgent ? '<span class="msg-urgent-icon"><i class="fas fa-exclamation-circle"></i></span>' : '') +
               '<span class="msg-text">' + linkify(m.text) + '</span>' +
               '<span class="msg-time">' + ts + '</span>' +
             '</div></div>';
+        } else {
+          html += '<div class="msg-wrap theirs"' + dateAttr + '>' +
+            '<span class="msg-sender">' + esc(m.sender) + '</span>' +
+            '<div class="msg-bubble theirs' + urgentCls + '">' +
+              (m.isUrgent ? '<span class="msg-urgent-icon"><i class="fas fa-exclamation-circle"></i></span>' : '') +
+              '<span class="msg-text">' + linkify(m.text) + '</span>' +
+              '<span class="msg-time">' + ts + '</span>' +
+            '</div></div>';
         }
-        return '<div class="msg-wrap theirs">' +
-          '<span class="msg-sender">' + esc(m.sender) + '</span>' +
-          '<div class="msg-bubble theirs' + urgentCls + '">' +
-            (m.isUrgent ? '<span class="msg-urgent-icon"><i class="fas fa-exclamation-circle"></i></span>' : '') +
-            '<span class="msg-text">' + linkify(m.text) + '</span>' +
-            '<span class="msg-time">' + ts + '</span>' +
-          '</div></div>';
-      }).join('');
+      });
+      contentEl.innerHTML = html;
       var ml = $('msg-list');
       if (ml) ml.scrollTop = ml.scrollHeight;
     });
@@ -169,6 +182,12 @@
       _isUrgent = !_isUrgent;
       $('urgent-toggle').classList.toggle('active', _isUrgent);
     });
+    var list = $('msg-list');
+    if (list) {
+      list.addEventListener('scroll', function () {
+        updateDatePopupOnScroll();
+      }, { passive: true });
+    }
   }
 
   function destroy() {
@@ -180,6 +199,68 @@
   function getUnreadPerChannel() { return Object.assign({}, _unread); }
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+  /** Date label for separators: "Today", "Yesterday", or "23 Feb 2026". */
+  function getDateLabel(timestamp) {
+    if (!timestamp) return '';
+    var d = new Date(timestamp);
+    if (isNaN(d.getTime())) return '';
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    var day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    var diff = Math.floor((today - day) / (24 * 60 * 60 * 1000));
+    if (diff === 0) return 'Today';
+    if (diff === 1) return 'Yesterday';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  function getDateKey(timestamp) {
+    if (!timestamp) return '';
+    var d = new Date(timestamp);
+    return isNaN(d.getTime()) ? '' : d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function getDateLabelFromKey(dateKey) {
+    if (!dateKey) return '';
+    var parts = dateKey.split('-');
+    if (parts.length !== 3) return dateKey;
+    var d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    return getDateLabel(d.getTime());
+  }
+
+  var _datePopupHideTimer = null;
+
+  function updateDatePopupOnScroll() {
+    var list = $('msg-list');
+    var popup = $('wa-date-popup');
+    var content = $('msg-list-content');
+    if (!list || !popup || !content) return;
+    var scrollTop = list.scrollTop;
+    var viewTop = scrollTop + 50;
+    var dateEls = content.querySelectorAll('.wa-date-sep, .msg-wrap[data-date]');
+    var currentLabel = '';
+    for (var i = 0; i < dateEls.length; i++) {
+      var el = dateEls[i];
+      var top = el.offsetTop;
+      if (top <= viewTop) {
+        var key = el.getAttribute('data-date');
+        if (key) currentLabel = getDateLabelFromKey(key);
+      }
+    }
+    if (currentLabel) {
+      popup.textContent = currentLabel;
+      popup.removeAttribute('aria-hidden');
+      popup.removeAttribute('hidden');
+      popup.classList.add('visible');
+      if (_datePopupHideTimer) clearTimeout(_datePopupHideTimer);
+      _datePopupHideTimer = setTimeout(function () {
+        popup.classList.remove('visible');
+        popup.setAttribute('aria-hidden', 'true');
+        popup.setAttribute('hidden', '');
+        _datePopupHideTimer = null;
+      }, 1500);
+    }
+  }
 
   /** Turn plain text into HTML with URLs as clickable links (escaped for XSS safety). */
   function linkify(s) {

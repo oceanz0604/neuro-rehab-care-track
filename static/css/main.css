@@ -1684,6 +1684,60 @@ body:has(#page-comms.page.active) .wa-msg-list {
 .wa-msg-list .empty-state { padding: 24px; text-align: center; color: var(--text-2); }
 .wa-msg-list .empty-state i { font-size: 2rem; opacity: .5; margin-bottom: 8px; display: block; }
 
+/* Chat date separator (WhatsApp-style in-list label) */
+.wa-msg-list-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: min-content;
+}
+.wa-date-sep {
+  align-self: center;
+  margin: 8px 0 4px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-2);
+  background: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+[data-theme="dark"] .wa-date-sep {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text-2);
+}
+
+/* Chat date popup (WhatsApp-style when scrolling) */
+.wa-date-popup {
+  position: sticky;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  align-self: center;
+  margin: 8px 0 0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-2);
+  background: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.wa-date-popup.visible {
+  opacity: 1;
+}
+.wa-date-popup[hidden] {
+  display: none;
+}
+[data-theme="dark"] .wa-date-popup {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text);
+}
+
 /* ─── Family Report ───────────────────────────────────────────── */
 .fr-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .fr-controls select, .fr-controls input { padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: .85rem; }
@@ -1754,6 +1808,94 @@ body:has(#page-comms.page.active) .wa-msg-list {
   box-shadow: var(--shadow-sm);
 }
 .admin-panel-body { min-height: 200px; }
+
+/* Admin: on mobile restrict to viewport and make tables scroll vertical + horizontal (not diagonal) */
+@media (max-width: 768px) {
+  .main-wrap:has(#page-admin.page.active) {
+    max-height: calc(100vh - var(--safe-top));
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .main-content:has(#page-admin.page.active) {
+    height: calc(100vh - var(--safe-top) - var(--bottom-nav-h));
+    max-height: calc(100vh - var(--safe-top) - var(--bottom-nav-h));
+    margin-bottom: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+  }
+  #page-admin.page.active {
+    display: flex !important;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #page-admin .admin-header,
+  #page-admin .admin-nav { flex-shrink: 0; }
+  #page-admin .admin-panel-body {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #admin-staff-wrap,
+  #admin-parameters-wrap,
+  #admin-audit-wrap {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  #admin-staff-wrap[style*="display: none"],
+  #admin-parameters-wrap[style*="display: none"],
+  #admin-audit-wrap[style*="display: none"],
+  #admin-staff-wrap[style*="display:none"],
+  #admin-parameters-wrap[style*="display:none"],
+  #admin-audit-wrap[style*="display:none"] {
+    display: none !important;
+  }
+  /* Staff tab: table area scrolls vertically and horizontally */
+  #admin-staff-wrap .admin-section-bar,
+  #admin-staff-wrap .admin-staff-toolbar { flex-shrink: 0; }
+  #admin-staff-wrap #staff-table {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #admin-staff-wrap .admin-staff-list-wrap {
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Parameters tab: inner scroll wrapper (single scroll container) */
+  #admin-parameters-wrap .admin-tab-scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Audit tab: inner scroll wrapper (single scroll container) */
+  #admin-audit-wrap .admin-section-bar { flex-shrink: 0; }
+  #admin-audit-wrap .admin-tab-scroll {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
 
 .admin-section-bar {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;

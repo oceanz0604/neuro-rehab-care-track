@@ -148,7 +148,7 @@
     function buildStats(tc) {
       var html = statCardNav('fa-hospital-user', 'teal', 'Active Patients', active.length, 'patients', 'active', '') +
         statCardNav('fa-triangle-exclamation', 'red', 'High Risk', highRisk.length, 'patients', 'active', 'high') +
-        statCardNav('fa-calendar-days', 'amber', 'Discharge within 7 Days', dischargeSoonCount, 'patients', 'active', '');
+        statCardNav('fa-calendar-days', 'amber', 'Discharge within 7 Days', dischargeSoonCount, 'patients', 'active', '', true);
       if (tc.pendingOnYou > 0) html += statCardNav('fa-list-check', 'teal', 'Pending on you', tc.pendingOnYou, 'tasks', '', '');
       if (tc.createdByYou > 0) html += statCardNav('fa-user-pen', 'amber', 'Created by you (pending)', tc.createdByYou, 'tasks', '', '');
       return html;
@@ -186,10 +186,11 @@
     }
   }
 
-  function statCardNav(icon, color, label, value, page, filterStatus, filterRisk) {
+  function statCardNav(icon, color, label, value, page, filterStatus, filterRisk, filterDischargingSoon) {
     var attrs = ' data-nav="' + (page || '') + '"';
     if (filterStatus) attrs += ' data-filter-status="' + filterStatus + '"';
     if (filterRisk) attrs += ' data-filter-risk="' + filterRisk + '"';
+    if (filterDischargingSoon) attrs += ' data-filter-discharging-soon="true"';
     return '<div class="stat-card clickable"' + attrs + ' role="button" tabindex="0">' +
       '<i class="fas ' + icon + ' stat-card-icon stat-card-icon-' + color + '"></i>' +
       '<div class="stat-card-text"><div class="stat-card-label">' + esc(label) + '</div><div class="stat-card-value">' + value + '</div></div></div>';
@@ -205,7 +206,8 @@
         window.CareTrack.navigate(page);
         var fs = card.getAttribute('data-filter-status');
         var fr = card.getAttribute('data-filter-risk');
-        if (fs || fr) {
+        var fd = card.getAttribute('data-filter-discharging-soon') === 'true';
+        if (fs || fr || fd) {
           setTimeout(function () {
             if (fs) {
               var s = document.getElementById('pt-filter-status');
@@ -214,6 +216,16 @@
             if (fr) {
               var r = document.getElementById('pt-filter-risk');
               if (r) { r.value = fr; r.dispatchEvent(new Event('change')); }
+            }
+            if (fd && page === 'patients') {
+              var btn = document.getElementById('pt-filter-discharging-soon');
+              if (btn) {
+                btn.setAttribute('aria-pressed', 'true');
+                btn.classList.add('active');
+                if (window.CareTrack && window.CareTrack.getState && window.Pages.patients && window.Pages.patients.render) {
+                  window.Pages.patients.render(window.CareTrack.getState());
+                }
+              }
             }
           }, 100);
         }
