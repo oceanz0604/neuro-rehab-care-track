@@ -175,9 +175,11 @@
     tbody.innerHTML = list.map(function (t) {
       var key = t.key || ('T-' + (t.id || '').slice(-6));
       var p = t.priority || 'medium';
+      var status = t.status || 'todo';
       var urgency = dueUrgency(t.dueDate, t.status);
       var dueClass = urgency ? ' task-due-' + urgency : '';
-      return '<tr class="task-list-row' + dueClass + '" data-task-id="' + esc(t.id) + '" role="button" tabindex="0">' +
+      var statusRowClass = ' task-list-row-status-' + status;
+      return '<tr class="task-list-row' + statusRowClass + dueClass + '" data-task-id="' + esc(t.id) + '" data-status="' + esc(status) + '" role="button" tabindex="0">' +
         '<td><span class="task-list-key">' + esc(key) + '</span></td>' +
         '<td class="task-list-title" title="' + esc(t.title || '') + '">' + esc(t.title || '—') + '</td>' +
         '<td>' + esc(categoryLabel(t.category)) + '</td>' +

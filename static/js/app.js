@@ -273,6 +273,17 @@
     renderCurrentPage();
     if (page === 'comms') updateChatBadge();
 
+    function resetScroll() {
+      var mainContent = document.querySelector('.main-content');
+      if (mainContent) mainContent.scrollTop = 0;
+      if (window.scrollTo) window.scrollTo(0, 0);
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+    resetScroll();
+    requestAnimationFrame(function () { resetScroll(); });
+    setTimeout(resetScroll, 0);
+
     /* Replace URL so tab switches don't pile up history; back goes to previous page. If we're the only entry, push once so back can go to previous tab. */
     var replace = history.length > 1;
     updateUrlForPage(page, replace);
@@ -325,6 +336,16 @@
   function closeSidebar() {
     $('sidebar').classList.remove('open');
     $('sb-overlay').classList.remove('visible');
+    document.body.classList.remove('sidebar-open');
+  }
+  function openSidebar() {
+    $('sidebar').classList.add('open');
+    $('sb-overlay').classList.add('visible');
+    document.body.classList.add('sidebar-open');
+    var sidebar = document.getElementById('sidebar');
+    if (sidebar) sidebar.scrollTop = 0;
+    var sbNav = document.querySelector('.sidebar .sb-nav');
+    if (sbNav) sbNav.scrollTop = 0;
   }
 
   function doLogout() {
@@ -499,8 +520,7 @@
         btn.addEventListener('click', function () {
           var page = btn.getAttribute('data-page');
           if (page === 'more') {
-            $('sidebar').classList.add('open');
-            $('sb-overlay').classList.add('visible');
+            openSidebar();
           } else if (page && PAGE_TITLES[page]) {
             navigate(page);
           }
@@ -510,8 +530,11 @@
 
     // Mobile sidebar
     $('menu-btn').addEventListener('click', function () {
-      $('sidebar').classList.toggle('open');
-      $('sb-overlay').classList.toggle('visible');
+      if ($('sidebar').classList.contains('open')) {
+        closeSidebar();
+      } else {
+        openSidebar();
+      }
     });
     $('sb-overlay').addEventListener('click', closeSidebar);
 

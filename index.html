@@ -75,12 +75,12 @@
     </div>
     <nav class="sb-nav">
       <div class="nav-section-label">Main</div>
-      <a href="#" class="nav-link active" data-page="dashboard"><i class="fas fa-house"></i><span>Dashboard</span></a>
-      <a href="#" class="nav-link" data-page="tasks"><i class="fas fa-list-check"></i><span>Tasks</span></a>
-      <a href="#" class="nav-link" data-page="patients"><i class="fas fa-hospital-user"></i><span>Patients</span></a>
+      <a href="#" class="nav-link nav-link-in-bottom-nav active" data-page="dashboard"><i class="fas fa-house"></i><span>Dashboard</span></a>
+      <a href="#" class="nav-link nav-link-in-bottom-nav" data-page="tasks"><i class="fas fa-list-check"></i><span>Tasks</span></a>
+      <a href="#" class="nav-link nav-link-in-bottom-nav" data-page="patients"><i class="fas fa-hospital-user"></i><span>Patients</span></a>
       <div class="nav-section-label">Tools</div>
       <a href="#" class="nav-link" data-page="reports"><i class="fas fa-file-lines"></i><span>Reports</span></a>
-      <a href="#" class="nav-link nav-link-chat" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat</span><span id="chat-unread-badge" class="nav-badge"></span></a>
+      <a href="#" class="nav-link nav-link-chat nav-link-in-bottom-nav" data-page="comms"><i class="fas fa-comments"></i><span>Team Chat</span><span id="chat-unread-badge" class="nav-badge"></span></a>
       <a href="#" class="nav-link" data-page="freport"><i class="fas fa-file-medical"></i><span>Progress Report</span></a>
     </nav>
     <div class="sb-foot">
@@ -300,8 +300,8 @@
               <div class="task-board-col-hd" role="button" tabindex="0" aria-expanded="true"><span class="task-board-col-title"><span class="task-board-col-dot dot-in_progress"></span> In Progress</span><span class="task-board-col-right"><span class="task-board-col-chevron"><i class="fas fa-chevron-down"></i></span><span class="task-board-col-count" id="task-count-in_progress">0</span></span></div>
               <div class="task-board-cards" id="task-col-in_progress"></div>
             </div>
-            <div class="task-board-column" data-status="done">
-              <div class="task-board-col-hd" role="button" tabindex="0" aria-expanded="true"><span class="task-board-col-title"><span class="task-board-col-dot dot-done"></span> Done</span><span class="task-board-col-right"><span class="task-board-col-chevron"><i class="fas fa-chevron-down"></i></span><span class="task-board-col-count" id="task-count-done">0</span></span></div>
+            <div class="task-board-column collapsed" data-status="done">
+              <div class="task-board-col-hd" role="button" tabindex="0" aria-expanded="false"><span class="task-board-col-title"><span class="task-board-col-dot dot-done"></span> Done</span><span class="task-board-col-right"><span class="task-board-col-chevron"><i class="fas fa-chevron-down"></i></span><span class="task-board-col-count" id="task-count-done">0</span></span></div>
               <div class="task-board-cards" id="task-col-done"></div>
             </div>
           </div>
@@ -348,36 +348,36 @@
         </div>
         <div class="admin-nav" role="tablist">
           <button type="button" class="admin-nav-item active" data-admin-tab="staff" role="tab"><i class="fas fa-users"></i><span>Staff</span></button>
-          <button type="button" class="admin-nav-item" data-admin-tab="report-params" role="tab"><i class="fas fa-sliders"></i><span>Report Params</span></button>
-          <button type="button" class="admin-nav-item" data-admin-tab="ward-beds" role="tab"><i class="fas fa-bed"></i><span>Wards & Beds</span></button>
-          <button type="button" class="admin-nav-item" data-admin-tab="diagnosis" role="tab"><i class="fas fa-stethoscope"></i><span>Diagnosis</span></button>
+          <button type="button" class="admin-nav-item" data-admin-tab="parameters" role="tab"><i class="fas fa-sliders"></i><span>Parameters</span></button>
           <button type="button" class="admin-nav-item" data-admin-tab="audit" role="tab"><i class="fas fa-clipboard-list"></i><span>Audit Log</span></button>
         </div>
         <div class="admin-panel-body">
           <div id="admin-staff-wrap">
             <div class="admin-section-bar">
               <div><h2 class="admin-section-title">Staff Management</h2><p class="admin-section-desc">Add, edit, or deactivate staff accounts.</p></div>
+            </div>
+            <div class="admin-staff-toolbar page-filters">
+              <input type="text" id="staff-search" class="fi search-box" placeholder="Search by email or name" autocomplete="off">
+              <select id="staff-role-filter" class="fi filter-select" title="Filter by role">
+                <option value="">All roles</option>
+              </select>
               <button type="button" class="btn btn-sm" id="add-staff-btn"><i class="fas fa-user-plus"></i> Add Staff</button>
             </div>
             <div id="staff-table"></div>
           </div>
-          <div id="admin-report-params-wrap" style="display:none">
-            <div class="admin-section-bar">
-              <div><h2 class="admin-section-title">Report Parameters</h2><p class="admin-section-desc">Customise the parameters available in each report section. Click Save per section.</p></div>
+          <div id="admin-parameters-wrap" style="display:none">
+            <div class="collapsible-section parameters-outer-section" id="parameters-section-report">
+              <button type="button" class="collapsible-head" aria-expanded="true" data-toggle-collapse="parameters-section-report"><i class="fas fa-chevron-down"></i><span><i class="fas fa-file-lines"></i> Report</span></button>
+              <div class="collapsible-body"><div id="report-params-content"></div></div>
             </div>
-            <div id="report-params-content"></div>
-          </div>
-          <div id="admin-ward-beds-wrap" style="display:none">
-            <div class="admin-section-bar">
-              <div><h2 class="admin-section-title">Wards &amp; Beds</h2><p class="admin-section-desc">Configure ward names and room/bed identifiers.</p></div>
+            <div class="collapsible-section parameters-outer-section" id="parameters-section-ward-beds">
+              <button type="button" class="collapsible-head" aria-expanded="true" data-toggle-collapse="parameters-section-ward-beds"><i class="fas fa-chevron-down"></i><span><i class="fas fa-bed"></i> Wards &amp; Beds</span></button>
+              <div class="collapsible-body"><div id="ward-beds-content"></div></div>
             </div>
-            <div id="ward-beds-content"></div>
-          </div>
-          <div id="admin-diagnosis-wrap" style="display:none">
-            <div class="admin-section-bar">
-              <div><h2 class="admin-section-title">Diagnosis Options</h2><p class="admin-section-desc">ICD-11 diagnosis list used across the app.</p></div>
+            <div class="collapsible-section parameters-outer-section" id="parameters-section-diagnosis">
+              <button type="button" class="collapsible-head" aria-expanded="true" data-toggle-collapse="parameters-section-diagnosis"><i class="fas fa-chevron-down"></i><span><i class="fas fa-stethoscope"></i> Diagnosis</span></button>
+              <div class="collapsible-body"><div id="diagnosis-options-content"></div></div>
             </div>
-            <div id="diagnosis-options-content"></div>
           </div>
           <div id="admin-audit-wrap" style="display:none">
             <div class="admin-section-bar">

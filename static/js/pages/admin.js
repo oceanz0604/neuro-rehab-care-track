@@ -6,6 +6,7 @@
   var $ = function (id) { return document.getElementById(id); };
   var _inited = false;
   var _staff = [];
+  var _staffToolbarBound = false;
 
   // Hierarchy order: lowest → highest (matches js/permissions.js ROLE_HIERARCHY)
   var ROLES = [
@@ -27,9 +28,7 @@
     if (!state.profile || !(window.Permissions && window.Permissions.canAccessAdmin(state.profile))) {
       $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-lock"></i><p>Admin access required</p></div>';
       $('admin-staff-wrap').style.display = '';
-      $('admin-report-params-wrap').style.display = 'none';
-      $('admin-ward-beds-wrap').style.display = 'none';
-      $('admin-diagnosis-wrap').style.display = 'none';
+      $('admin-parameters-wrap').style.display = 'none';
       $('admin-audit-wrap').style.display = 'none';
       return;
     }
@@ -37,6 +36,7 @@
     $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-spinner fa-spin"></i><p>Loading staff...</p></div>';
     AppDB.getAllStaff().then(function (list) {
       _staff = list;
+      ensureStaffToolbar();
       renderTable();
     }).catch(function () {
       $('staff-table').innerHTML = '<div class="alert alert-danger">Failed to load staff list.</div>';
@@ -48,29 +48,54 @@
 
   function switchAdminTab(tab) {
     var staffWrap = $('admin-staff-wrap');
-    var reportParamsWrap = $('admin-report-params-wrap');
-    var wardBedsWrap = $('admin-ward-beds-wrap');
-    var diagnosisWrap = $('admin-diagnosis-wrap');
+    var parametersWrap = $('admin-parameters-wrap');
     var auditWrap = $('admin-audit-wrap');
     document.querySelectorAll('.admin-nav-item').forEach(function (b) {
       b.classList.toggle('active', b.getAttribute('data-admin-tab') === tab);
     });
     if (staffWrap) staffWrap.style.display = tab === 'staff' ? '' : 'none';
-    if (reportParamsWrap) reportParamsWrap.style.display = tab === 'report-params' ? '' : 'none';
-    if (wardBedsWrap) wardBedsWrap.style.display = tab === 'ward-beds' ? '' : 'none';
-    if (diagnosisWrap) diagnosisWrap.style.display = tab === 'diagnosis' ? '' : 'none';
+    if (parametersWrap) parametersWrap.style.display = tab === 'parameters' ? '' : 'none';
     if (auditWrap) auditWrap.style.display = tab === 'audit' ? '' : 'none';
+    function resetScroll() {
+      var mainContent = document.querySelector('.main-content');
+      if (mainContent) mainContent.scrollTop = 0;
+      if (window.scrollTo) window.scrollTo(0, 0);
+      if (document.documentElement) document.documentElement.scrollTop = 0;
+      if (document.body) document.body.scrollTop = 0;
+    }
+    resetScroll();
+    requestAnimationFrame(function () { resetScroll(); });
+    setTimeout(resetScroll, 0);
     var state = window.CareTrack && window.CareTrack.getState ? window.CareTrack.getState() : {};
-    if (tab === 'report-params' && window.Pages.settings && window.Pages.settings.renderReportParameters) {
-      window.Pages.settings.renderReportParameters('report-params-content', state);
-    }
-    if (tab === 'ward-beds' && window.Pages.settings && window.Pages.settings.renderWardBeds) {
-      window.Pages.settings.renderWardBeds('ward-beds-content', state);
-    }
-    if (tab === 'diagnosis' && window.Pages.settings && window.Pages.settings.renderDiagnosisOptions) {
-      window.Pages.settings.renderDiagnosisOptions('diagnosis-options-content', state);
+    if (tab === 'parameters') {
+      if (window.Pages.settings && window.Pages.settings.renderReportParameters) {
+        window.Pages.settings.renderReportParameters('report-params-content', state);
+      }
+      if (window.Pages.settings && window.Pages.settings.renderWardBeds) {
+        window.Pages.settings.renderWardBeds('ward-beds-content', state);
+      }
+      if (window.Pages.settings && window.Pages.settings.renderDiagnosisOptions) {
+        window.Pages.settings.renderDiagnosisOptions('diagnosis-options-content', state);
+      }
+      bindParametersOuterSections();
     }
     if (tab === 'audit') loadAuditLog(false);
+  }
+
+  function bindParametersOuterSections() {
+    var wrap = $('admin-parameters-wrap');
+    if (!wrap || wrap._parametersCollapseBound) return;
+    wrap._parametersCollapseBound = true;
+    wrap.addEventListener('click', function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest('[data-toggle-collapse]') : null;
+      if (!btn) return;
+      e.preventDefault();
+      var sectionId = btn.getAttribute('data-toggle-collapse');
+      var section = sectionId ? document.getElementById(sectionId) : null;
+      if (!section) return;
+      section.classList.toggle('collapsed');
+      btn.setAttribute('aria-expanded', section.classList.contains('collapsed') ? 'false' : 'true');
+    });
   }
 
   function loadAuditLog(append) {
@@ -117,48 +142,118 @@
     care_taker: '#f59e0b', rehab_worker: '#f97316', social_worker: '#94a3b8'
   };
 
+  function getStaffFilter() {
+    var searchEl = $('staff-search');
+    var roleEl = $('staff-role-filter');
+    return {
+      search: (searchEl && searchEl.value) ? searchEl.value.trim().toLowerCase() : '',
+      role: (roleEl && roleEl.value) ? roleEl.value : ''
+    };
+  }
+
+  function getFilteredStaff() {
+    var filter = getStaffFilter();
+    return _staff.filter(function (s) {
+      if (filter.role) {
+        var r = s.role || (s.roles && s.roles[0]) || '';
+        if (r !== filter.role) return false;
+      }
+      if (filter.search) {
+        var email = (s.email || '').toLowerCase();
+        var name = (s.displayName || '').toLowerCase();
+        if (email.indexOf(filter.search) === -1 && name.indexOf(filter.search) === -1) return false;
+      }
+      return true;
+    });
+  }
+
+  function ensureStaffToolbar() {
+    var roleSelect = $('staff-role-filter');
+    if (roleSelect && roleSelect.options.length <= 1) {
+      ROLES.forEach(function (r) {
+        var opt = document.createElement('option');
+        opt.value = r.value;
+        opt.textContent = r.label;
+        roleSelect.appendChild(opt);
+      });
+    }
+    if (_staffToolbarBound) return;
+    _staffToolbarBound = true;
+    var searchEl = $('staff-search');
+    if (searchEl) searchEl.addEventListener('input', function () { renderTable(); });
+    if (roleSelect) roleSelect.addEventListener('change', function () { renderTable(); });
+  }
+
   function renderTable() {
-    if (!_staff.length) {
-      $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>No staff members</p></div>';
+    var list = getFilteredStaff();
+    if (!list.length) {
+      $('staff-table').innerHTML = '<div class="empty-state"><i class="fas fa-users"></i><p>' + (_staff.length ? 'No staff match the filter.' : 'No staff members') + '</p></div>';
       return;
     }
-    var html = '<div class="staff-grid">';
-    _staff.forEach(function (s) {
+    var html = '<div class="admin-staff-list-wrap">' +
+      '<table class="admin-staff-list">' +
+      '<colgroup><col class="col-email"><col class="col-role"><col class="col-actions"></colgroup>' +
+      '<thead><tr><th>Email</th><th>Role</th><th></th></tr></thead><tbody>';
+    list.forEach(function (s) {
       var active = s.isActive !== false;
       var role = s.role || (s.roles && s.roles[0]) || 'social_worker';
       var roleDisplay = roleLabel(role);
       var color = ROLE_COLORS[role] || '#94a3b8';
-      html += '<div class="staff-card' + (active ? '' : ' staff-card-inactive') + '">' +
-        '<div class="staff-card-top">' +
-          '<div class="staff-card-avatar" style="background:' + color + '">' + esc(staffInitials(s.displayName)) + '</div>' +
-          '<div class="staff-card-info">' +
-            '<div class="staff-card-name">' + esc(s.displayName || '—') + '</div>' +
-            '<div class="staff-card-email">' + esc(s.email || '—') + '</div>' +
+      html += '<tr class="' + (active ? '' : 'staff-row-inactive') + '">' +
+        '<td class="staff-list-email">' + esc(s.email || '—') + '</td>' +
+        '<td><span class="staff-list-role-badge" style="background:' + color + '1a;color:' + color + '">' + esc(roleDisplay) + '</span></td>' +
+        '<td class="staff-list-actions-cell">' +
+          '<div class="staff-actions-wrap">' +
+            '<button type="button" class="btn btn-sm staff-actions-btn" data-uid="' + esc(s.uid) + '" aria-haspopup="true" aria-expanded="false" title="Actions"><i class="fas fa-ellipsis-v"></i></button>' +
+            '<div class="staff-actions-dropdown" hidden>' +
+              '<button type="button" class="staff-actions-option" data-action="edit" data-uid="' + esc(s.uid) + '"><i class="fas fa-pen"></i> Edit</button>' +
+              (active
+                ? '<button type="button" class="staff-actions-option staff-actions-deactivate" data-action="deact" data-uid="' + esc(s.uid) + '"><i class="fas fa-ban"></i> Deactivate</button>'
+                : '<button type="button" class="staff-actions-option" data-action="react" data-uid="' + esc(s.uid) + '"><i class="fas fa-check"></i> Reactivate</button>'
+              ) +
+            '</div>' +
           '</div>' +
-        '</div>' +
-        '<div class="staff-card-bottom">' +
-          '<span class="staff-card-role" style="background:' + color + '1a;color:' + color + '">' + esc(roleDisplay) + '</span>' +
-          '<span class="status-badge ' + (active ? 'status-active' : 'status-discharged') + '">' + (active ? 'Active' : 'Inactive') + '</span>' +
-        '</div>' +
-        '<div class="staff-card-actions">' +
-          '<button type="button" class="btn btn-sm btn-outline" data-edit="' + s.uid + '"><i class="fas fa-pen"></i> Edit</button>' +
-          (active
-            ? '<button type="button" class="btn btn-sm btn-danger" data-deact="' + s.uid + '"><i class="fas fa-ban"></i> Deactivate</button>'
-            : '<button type="button" class="btn btn-sm" data-react="' + s.uid + '"><i class="fas fa-check"></i> Reactivate</button>'
-          ) +
-        '</div>' +
-      '</div>';
+        '</td></tr>';
     });
-    html += '</div>';
+    html += '</tbody></table></div>';
     $('staff-table').innerHTML = html;
 
-    $('staff-table').querySelectorAll('[data-edit]').forEach(function (b) {
-      b.addEventListener('click', function () { showEditStaff(b.getAttribute('data-edit')); });
+    $('staff-table').querySelectorAll('.staff-actions-btn').forEach(function (btn) {
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var wrap = btn.closest('.staff-actions-wrap');
+        var panel = wrap && wrap.querySelector('.staff-actions-dropdown');
+        var open = panel && !panel.hidden;
+        document.querySelectorAll('.staff-actions-dropdown').forEach(function (p) { p.hidden = true; });
+        document.querySelectorAll('.staff-actions-btn').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+        if (!open && panel) {
+          panel.hidden = false;
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
     });
-    $('staff-table').querySelectorAll('[data-deact]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        var uid = b.getAttribute('data-deact');
+    $('staff-table').querySelectorAll('.staff-actions-dropdown').forEach(function (panel) {
+      panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    });
+    document.addEventListener('click', function () {
+      document.querySelectorAll('.staff-actions-dropdown').forEach(function (p) { p.hidden = true; });
+      document.querySelectorAll('.staff-actions-btn').forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
+    });
+    $('staff-table').querySelectorAll('.staff-actions-option[data-action="edit"]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var panel = b.closest('.staff-actions-dropdown');
+        if (panel) panel.hidden = true;
+        showEditStaff(b.getAttribute('data-uid'));
+      });
+    });
+    $('staff-table').querySelectorAll('.staff-actions-option[data-action="deact"]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var uid = b.getAttribute('data-uid');
         var s = findStaff(uid);
+        var panel = b.closest('.staff-actions-dropdown');
+        if (panel) panel.hidden = true;
         AppModal.confirm('Deactivate Staff', 'Deactivate <strong>' + esc(s ? s.displayName : '') + '</strong>? They will be unable to log in and their current session will end immediately.', function () {
           AppDB.deactivateStaff(uid).then(function () {
             window.CareTrack.toast('Staff deactivated');
@@ -167,9 +262,12 @@
         });
       });
     });
-    $('staff-table').querySelectorAll('[data-react]').forEach(function (b) {
-      b.addEventListener('click', function () {
-        AppDB.reactivateStaff(b.getAttribute('data-react')).then(function () {
+    $('staff-table').querySelectorAll('.staff-actions-option[data-action="react"]').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var panel = b.closest('.staff-actions-dropdown');
+        if (panel) panel.hidden = true;
+        AppDB.reactivateStaff(b.getAttribute('data-uid')).then(function () {
           window.CareTrack.toast('Staff reactivated');
           render(window.CareTrack.getState());
         });

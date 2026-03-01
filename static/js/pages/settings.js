@@ -126,8 +126,8 @@
     var cfg = getConfig(state);
     var items = (cfg[sec.key] || defaults[sec.key] || []).slice();
     var sectionId = 'admin-sec-' + sec.key;
-    var html = '<div class="collapsible-section" id="' + sectionId + '">' +
-      '<button type="button" class="collapsible-head" aria-expanded="true" data-toggle-collapse="' + sectionId + '">' +
+    var html = '<div class="collapsible-section collapsed" id="' + sectionId + '">' +
+      '<button type="button" class="collapsible-head" aria-expanded="false" data-toggle-collapse="' + sectionId + '">' +
         '<i class="fas fa-chevron-down"></i><span><i class="fas ' + sec.icon + '"></i> ' + sec.title + '</span><span class="set-badge">' + items.length + '</span>' +
       '</button>' +
       '<div class="collapsible-body">' +
@@ -148,9 +148,7 @@
       '</div>';
     }).join('') || '<p style="color:var(--text-3);font-size:.85rem">No items.</p>';
 
-    parentEl.querySelector('[data-toggle-collapse="' + sectionId + '"]').addEventListener('click', function () {
-      document.getElementById(sectionId).classList.toggle('collapsed');
-    });
+    /* Collapse toggle is handled by delegation in admin.js (#admin-parameters-wrap) so we don't double-toggle */
 
     parentEl.querySelector('[data-save="' + sec.key + '"]').addEventListener('click', function () {
       var btn = parentEl.querySelector('[data-save="' + sec.key + '"]');
