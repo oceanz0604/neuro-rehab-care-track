@@ -410,11 +410,13 @@
   /* ── Recent Reports — timeline feed ───────────────────────────── */
   var SECTION_ICONS = {
     psychiatric: 'fa-brain', behavioral: 'fa-comments', medication: 'fa-pills',
-    adl: 'fa-hands-helping', therapeutic: 'fa-dumbbell', risk: 'fa-shield-halved'
+    adl: 'fa-hands-helping', therapeutic: 'fa-dumbbell', risk: 'fa-shield-halved',
+    relapse_risk: 'fa-rotate-left'
   };
   var SECTION_COLORS = {
     psychiatric: 'teal', behavioral: 'green', medication: 'amber',
-    adl: 'grey', therapeutic: 'green', risk: 'red'
+    adl: 'grey', therapeutic: 'green', risk: 'red',
+    relapse_risk: 'amber'
   };
 
   function capitalize(s) { return (s || '').charAt(0).toUpperCase() + (s || '').slice(1).toLowerCase(); }

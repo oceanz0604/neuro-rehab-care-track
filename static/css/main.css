@@ -40,6 +40,9 @@
   --shadow-md: 0 4px 6px rgba(15,23,42,.05), 0 10px 15px rgba(15,23,42,.08);
   --shadow-lg: 0 10px 25px rgba(15,23,42,.08), 0 20px 48px rgba(15,23,42,.06);
   --card-accent-border: rgba(20,184,166,.25);
+  --success: #16a34a;
+  --warning: #f59e0b;
+  --danger: #dc2626;
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
@@ -80,6 +83,9 @@
   --shadow-md: 0 4px 6px rgba(0,0,0,.3), 0 10px 15px rgba(0,0,0,.4);
   --shadow-lg: 0 10px 25px rgba(0,0,0,.4), 0 20px 48px rgba(0,0,0,.3);
   --card-accent-border: rgba(45,212,191,.3);
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --danger: #f87171;
 }
 [data-theme="dark"] .fi:focus,
 [data-theme="dark"] .fg textarea:focus,
@@ -187,8 +193,13 @@ body {
 }
 body.modal-open { overflow: hidden; overscroll-behavior: none; }
 body.modal-open .modal-overlay { overscroll-behavior: contain; }
-body.sidebar-open { overflow: hidden; }
+body.sidebar-open { overflow: hidden; overscroll-behavior: none; }
 body.sidebar-open .main-content { overflow: hidden; }
+/* Mobile: prevent background from scrolling when touching the overlay */
+@media (max-width: 768px) {
+  body.sidebar-open .main-wrap { overflow: hidden; touch-action: none; }
+  .sb-overlay.visible { touch-action: none; }
+}
 a { color: var(--primary); text-decoration: none; }
 button { cursor: pointer; font-family: inherit; }
 input, select, textarea { font-family: inherit; font-size: .93rem; }
@@ -1558,13 +1569,17 @@ body:has(#page-comms.page.active) .wa-msg-list {
   overflow: hidden;
   padding: 0;
 }
+/* Chat page: main card (outer container) has zero radius; inner message bubbles etc. keep their radius */
+#page-comms .wa-chat {
+  border-radius: 0;
+}
 .wa-chat {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   background: var(--wa-chat-bg, #e5ddd5);
-  border-radius: 12px;
+  border-radius: 0;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0,0,0,.08);
 }
@@ -1739,8 +1754,15 @@ body:has(#page-comms.page.active) .wa-msg-list {
 }
 
 /* ─── Family Report ───────────────────────────────────────────── */
-.fr-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
-.fr-controls select, .fr-controls input { padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: .85rem; }
+.fr-controls { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: flex-end; }
+.fr-date-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+@media (max-width: 380px) { .fr-date-row { flex-direction: column; align-items: stretch; } }
+.fr-controls select, .fr-controls input.fi { padding: 9px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: .85rem; }
+.fr-controls .searchable-select .fi { width: 100%; min-width: 0; box-sizing: border-box; }
+.fr-lang-export-row .fr-lang-export-inner {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.fr-lang-export-row .fr-lang-export-inner .btn { margin-left: 0; flex-shrink: 0; }
 .lbtn {
   padding: 7px 16px; border: 1.5px solid var(--border); border-radius: var(--radius-pill);
   background: var(--card); font-size: .82rem; cursor: pointer; transition: all var(--transition);
@@ -1748,6 +1770,38 @@ body:has(#page-comms.page.active) .wa-msg-list {
 .lbtn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .fr-preview { margin-top: 16px; max-width: 100%; }
 .fr-report-content { max-width: 100%; overflow-x: hidden; }
+/* PDF export: avoid splitting sections across pages — keep each block on one page */
+.fr-report-content .rh,
+.fr-report-content .alert,
+.fr-report-content .card,
+.fr-report-content .frs,
+.fr-report-content .fr-foot,
+.fr-report-content .recovery-scoring-card,
+.fr-report-content .relapse-risk-card,
+.fr-report-content .fr-tips-card,
+.fr-report-content .pbw {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+/* Marathi report: use Devanagari font so conjuncts and vowel signs render correctly (on screen and in PDF) */
+.fr-report-content.fr-lang-mr {
+  font-family: 'Noto Sans Devanagari', 'Noto Sans Devanagari UI', 'Mangal', 'Nirmala UI', sans-serif;
+  line-height: 1.65;
+  word-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+  font-smoothing: antialiased;
+}
+/* Force Devanagari on all descendants so nothing falls back to Inter (body font) */
+.fr-report-content.fr-lang-mr,
+.fr-report-content.fr-lang-mr * {
+  font-family: 'Noto Sans Devanagari', 'Noto Sans Devanagari UI', 'Mangal', 'Nirmala UI', sans-serif;
+}
+.fr-report-content.fr-lang-mr .rh,
+.fr-report-content.fr-lang-mr .frs-t,
+.fr-report-content.fr-lang-mr .pbt,
+.fr-report-content.fr-lang-mr strong {
+  font-family: 'Noto Sans Devanagari', 'Noto Sans Devanagari UI', 'Mangal', 'Nirmala UI', sans-serif;
+}
 .rh { background: var(--primary); color: #fff; padding: 26px; border-radius: 16px 16px 0 0; text-align: center; overflow-wrap: break-word; }
 .rh-c { font-size: .85rem; opacity: .85; margin-bottom: 4px; }
 .rh-t { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; }
@@ -1769,6 +1823,55 @@ body:has(#page-comms.page.active) .wa-msg-list {
 .alert-warn { background: var(--amber-bg); color: var(--amber); }
 .alert-info { background: var(--primary-bg); color: var(--primary); }
 .alert-danger { background: var(--accent-bg); color: var(--accent); }
+
+/* Recovery scoring & Relapse Risk — theme-aware */
+.recovery-scoring-card .mrs-gauge-bg { stroke: var(--border); }
+.ri-card { background: var(--bg-subtle); border-radius: 10px; padding: 10px; text-align: center; }
+.ri-card .ri-bar-bg { background: var(--border); }
+.rr-item { border-bottom-color: var(--border); }
+.rr-empty-state { background: var(--bg-subtle); color: var(--text-3); }
+.rr-empty-state strong { color: var(--text); }
+[data-theme="dark"] .recovery-scoring-card,
+[data-theme="dark"] .recovery-scoring-card .ri-card,
+[data-theme="dark"] .relapse-risk-card { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .rr-empty-state { background: var(--bg-subtle); }
+
+/* Progress Report page: header and language toggle in dark theme */
+[data-theme="dark"] #page-freport .rh { background: var(--navy-light); color: rgba(255,255,255,.95); }
+/* PDF export in dark theme: apply dark header so captured PDF has correct header color */
+.fr-report-content.fr-export-dark .rh { background: #1e1b4b; color: rgba(255,255,255,.95); }
+[data-theme="dark"] #page-freport .lbtn { background: var(--bg-subtle); border-color: var(--border); color: var(--text-2); }
+[data-theme="dark"] #page-freport .lbtn.active { background: var(--primary); color: #0f172a; border-color: var(--primary); }
+[data-theme="dark"] #page-freport .lbtn:hover:not(.active) { background: var(--card); color: var(--text); }
+[data-theme="dark"] #page-freport .pg-title { color: var(--text); }
+[data-theme="dark"] #page-freport .pg-sub { color: var(--text-3); }
+
+/* Progress Report: Export PDF and Save note buttons — dark theme (no bright teal) */
+[data-theme="dark"] #page-freport .fr-lang-export-row .btn,
+[data-theme="dark"] #page-freport .fr-note-edit .btn {
+  background: var(--bg-subtle);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  box-shadow: none;
+}
+[data-theme="dark"] #page-freport .fr-lang-export-row .btn:hover,
+[data-theme="dark"] #page-freport .fr-note-edit .btn:hover {
+  background: var(--card);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+[data-theme="dark"] #page-freport .fr-note-edit.card {
+  background: var(--card);
+  border-color: var(--border);
+}
+[data-theme="dark"] #page-freport .fr-tips-card {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+}
+[data-theme="dark"] #page-freport .fr-tips-card .tipn {
+  background: var(--primary);
+  color: #0f172a;
+}
 
 /* ─── Searchable dropdown ─────────────────────────────────────── */
 .searchable-select { position: relative; }

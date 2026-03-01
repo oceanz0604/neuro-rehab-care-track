@@ -39,7 +39,8 @@
     { key: 'medication',  label: 'Medication & Compliance', icon: 'fa-pills' },
     { key: 'adl',         label: 'ADL',          icon: 'fa-hands-helping' },
     { key: 'therapeutic', label: 'Therapeutic',  icon: 'fa-dumbbell' },
-    { key: 'risk',        label: 'Risk',         icon: 'fa-shield-halved' }
+    { key: 'risk',        label: 'Risk',         icon: 'fa-shield-halved' },
+    { key: 'relapse_risk', label: 'Relapse Risk', icon: 'fa-rotate-left' }
   ];
 
   function getTabFromUrl() {
@@ -1057,6 +1058,8 @@
         html += buildTherapeuticForm(params, payload);
       } else if (section === 'risk') {
         html += buildRiskForm(params, payload);
+      } else if (section === 'relapse_risk') {
+        html += buildRelapseRiskForm(params, payload);
       } else if (section === 'medication') {
         html += buildMedicationForm(payload);
       } else {
@@ -1080,6 +1083,7 @@
       if (section === 'adl') html += buildADLForm(params, payload);
       else if (section === 'therapeutic') html += buildTherapeuticForm(params, payload);
       else if (section === 'risk') html += buildRiskForm(params, payload);
+      else if (section === 'relapse_risk') html += buildRelapseRiskForm(params, payload);
       else if (section === 'medication') html += buildMedicationForm(payload);
       else html += buildRatingForm(params, payload);
       html += '<div class="fg fg-full" style="margin-top:14px"><label>Notes</label><textarea class="fi ct-notes" rows="3"></textarea></div>';
@@ -1096,6 +1100,7 @@
     if (section === 'adl') return buildADLForm(params, payload);
     if (section === 'therapeutic') return buildTherapeuticForm(params, payload);
     if (section === 'risk') return buildRiskForm(params, payload);
+    if (section === 'relapse_risk') return buildRelapseRiskForm(params, payload);
     if (section === 'medication') return buildMedicationForm(payload);
     return buildRatingForm(params, payload);
   }
@@ -1108,10 +1113,27 @@
       medication: [],
       adl: ['Personal Hygiene', 'Dressing', 'Toileting', 'Feeding', 'Mobility', 'Room Maintenance', 'Laundry', 'Money Handling', 'Time Management', 'Phone Use'],
       therapeutic: ['Occupational Therapy', 'Group Therapy', 'Individual Counseling', 'Yoga/Exercise', 'Art/Music/Dance', 'Vocational Training', 'Life Skills', 'Recreation', 'Psychoeducation', 'Cognitive Remediation'],
-      risk: ['Suicidal Ideation', 'Aggression/Violence', 'Absconding Risk', 'Substance Relapse', 'Falls/Physical Safety', 'Vulnerability', 'Medication Safety']
+      risk: ['Suicidal Ideation', 'Aggression/Violence', 'Absconding Risk', 'Substance Relapse', 'Falls/Physical Safety', 'Vulnerability', 'Medication Safety'],
+      relapse_risk: ['Treatment Non-adherence', 'Stressful Situations', 'High EE by Family']
     };
-    var keyMap = { psychiatric: 'PSY', behavioral: 'BEH', adl: 'ADL', therapeutic: 'THER', risk: 'RISK' };
+    var keyMap = { psychiatric: 'PSY', behavioral: 'BEH', adl: 'ADL', therapeutic: 'THER', risk: 'RISK', relapse_risk: 'RR' };
     return cfg[keyMap[section]] || defaults[section] || [];
+  }
+
+  var RR_PAYLOAD_KEYS = ['treatmentNonAdherence', 'stressfulSituations', 'highEE'];
+  function buildRelapseRiskForm(params, payload) {
+    var labels = (params && params.length >= 3) ? params.slice(0, 3) : ['Treatment Non-adherence', 'Stressful Situations', 'High EE by Family'];
+    var html = labels.map(function (label, i) {
+      var key = RR_PAYLOAD_KEYS[i];
+      var val = parseInt(payload[key], 10);
+      if (isNaN(val)) val = -1;
+      return '<div class="rating-row"><span class="rating-label">' + esc(label) + '</span><div class="rating-btns">' +
+        [0,1,2,3].map(function (n) {
+          return '<button type="button" class="rating-btn' + (val === n ? ' selected' : '') + '" data-rr="' + esc(key) + '" data-val="' + n + '">' + n + '</button>';
+        }).join('') + '</div></div>';
+    }).join('');
+    html += '<div class="fg fg-full" style="margin-top:12px"><label>Week of (optional)</label><input type="date" class="fi rr-week" value="' + esc(payload.weekStart || '') + '"></div>';
+    return html;
   }
 
   function buildMedicationForm(payload) {
@@ -1201,8 +1223,9 @@
 
     card.querySelectorAll('.rating-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
-        var param = btn.getAttribute('data-param');
-        card.querySelectorAll('.rating-btn[data-param="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
+        var param = btn.getAttribute('data-param') || btn.getAttribute('data-rr');
+        var attr = btn.getAttribute('data-param') ? 'data-param' : 'data-rr';
+        if (param) card.querySelectorAll('.rating-btn[' + attr + '="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
       });
     });
@@ -1250,6 +1273,12 @@
         var key = el.getAttribute('data-med');
         if (el.value !== undefined && el.value !== null) payload[key] = el.value.trim ? el.value.trim() : el.value;
       });
+    } else if (section === 'relapse_risk') {
+      card.querySelectorAll('.rating-btn.selected[data-rr]').forEach(function (b) {
+        payload[b.getAttribute('data-rr')] = parseInt(b.getAttribute('data-val'), 10);
+      });
+      var weekEl = card.querySelector('.rr-week');
+      if (weekEl && weekEl.value) payload.weekStart = weekEl.value;
     }
     var notesEl = card.querySelector('.ct-notes');
     payload.notes = notesEl ? notesEl.value.trim() : '';
@@ -1317,7 +1346,7 @@
         '<select class="filter-select" id="hist-filter">' +
           '<option value="">All Sections</option>' +
           '<option value="psychiatric">Psychiatric</option><option value="behavioral">Behavioral</option>' +
-          '<option value="medication">Medication</option><option value="adl">ADL</option><option value="therapeutic">Therapeutic</option><option value="risk">Risk</option>' +
+          '<option value="medication">Medication</option><option value="adl">ADL</option><option value="therapeutic">Therapeutic</option><option value="risk">Risk</option><option value="relapse_risk">Relapse Risk</option>' +
         '</select>' +
       '</div>' +
       '<div id="hist-list" class="report-timeline"></div>' +
@@ -1484,6 +1513,18 @@
         var label = k.replace(/([A-Z])/g, ' $1').replace(/^./, function (s) { return s.toUpperCase(); });
         addRow(label, v);
       });
+    } else if (section === 'relapse_risk') {
+      var rrKeys = ['treatmentNonAdherence', 'stressfulSituations', 'highEE'];
+      var rrLabels = ['Treatment Non-adherence', 'Stressful Situations', 'High EE by Family'];
+      var rrTotal = 0;
+      rrKeys.forEach(function (k, i) {
+        var v = parseInt(p[k], 10) || 0;
+        rrTotal += v;
+        addRow(rrLabels[i], v + ' / 3');
+      });
+      var rrLevel = rrTotal <= 3 ? 'Low' : (rrTotal <= 6 ? 'Moderate' : 'High');
+      addRow('Total', rrTotal + ' / 9 — ' + rrLevel, 'average-row');
+      if (p.weekStart) addRow('Week of', p.weekStart);
     }
     if (p.restraintUsed) addRow('Restraint', p.restraintUsed);
     if (p.restraintJustification) addRow('Restraint justification', p.restraintJustification);

@@ -537,6 +537,63 @@
       }
     });
     $('sb-overlay').addEventListener('click', closeSidebar);
+    // Prevent background scroll when touching/dragging or using wheel/scrollbar on the overlay (mobile viewport)
+    function isMobileViewport() { return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
+    function blockOverlayScroll(e) {
+      if (isMobileViewport() && $('sidebar').classList.contains('open')) e.preventDefault();
+    }
+    function blockBackgroundWheel(e) {
+      var sidebar = $('sidebar');
+      if (!isMobileViewport() || !sidebar.classList.contains('open')) return;
+      if (sidebar.contains(e.target)) return; // allow scrolling inside sidebar
+      e.preventDefault();
+    }
+    $('sb-overlay').addEventListener('touchmove', blockOverlayScroll, { passive: false });
+    $('sb-overlay').addEventListener('wheel', blockOverlayScroll, { passive: false, capture: true });
+    document.addEventListener('wheel', blockBackgroundWheel, { passive: false, capture: true });
+
+    // Mobile: swipe down from top of sidebar to close
+    (function () {
+      var SWIPE_ZONE_HEIGHT = 72;
+      var SWIPE_THRESHOLD = 50;
+      var startY = 0;
+      var active = false;
+
+      function isMobile() { return window.matchMedia && window.matchMedia('(max-width: 768px)').matches; }
+
+      function handleTouchStart(e) {
+        if (!isMobile() || !$('sidebar').classList.contains('open')) return;
+        var sidebar = $('sidebar');
+        var rect = sidebar.getBoundingClientRect();
+        var topEdge = rect.top;
+        var touch = e.touches && e.touches[0];
+        if (!touch) return;
+        if (touch.clientY >= topEdge && touch.clientY <= topEdge + SWIPE_ZONE_HEIGHT) {
+          startY = touch.clientY;
+          active = true;
+        }
+      }
+
+      function handleTouchMove(e) {
+        if (!active || !e.touches || !e.touches[0]) return;
+        var currentY = e.touches[0].clientY;
+        if (currentY - startY > SWIPE_THRESHOLD) {
+          closeSidebar();
+          active = false;
+          e.preventDefault();
+        }
+      }
+
+      function handleTouchEnd() { active = false; }
+
+      var sidebar = $('sidebar');
+      if (sidebar) {
+        sidebar.addEventListener('touchstart', handleTouchStart, { passive: true });
+        sidebar.addEventListener('touchmove', handleTouchMove, { passive: false });
+        sidebar.addEventListener('touchend', handleTouchEnd, { passive: true });
+        sidebar.addEventListener('touchcancel', handleTouchEnd, { passive: true });
+      }
+    })();
 
     // Logout (with confirmation)
     $('logout-btn').addEventListener('click', function (e) {

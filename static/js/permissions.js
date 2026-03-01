@@ -135,7 +135,8 @@
     medication: 'nurse',
     adl: 'care_taker',
     therapeutic: 'nurse',
-    risk: 'nurse'
+    risk: 'nurse',
+    relapse_risk: 'nurse'
   };
 
   function canSubmitSection(profile, section) {

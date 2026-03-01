@@ -77,6 +77,9 @@
       if (window.Pages.settings && window.Pages.settings.renderDiagnosisOptions) {
         window.Pages.settings.renderDiagnosisOptions('diagnosis-options-content', state);
       }
+      if (window.Pages.settings && window.Pages.settings.renderMrsWeights) {
+        window.Pages.settings.renderMrsWeights('mrs-weights-content', state);
+      }
       bindParametersOuterSections();
     }
     if (tab === 'audit') loadAuditLog(false);

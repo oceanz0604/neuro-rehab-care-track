@@ -80,6 +80,7 @@
     ADL: ['Personal Hygiene', 'Dressing', 'Toileting', 'Feeding', 'Mobility', 'Room Maintenance', 'Laundry', 'Money Handling', 'Time Management', 'Phone Use'],
     THER: ['Occupational Therapy', 'Group Therapy', 'Individual Counseling', 'Yoga/Exercise', 'Art/Music/Dance', 'Vocational Training', 'Life Skills', 'Recreation', 'Psychoeducation', 'Cognitive Remediation'],
     RISK: ['Suicidal Ideation', 'Aggression/Violence', 'Absconding Risk', 'Substance Relapse', 'Falls/Physical Safety', 'Vulnerability', 'Medication Safety'],
+    RR: ['Treatment Non-adherence', 'Stressful Situations', 'High EE by Family'],
     diagnosisOptions: ICD11_DIAGNOSIS_OPTIONS.slice(),
     wardNames: ['Ward A', 'Ward B', 'Ward C', 'General Ward', 'High Dependency', 'Step-down'],
     roomBedNumbers: ['A/101', 'A/102', 'A/103', 'B/201', 'B/202', 'C/301', 'C/302', 'GD/1', 'GD/2', 'HD/1', 'SD/1']
@@ -90,7 +91,8 @@
     { key: 'BEH', icon: 'fa-comments', title: 'Behavioral — Observation parameters' },
     { key: 'ADL', icon: 'fa-hands-helping', title: 'ADL — Daily living domains' },
     { key: 'THER', icon: 'fa-dumbbell', title: 'Therapeutic — Activity types' },
-    { key: 'RISK', icon: 'fa-shield-halved', title: 'Risk — Assessment domains' }
+    { key: 'RISK', icon: 'fa-shield-halved', title: 'Risk — Assessment domains' },
+    { key: 'RR', icon: 'fa-rotate-left', title: 'Relapse Risk — Parameters (0–3 each)' }
   ];
 
   var WARD_BEDS_SECTIONS = [
@@ -242,6 +244,74 @@
     renderOneSection(el, sec, state, DEFAULTS);
   }
 
+  var MRS_FIELDS = [
+    { key: 'symptomReduction', label: 'Symptom Reduction (SSI)' },
+    { key: 'insight', label: 'Insight (IFI)' },
+    { key: 'function', label: 'Function (FRI)' },
+    { key: 'familySystem', label: 'Family System (FSI)' },
+    { key: 'medicationAdherence', label: 'Medication Adherence (BSI)' }
+  ];
+
+  var MRS_DEFAULTS = { symptomReduction: 30, insight: 20, function: 25, familySystem: 15, medicationAdherence: 10 };
+
+  function renderMrsWeights(containerId, state) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    var cfg = getConfig(state);
+    var w = cfg.mrsWeights || MRS_DEFAULTS;
+
+    var html = '<div style="margin-bottom:8px;font-size:.85rem;color:var(--text-3)">Weights must sum to 100%. These control the Master Recovery Score on the Progress Report.</div>';
+    html += '<div class="form-grid" style="gap:10px;margin-bottom:12px">';
+    MRS_FIELDS.forEach(function (f) {
+      html += '<div class="fg"><label>' + f.label + '</label><input type="number" class="fi mrs-w-inp" data-mrs-key="' + f.key + '" min="0" max="100" value="' + (w[f.key] != null ? w[f.key] : MRS_DEFAULTS[f.key]) + '"></div>';
+    });
+    html += '</div>';
+    html += '<div style="display:flex;align-items:center;gap:12px"><button type="button" class="btn btn-sm" id="mrs-weights-save"><i class="fas fa-save"></i> Save Weights</button>' +
+      '<span id="mrs-weights-sum" style="font-size:.85rem;color:var(--text-3)"></span></div>';
+    el.innerHTML = html;
+
+    function updateSum() {
+      var total = 0;
+      el.querySelectorAll('.mrs-w-inp').forEach(function (inp) { total += parseInt(inp.value, 10) || 0; });
+      var sumEl = document.getElementById('mrs-weights-sum');
+      if (sumEl) {
+        sumEl.textContent = 'Total: ' + total + '%';
+        sumEl.style.color = total === 100 ? 'var(--success, #16a34a)' : 'var(--danger, #dc2626)';
+      }
+    }
+    el.querySelectorAll('.mrs-w-inp').forEach(function (inp) { inp.addEventListener('input', updateSum); });
+    updateSum();
+
+    document.getElementById('mrs-weights-save').addEventListener('click', function () {
+      var newW = {};
+      var total = 0;
+      el.querySelectorAll('.mrs-w-inp').forEach(function (inp) {
+        var v = parseInt(inp.value, 10) || 0;
+        newW[inp.getAttribute('data-mrs-key')] = v;
+        total += v;
+      });
+      if (total !== 100) {
+        if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Weights must sum to 100% (currently ' + total + '%)');
+        return;
+      }
+      var btn = document.getElementById('mrs-weights-save');
+      if (btn) btn.disabled = true;
+      AppDB.getOrgConfig(true).then(function (cfg) {
+        var next = cfg || {};
+        next.mrsWeights = newW;
+        return AppDB.setOrgConfig(next);
+      }).then(function () {
+        if (!state.config) state.config = {};
+        state.config.mrsWeights = newW;
+        if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Recovery score weights saved');
+        if (btn) btn.disabled = false;
+      }).catch(function () {
+        if (window.CareTrack && window.CareTrack.toast) window.CareTrack.toast('Save failed');
+        if (btn) btn.disabled = false;
+      });
+    });
+  }
+
   function init(state) {
     if (_inited) return;
     _inited = true;
@@ -252,6 +322,7 @@
     renderReportParameters: renderReportParameters,
     renderWardBeds: renderWardBeds,
     renderDiagnosisOptions: renderDiagnosisOptions,
+    renderMrsWeights: renderMrsWeights,
     init: init,
     DEFAULTS: DEFAULTS,
     ICD11_DIAGNOSIS_OPTIONS: ICD11_DIAGNOSIS_OPTIONS

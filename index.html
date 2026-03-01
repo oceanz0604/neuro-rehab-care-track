@@ -19,6 +19,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <link rel="stylesheet" href="static/css/main.css">
 </head>
@@ -245,10 +246,25 @@
           </div>
         </div>
         <div class="fr-controls">
-          <div class="fg" style="min-width:180px"><label id="fr-lbl-c">Client</label><select class="fi" id="fr-cl"><option value="">— Choose client —</option></select></div>
-          <div class="fg" style="min-width:140px"><label id="fr-lbl-from">From date</label><input type="date" class="fi" id="fr-date-from"></div>
-          <div class="fg" style="min-width:140px"><label id="fr-lbl-to">To date</label><input type="date" class="fi" id="fr-date-to"></div>
-          <div class="fg"><label id="fr-lbl-l">Language</label><div style="display:flex;gap:6px"><button type="button" class="lbtn active" data-lang="en">English</button><button type="button" class="lbtn" data-lang="mr">मराठी</button></div></div>
+          <div class="fg fr-client-fg" style="min-width:200px">
+            <label id="fr-lbl-c">Client</label>
+            <div class="searchable-select" data-for="fr-cl">
+              <input type="hidden" id="fr-cl-id" value="">
+              <input type="text" id="fr-cl" class="fi" placeholder="Select or type to search" autocomplete="off">
+              <ul class="searchable-options" id="fr-cl-list" role="listbox"></ul>
+            </div>
+          </div>
+          <div class="fr-date-row">
+            <div class="fg" style="min-width:140px"><label id="fr-lbl-from">From date</label><input type="date" class="fi" id="fr-date-from"></div>
+            <div class="fg" style="min-width:140px"><label id="fr-lbl-to">To date</label><input type="date" class="fi" id="fr-date-to"></div>
+          </div>
+          <div class="fg fr-lang-export-row">
+            <label id="fr-lbl-l">Language</label>
+            <div class="fr-lang-export-inner">
+              <div class="fr-lang-btns" style="display:flex;gap:6px"><button type="button" class="lbtn active" data-lang="en">English</button><button type="button" class="lbtn" data-lang="mr">मराठी</button></div>
+              <button type="button" class="btn" id="fr-export-pdf" disabled><i class="fas fa-file-pdf"></i> Export PDF</button>
+            </div>
+          </div>
         </div>
         <p id="fr-noc" class="empty-state"><i class="fas fa-file-medical"></i>Select a client to preview.</p>
         <div id="fr-prev" class="fr-preview" hidden></div>
@@ -381,6 +397,10 @@
             <div class="collapsible-section parameters-outer-section collapsed" id="parameters-section-diagnosis">
               <button type="button" class="collapsible-head" aria-expanded="false" data-toggle-collapse="parameters-section-diagnosis"><i class="fas fa-chevron-down"></i><span><i class="fas fa-stethoscope"></i> Diagnosis</span></button>
               <div class="collapsible-body"><div id="diagnosis-options-content"></div></div>
+            </div>
+            <div class="collapsible-section parameters-outer-section collapsed" id="parameters-section-mrs-weights">
+              <button type="button" class="collapsible-head" aria-expanded="false" data-toggle-collapse="parameters-section-mrs-weights"><i class="fas fa-chevron-down"></i><span><i class="fas fa-chart-line"></i> Recovery Score Weights</span></button>
+              <div class="collapsible-body"><div id="mrs-weights-content"></div></div>
             </div>
             </div>
           </div>

@@ -11,13 +11,14 @@
     adl: ['Personal Hygiene', 'Dressing', 'Toileting', 'Feeding', 'Mobility', 'Room Maintenance', 'Laundry', 'Money Handling', 'Time Management', 'Phone Use'],
     therapeutic: ['Occupational Therapy', 'Group Therapy', 'Individual Counseling', 'Yoga/Exercise', 'Art/Music/Dance', 'Vocational Training', 'Life Skills', 'Recreation', 'Psychoeducation', 'Cognitive Remediation'],
     risk: ['Suicidal Ideation', 'Aggression/Violence', 'Absconding Risk', 'Substance Relapse', 'Falls/Physical Safety', 'Vulnerability', 'Medication Safety'],
-    medication: []
+    medication: [],
+    relapse_risk: ['Treatment Non-adherence', 'Stressful Situations', 'High EE by Family']
   };
 
-  var KEY_MAP = { psychiatric: 'PSY', behavioral: 'BEH', adl: 'ADL', therapeutic: 'THER', risk: 'RISK' };
+  var KEY_MAP = { psychiatric: 'PSY', behavioral: 'BEH', adl: 'ADL', therapeutic: 'THER', risk: 'RISK', relapse_risk: 'RR' };
 
   function esc(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
-  function sectionColor(s) { var m = { psychiatric: 'medium', behavioral: 'low', medication: 'medium', adl: 'none', therapeutic: 'low', risk: 'high' }; return m[s] || 'none'; }
+  function sectionColor(s) { var m = { psychiatric: 'medium', behavioral: 'low', medication: 'medium', adl: 'none', therapeutic: 'low', risk: 'high', relapse_risk: 'medium' }; return m[s] || 'none'; }
   function capitalize(s) { return (s || '').charAt(0).toUpperCase() + (s || '').slice(1).toLowerCase(); }
 
   function getParams(section, config) {
@@ -26,7 +27,7 @@
     return (config[key] || DEFAULT_PARAMS[section] || []).slice();
   }
 
-  function formatPayloadForView(section, p) {
+  function formatPayloadForView(section, p, params) {
     var lines = [];
     if (section === 'psychiatric' || section === 'behavioral') {
       var r = p.ratings || {};
@@ -48,6 +49,19 @@
         var label = k.replace(/([A-Z])/g, ' $1').replace(/^./, function (x) { return x.toUpperCase(); });
         lines.push('<tr><td>' + esc(label) + '</td><td>' + esc(v) + '</td></tr>');
       });
+    } else if (section === 'relapse_risk') {
+      var rrParamLabels = (params && params.length >= 3) ? params : DEFAULT_PARAMS.relapse_risk;
+      var rrKeys = ['treatmentNonAdherence', 'stressfulSituations', 'highEE'];
+      var rrItems = rrParamLabels.slice(0, 3).map(function (label, i) { return [label, p[rrKeys[i]]]; });
+      var rrTotal = 0;
+      rrItems.forEach(function (item) {
+        var val = parseInt(item[1], 10) || 0;
+        rrTotal += val;
+        lines.push('<tr><td>' + esc(item[0]) + '</td><td>' + val + ' / 3</td></tr>');
+      });
+      var rrLevel = rrTotal <= 3 ? 'Low' : (rrTotal <= 6 ? 'Moderate' : 'High');
+      lines.push('<tr><td><strong>Total</strong></td><td><strong>' + rrTotal + ' / 9 — ' + rrLevel + '</strong></td></tr>');
+      if (p.weekStart) lines.push('<tr><td>Week of</td><td>' + esc(p.weekStart) + '</td></tr>');
     }
     if (p.restraintUsed) lines.push('<tr><td>Restraint used</td><td>' + esc(p.restraintUsed) + '</td></tr>');
     if (p.restraintJustification) lines.push('<tr><td>Restraint justification</td><td>' + esc(p.restraintJustification) + '</td></tr>');
@@ -125,11 +139,44 @@
     return html;
   }
 
+  var RR_PAYLOAD_KEYS = ['treatmentNonAdherence', 'stressfulSituations', 'highEE'];
+  var MARATHI_FONT = "'Noto Sans Devanagari', 'Noto Sans Devanagari UI', 'Mangal', 'Nirmala UI', sans-serif";
+
+  function setInlineFontForPdf(el, apply) {
+    if (!el) return;
+    if (apply) {
+      el.style.fontFamily = MARATHI_FONT;
+      var children = el.querySelectorAll('*');
+      for (var i = 0; i < children.length; i++) children[i].style.fontFamily = MARATHI_FONT;
+    } else {
+      el.style.removeProperty('font-family');
+      var children = el.querySelectorAll('*');
+      for (var i = 0; i < children.length; i++) children[i].style.removeProperty('font-family');
+    }
+  }
+
+  function buildRelapseRiskForm(params, payload) {
+    var labels = (params && params.length >= 3) ? params.slice(0, 3) : DEFAULT_PARAMS.relapse_risk.slice(0, 3);
+    var html = labels.map(function (label, i) {
+      var key = RR_PAYLOAD_KEYS[i];
+      var val = parseInt(payload[key], 10);
+      if (isNaN(val)) val = -1;
+      return '<div class="rating-row"><span class="rating-label">' + esc(label) + '</span><div class="rating-btns">' +
+        [0,1,2,3].map(function (n) {
+          return '<button type="button" class="rating-btn' + (val === n ? ' selected' : '') + '" data-rr="' + esc(key) + '" data-val="' + n + '">' + n + '</button>';
+        }).join('') + '</div></div>';
+    }).join('');
+    html += '<div class="fg fg-full" style="margin-top:12px"><label>Week of (optional)</label>' +
+      '<input type="date" class="fi rr-week" value="' + esc(payload.weekStart || '') + '"></div>';
+    return html;
+  }
+
   function buildFormHtml(section, params, payload) {
     if (section === 'adl') return buildADLForm(params, payload);
     if (section === 'therapeutic') return buildTherapeuticForm(params, payload);
     if (section === 'risk') return buildRiskForm(params, payload);
     if (section === 'medication') return buildMedicationForm(payload);
+    if (section === 'relapse_risk') return buildRelapseRiskForm(params, payload);
     return buildRatingForm(params, payload);
   }
 
@@ -169,6 +216,12 @@
         var key = el.getAttribute('data-med');
         if (el.value !== undefined && el.value !== null) payload[key] = el.value.trim ? el.value.trim() : el.value;
       });
+    } else if (section === 'relapse_risk') {
+      container.querySelectorAll('.rating-btn.selected[data-rr]').forEach(function (b) {
+        payload[b.getAttribute('data-rr')] = parseInt(b.getAttribute('data-val'), 10);
+      });
+      var weekEl = container.querySelector('.rr-week');
+      if (weekEl && weekEl.value) payload.weekStart = weekEl.value;
     }
     var notesEl = container.querySelector('.rm-notes');
     payload.notes = notesEl ? notesEl.value.trim() : '';
@@ -179,7 +232,10 @@
     container.querySelectorAll('.rating-btn').forEach(function (btn) {
       btn.addEventListener('click', function () {
         var param = btn.getAttribute('data-param');
-        container.querySelectorAll('.rating-btn[data-param="' + param + '"]').forEach(function (b) { b.classList.remove('selected'); });
+        var rr = btn.getAttribute('data-rr');
+        var groupAttr = param ? 'data-param' : 'data-rr';
+        var groupVal = param || rr;
+        container.querySelectorAll('.rating-btn[' + groupAttr + '="' + groupVal + '"]').forEach(function (b) { b.classList.remove('selected'); });
         btn.classList.add('selected');
       });
     });
@@ -202,7 +258,7 @@
 
     function renderView() {
       var dt = r.createdAt ? new Date(r.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
-      var payloadHtml = formatPayloadForView(section, payload);
+      var payloadHtml = formatPayloadForView(section, payload, params);
       var patientBlock = showPatientLink && r.clientId
         ? '<p><strong>Patient</strong> <a href="#" id="rm-patient-link">' + esc(r.clientName || '—') + '</a></p>'
         : '';
