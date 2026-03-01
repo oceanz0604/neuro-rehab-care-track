@@ -1538,6 +1538,13 @@ tr.clickable { cursor: pointer; }
   background: var(--bg);
   padding: 0;
 }
+/* Web view: don't hide chat behind sidebar — start content to the right of the sidebar */
+@media (min-width: 769px) {
+  #page-comms.page.active {
+    left: var(--sidebar-w);
+    width: calc(100% - var(--sidebar-w));
+  }
+}
 /* Prevent body scroll when chat is open (iOS PWA) */
 body:has(#page-comms.page.active) {
   overflow: hidden;
