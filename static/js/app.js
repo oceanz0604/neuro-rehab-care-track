@@ -308,14 +308,18 @@
     }
   }
 
-  function openPatient(clientId) {
+  function openPatient(clientId, returnPage) {
     if (!clientId) return;
-    window.location.href = getBaseUrl() + 'patient.html?id=' + encodeURIComponent(clientId);
+    var url = getBaseUrl() + 'patient.html?id=' + encodeURIComponent(clientId);
+    if (returnPage) url += '&return=' + encodeURIComponent(returnPage);
+    window.location.href = url;
   }
 
-  function openTask(taskId) {
+  function openTask(taskId, returnPage) {
     if (!taskId) return;
-    window.location.href = getBaseUrl() + 'task.html?id=' + encodeURIComponent(taskId);
+    var url = getBaseUrl() + 'task.html?id=' + encodeURIComponent(taskId);
+    if (returnPage) url += '&return=' + encodeURIComponent(returnPage);
+    window.location.href = url;
   }
 
   function initPage(page) {

@@ -54,7 +54,13 @@
     hideLoading();
   }
 
+  var _returnPage = null;
+
   function goBack(fallbackPage) {
+    if (_returnPage) {
+      window.location.href = getBaseUrl() + 'index.html?page=' + encodeURIComponent(_returnPage);
+      return;
+    }
     var fallback = getBaseUrl() + 'index.html?page=' + (fallbackPage || 'patients');
     var fromOurApp = document.referrer && document.referrer.indexOf(window.location.origin) === 0;
     if (fromOurApp && window.history.length > 1) {
@@ -71,6 +77,8 @@
     }
     var params = new URLSearchParams(window.location.search);
     var id = params.get('id');
+    var returnPage = params.get('return');
+    if (returnPage) _returnPage = returnPage;
     if (!id) {
       window.location.href = getBaseUrl() + 'index.html?page=patients';
       return;

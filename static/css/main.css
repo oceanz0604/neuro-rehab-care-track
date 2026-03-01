@@ -1664,7 +1664,14 @@ body:has(#page-comms.page.active) .wa-msg-list {
 .wa-msg-list .msg-link:hover { color: #075e54; opacity: 0.9; }
 [data-theme="dark"] .wa-msg-list .msg-link { color: #2dd4bf; }
 [data-theme="dark"] .wa-msg-list .msg-link:hover { color: #5eead4; }
+[data-theme="dark"] .wa-msg-list .msg-mention { color: #2dd4bf; background: rgba(45, 212, 191, .2); }
+[data-theme="dark"] .wa-msg-list .msg-bubble.mine .msg-mention { color: rgba(255,255,255,.95); background: rgba(255,255,255,.25); }
 .wa-msg-list .msg-time { font-size: .7rem; color: var(--text-3); opacity: .85; }
+.wa-msg-list .msg-mention {
+  display: inline; font-weight: 600; color: var(--wa-header-bg, #075e54);
+  text-decoration: none; padding: 1px 6px; border-radius: 6px; background: rgba(7, 94, 84, .12);
+}
+.wa-msg-list .msg-bubble.mine .msg-mention { color: rgba(255,255,255,.95); background: rgba(255,255,255,.2); }
 .wa-msg-list .msg-urgent-icon { margin-right: 4px; font-size: .75rem; }
 .wa-compose {
   flex-shrink: 0;
@@ -1681,8 +1688,30 @@ body:has(#page-comms.page.active) .wa-msg-list {
   background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08);
   transition: box-shadow .15s ease;
 }
+.wa-compose-input-wrap { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.wa-compose-input-wrap .wa-compose-input { width: 100%; box-sizing: border-box; }
+.chat-mention-list {
+  position: absolute; left: 0; right: 0; bottom: 100%; margin-bottom: 6px;
+  max-height: 200px; overflow-y: auto; list-style: none; margin-left: 0; padding: 6px 0;
+  background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow-md); z-index: 100; display: none;
+}
+.chat-mention-list:not([hidden]) { display: block; }
+.chat-mention-list[hidden] { display: none !important; }
+.chat-mention-item {
+  padding: 8px 14px; font-size: .88rem; cursor: pointer; display: flex; align-items: center; gap: 8px;
+  transition: background .12s ease;
+}
+.chat-mention-item:hover,
+.chat-mention-item.chat-mention-active { background: var(--primary-bg); color: var(--primary); }
+.chat-mention-item i { font-size: .8rem; color: var(--text-3); width: 18px; text-align: center; }
+.chat-mention-item span { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chat-mention-item .chat-mention-meta { font-size: .75rem; color: var(--text-3); }
 .wa-compose-input::placeholder { color: var(--text-3); }
 .wa-compose-input:focus { outline: none; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+[data-theme="dark"] .chat-mention-list { background: var(--card); border-color: var(--border); }
+[data-theme="dark"] .chat-mention-item:hover,
+[data-theme="dark"] .chat-mention-item.chat-mention-active { background: var(--primary-bg); color: var(--primary); }
 .wa-urgent-btn {
   width: 40px; height: 40px; border: none; background: #fff; border-radius: 50%;
   color: var(--text-3); cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -1720,6 +1749,11 @@ body:has(#page-comms.page.active) .wa-msg-list {
 [data-theme="dark"] .wa-date-sep {
   background: rgba(255, 255, 255, 0.12);
   color: var(--text-2);
+}
+/* Hide in-flow date sep when it sits under the sticky popup to avoid two dates merging */
+.wa-date-sep.wa-date-sep-under-popup {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Chat date popup (WhatsApp-style when scrolling) */

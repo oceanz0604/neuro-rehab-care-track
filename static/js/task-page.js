@@ -623,7 +623,13 @@
   }
 
   /* ─── Navigation ──────────────────────────────────────────── */
+  var _returnPage = null;
+
   function goBack() {
+    if (_returnPage) {
+      window.location.href = getBaseUrl() + 'index.html?page=' + encodeURIComponent(_returnPage);
+      return;
+    }
     var fromOurApp = document.referrer && document.referrer.indexOf(window.location.origin) === 0;
     if (fromOurApp && window.history.length > 1) {
       window.history.back();
@@ -637,6 +643,8 @@
     if (!window.AppDB || !AppDB.ready) { window.location.href = getBaseUrl() + 'index.html'; return; }
     var params = new URLSearchParams(window.location.search);
     var id = params.get('id');
+    var returnPage = params.get('return');
+    if (returnPage) _returnPage = returnPage;
     if (!id) { window.location.href = getBaseUrl() + 'index.html?page=tasks'; return; }
 
     var resolved = false;

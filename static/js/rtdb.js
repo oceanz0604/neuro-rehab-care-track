@@ -80,13 +80,15 @@
 
   function sendMessage(channelName, data) {
     var key = channelKey(channelName);
-    return rtdb.ref('chat/' + key).push({
+    var payload = {
       text: data.text || '',
       sender: data.sender || 'Staff',
       senderId: data.senderId || '',
       isUrgent: !!data.isUrgent,
       timestamp: firebase.database.ServerValue.TIMESTAMP
-    });
+    };
+    if (data.mentions && Array.isArray(data.mentions) && data.mentions.length) payload.mentions = data.mentions;
+    return rtdb.ref('chat/' + key).push(payload);
   }
 
   /** One-time read of urgent messages since a timestamp (for notification bell). Limited to last 50 to save bandwidth. */

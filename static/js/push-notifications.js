@@ -6,6 +6,9 @@
 (function () {
   'use strict';
 
+  /** Set to true to disable sending notifications (e.g. for local testing). Revert to false for production. */
+  var PUSH_DISABLED = false;
+
   function isSupported() {
     return typeof firebase !== 'undefined' &&
       firebase.messaging &&
@@ -65,6 +68,7 @@
 
   /** Call push API. Payload: { type, ... } with clientId (patient), taskId (task), or type:'chat_message'+channel (chat). */
   function triggerPush(payload) {
+    if (PUSH_DISABLED) return;
     var url = typeof PUSH_API_URL === 'string' ? PUSH_API_URL.trim() : '';
     if (!url || !payload || !payload.type) return;
     var hasTarget = payload.clientId || payload.taskId || (payload.type === 'chat_message' && payload.channel);

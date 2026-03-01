@@ -231,7 +231,10 @@
           </div>
           <div class="wa-compose">
             <button type="button" class="wa-urgent-btn" id="urgent-toggle" title="Mark as urgent"><i class="fas fa-exclamation-circle"></i></button>
-            <input type="text" id="msg-in" class="wa-compose-input" placeholder="Type a message" autocomplete="off">
+            <div class="wa-compose-input-wrap">
+              <input type="text" id="msg-in" class="wa-compose-input" placeholder="Type a message (use @ for patient, user, or task)" autocomplete="off">
+              <div id="chat-mention-list" class="chat-mention-list" role="listbox" aria-label="Mention suggestions" hidden></div>
+            </div>
             <button type="button" class="wa-send-btn" id="send-msg" aria-label="Send"><i class="fas fa-paper-plane"></i></button>
           </div>
         </div>
