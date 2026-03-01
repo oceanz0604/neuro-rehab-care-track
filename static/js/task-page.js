@@ -149,6 +149,16 @@
     var statusValue = canEditStatus ? pillDropdownHtml('status', statusOpts, statusVal, statusLabel) : statusBlock;
     var categoryValue = canEditFull ? pillDropdownHtml('category', catOpts, t.category || '', categoryLabelCur) : esc(categoryLabelCur);
 
+    var alsoNotifyUids = Array.isArray(t.alsoNotify) ? t.alsoNotify.filter(Boolean) : [];
+    var staffList = state.staff || [];
+    var alsoNotifyNames = alsoNotifyUids.map(function (uid) {
+      var s = staffList.filter(function (x) { return x.uid === uid; })[0];
+      return s ? (s.displayName || s.email || uid) : uid;
+    });
+    var alsoNotifyHtml = alsoNotifyNames.length
+      ? '<div class="task-detail-meta-row task-detail-meta-row-3"><div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Also notify</span><div class="task-detail-meta-value">' + esc(alsoNotifyNames.join(', ')) + '</div></div></div>'
+      : '';
+
     root.innerHTML =
       '<div class="task-detail-card">' +
         '<div class="task-detail-title-wrap">' +
@@ -167,6 +177,7 @@
           '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Status</span><div class="task-detail-meta-value">' + statusValue + '</div></div>' +
           '<div class="task-detail-meta-item task-detail-meta-cell"><span class="task-detail-meta-label">Category</span><div class="task-detail-meta-value">' + categoryValue + '</div></div>' +
         '</div>' +
+        alsoNotifyHtml +
         '<div class="task-detail-created">Created on ' + esc(createdDateStr) + (t.createdByName ? ' by ' + esc(t.createdByName) : '') + '</div>' +
         '<hr class="task-detail-sep" />' +
         '<div class="task-detail-comments">' +
@@ -300,6 +311,13 @@
         '<div class="multiselect-panel" id="task-edit-client-panel"><input type="text" class="multiselect-search fi" id="task-edit-client-search" placeholder="Search..." autocomplete="off">' +
         '<div class="multiselect-options" id="task-edit-client-options"></div></div></div></div>'
       : '<div class="task-edit-readonly"><span class="task-edit-meta-label">Patient</span> ' + patientHtml + '</div>';
+    var alsoNotifyLabel = (t.alsoNotify && t.alsoNotify.length) ? esc(t.alsoNotify.length + ' user(s)') : '<span class="multiselect-placeholder">Select users to receive task notifications...</span>';
+    var alsoNotifyRow = canEditFull
+      ? '<div class="task-edit-field task-edit-field-full"><label class="task-edit-label">Also notify</label>' +
+        '<div class="multiselect-wrap" id="task-edit-also-notify-ms"><button type="button" class="multiselect-trigger fi" id="task-edit-also-notify-trigger">' + alsoNotifyLabel + '</button>' +
+        '<div class="multiselect-panel" id="task-edit-also-notify-panel"><input type="text" class="multiselect-search fi" id="task-edit-also-notify-search" placeholder="Search..." autocomplete="off">' +
+        '<div class="multiselect-options" id="task-edit-also-notify-options"></div></div></div></div>'
+      : '';
 
     root.innerHTML =
       '<div class="task-detail-card task-edit-card">' +
@@ -311,6 +329,7 @@
             statusRow + priorityRow + dueRow + assigneeRow + categoryRow +
           '</div>' +
           patientRow +
+          alsoNotifyRow +
           '<div class="task-edit-actions">' +
             '<button type="button" class="btn btn-primary" id="task-edit-save"><i class="fas fa-check"></i> Save</button>' +
             '<button type="button" class="btn btn-ghost" id="task-edit-cancel">Cancel</button>' +
@@ -326,6 +345,7 @@
     if (canEditFull) {
       bindTaskEditSingleSelect('task-edit-assignee', [{ value: '', label: 'Unassigned' }].concat((state.staff || []).map(function (s) { return { value: s.uid, label: s.displayName || s.email || '' }; })), t.assignedTo || '');
       bindTaskEditSingleSelect('task-edit-client', [{ value: '', label: 'None' }].concat(clients.filter(function (c) { return c.status === 'active'; }).map(function (c) { return { value: c.id, label: c.name || '' }; })), t.clientId || '');
+      bindTaskEditAlsoNotify(state.staff || [], t.alsoNotify || []);
     }
   }
 
@@ -366,6 +386,57 @@
         wrap.classList.remove('open');
       });
     });
+    trigger.addEventListener('click', function () {
+      wrap.classList.toggle('open');
+      if (searchInp && wrap.classList.contains('open')) { searchInp.value = ''; filterOptions(); searchInp.focus(); }
+    });
+    document.addEventListener('click', function (e) {
+      if (!wrap.contains(e.target)) wrap.classList.remove('open');
+    });
+  }
+
+  function getTaskEditAlsoNotifyValues() {
+    var optionsContainer = document.getElementById('task-edit-also-notify-options');
+    if (!optionsContainer) return [];
+    var vals = [];
+    optionsContainer.querySelectorAll('input[type=checkbox]:checked').forEach(function (cb) { vals.push(cb.value); });
+    return vals;
+  }
+
+  function bindTaskEditAlsoNotify(staff, selectedUids) {
+    var wrap = document.getElementById('task-edit-also-notify-ms');
+    var trigger = document.getElementById('task-edit-also-notify-trigger');
+    var panel = document.getElementById('task-edit-also-notify-panel');
+    var optionsContainer = document.getElementById('task-edit-also-notify-options');
+    var searchInp = document.getElementById('task-edit-also-notify-search');
+    if (!wrap || !trigger || !panel || !optionsContainer) return;
+    var selectedSet = {};
+    (selectedUids || []).forEach(function (uid) { selectedSet[uid] = true; });
+    var staffList = (staff || []).filter(function (s) { return s && (s.uid || s.email); });
+    optionsContainer.innerHTML = staffList.map(function (s) {
+      var uid = s.uid || '';
+      var label = (s.displayName || s.email || uid || '').trim();
+      var checked = selectedSet[uid] ? ' checked' : '';
+      return '<label data-value="' + esc(uid) + '" data-label="' + esc(label) + '"><input type="checkbox" value="' + esc(uid) + '"' + checked + '> ' + esc(label) + '</label>';
+    }).join('');
+    function filterOptions() {
+      var q = (searchInp && searchInp.value) ? searchInp.value.trim().toLowerCase() : '';
+      optionsContainer.querySelectorAll('label').forEach(function (label) {
+        var text = (label.getAttribute('data-label') || label.textContent || '').toLowerCase();
+        label.style.display = !q || text.indexOf(q) !== -1 ? '' : 'none';
+      });
+    }
+    if (searchInp) {
+      searchInp.addEventListener('input', filterOptions);
+      searchInp.addEventListener('focus', function (e) { e.stopPropagation(); });
+    }
+    function updateTrigger() {
+      var vals = getTaskEditAlsoNotifyValues();
+      if (vals.length === 0) { trigger.innerHTML = '<span class="multiselect-placeholder">Select users to receive task notifications...</span>'; return; }
+      trigger.innerHTML = vals.length + ' user(s)';
+    }
+    updateTrigger();
+    optionsContainer.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.addEventListener('change', updateTrigger); });
     trigger.addEventListener('click', function () {
       wrap.classList.toggle('open');
       if (searchInp && wrap.classList.contains('open')) { searchInp.value = ''; filterOptions(); searchInp.focus(); }
@@ -525,12 +596,23 @@
           var cl = (state.clients || []).filter(function (x) { return x.id === payload.clientId; })[0];
           payload.clientName = cl ? (cl.name || '') : '';
         }
+        payload.alsoNotify = getTaskEditAlsoNotifyValues();
       }
 
       if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(saveBtn, true, 'Saving...');
       AppDB.updateTask(t.id, payload).then(function () {
         Object.keys(payload).forEach(function (k) { state.task[k] = payload[k]; });
         state.isEditing = false;
+        if (window.AppPush && window.AppPush.triggerPush) {
+          AppPush.triggerPush({
+            taskId: t.id,
+            type: 'task_updated',
+            taskTitle: state.task.title,
+            assignedTo: state.task.assignedTo,
+            addedBy: (state.user && state.user.uid) || '',
+            addedByName: (state.profile && state.profile.displayName) || ''
+          });
+        }
         renderDetail();
         toast('Task saved');
       }).catch(function (e) {

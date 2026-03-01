@@ -504,6 +504,7 @@
       clientName: (data.clientName || '').trim() || null,
       assignedTo: data.assignedTo && String(data.assignedTo).trim() ? String(data.assignedTo).trim() : null,
       assignedToName: (data.assignedToName || '').trim() || null,
+      alsoNotify: Array.isArray(data.alsoNotify) ? data.alsoNotify.filter(Boolean).map(String) : [],
       createdBy: user ? user.uid : null,
       createdByName: (data.createdByName || '').trim() || null,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -529,6 +530,7 @@
     if (data.clientName !== undefined) doc.clientName = data.clientName || null;
     if (data.assignedTo !== undefined) doc.assignedTo = data.assignedTo || null;
     if (data.assignedToName !== undefined) doc.assignedToName = data.assignedToName || null;
+    if (data.alsoNotify !== undefined) doc.alsoNotify = Array.isArray(data.alsoNotify) ? data.alsoNotify.filter(Boolean).map(String) : [];
     return db.collection('tasks').doc(id).update(doc).then(function () {
       logAudit('task_update', 'task', id, null).catch(function () {});
     });

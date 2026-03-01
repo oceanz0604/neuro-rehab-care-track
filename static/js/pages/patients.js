@@ -30,6 +30,14 @@
     return isNaN(d.getTime()) ? null : d;
   }
 
+  /** Format date for display in Indian locale (e.g. 23 Feb 2026). */
+  function formatDateIN(dateStr) {
+    if (!dateStr) return '—';
+    var d = typeof dateStr === 'string' && dateStr.length >= 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   function getDischargeLabel(c) {
     var isDischarged = (c.status || 'active') === 'discharged';
     var planned = parseDateOnly(c.plannedDischargeDate);
@@ -142,7 +150,7 @@
       var avatarHtml = '<div class="patient-avatar ' + avatarBg + '">' + esc(initials) + '<span class="patient-avatar-dot ' + statusDot + '"></span></div>';
       var quickHtml = '<div class="patient-card-quick"><button type="button" title="View" data-quick="view"><i class="fas fa-eye"></i></button></div>';
       if (isDischarged) {
-        var dischargeDateStr = c.dischargeDate ? esc(c.dischargeDate) : '—';
+        var dischargeDateStr = c.dischargeDate ? esc(formatDateIN(c.dischargeDate)) : '—';
         return '<div class="' + cardClass + '" data-id="' + esc(c.id) + '">' + quickHtml +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">' + avatarHtml +
           '<div style="flex:1;min-width:0"><div class="patient-card-name" style="margin-bottom:2px">' + esc(c.name || '—') + myBadge + '</div>' +

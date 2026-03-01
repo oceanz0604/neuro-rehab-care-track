@@ -137,7 +137,8 @@ module.exports = async (req, res) => {
       const task = taskSnap.data();
       const assigneeUid = task.assignedTo || null;
       const creatorUid = task.createdBy || null;
-      const uids = [assigneeUid, creatorUid].filter(Boolean);
+      const alsoNotify = Array.isArray(task.alsoNotify) ? task.alsoNotify.filter(Boolean) : [];
+      const uids = [assigneeUid, creatorUid, ...alsoNotify].filter(Boolean);
       const uniq = [...new Set(uids)];
       const exclude = type === 'task_comment' ? (addedBy || excludeUid) : type === 'task_created' ? (createdBy || excludeUid) : excludeUid;
       const { tokens: t } = await getFcmTokensForUids(db, uniq, exclude);

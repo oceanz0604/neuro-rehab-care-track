@@ -120,9 +120,9 @@
     return hasRole(profile, 'nurse');
   }
 
-  /** Add Report button visible: everyone from nurse up. */
+  /** Add Report button visible: everyone from social_worker up. */
   function canAddReport(profile) {
-    return hasRole(profile, 'nurse');
+    return hasRole(profile, 'social_worker');
   }
 
   function canEditReport(profile) {

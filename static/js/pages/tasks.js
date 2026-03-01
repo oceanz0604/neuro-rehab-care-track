@@ -290,6 +290,61 @@
     });
   }
 
+  function getTaskAlsoNotifyValues() {
+    var optionsContainer = document.getElementById('task-also-notify-options');
+    if (!optionsContainer) return [];
+    var vals = [];
+    optionsContainer.querySelectorAll('input[type=checkbox]:checked').forEach(function (cb) { vals.push(cb.value); });
+    return vals;
+  }
+
+  function bindTaskAlsoNotify(staff, selectedUids) {
+    var wrap = document.getElementById('task-also-notify-ms');
+    var trigger = document.getElementById('task-also-notify-trigger');
+    var panel = document.getElementById('task-also-notify-panel');
+    var optionsContainer = document.getElementById('task-also-notify-options');
+    var searchInp = document.getElementById('task-also-notify-search');
+    if (!wrap || !trigger || !panel || !optionsContainer) return;
+    var selectedSet = {};
+    (selectedUids || []).forEach(function (uid) { selectedSet[uid] = true; });
+    var staffList = (staff || []).filter(function (s) { return s && (s.uid || s.email); });
+    optionsContainer.innerHTML = staffList.map(function (s) {
+      var uid = s.uid || '';
+      var label = (s.displayName || s.email || uid || '').trim();
+      var checked = selectedSet[uid] ? ' checked' : '';
+      return '<label data-value="' + esc(uid) + '" data-label="' + esc(label) + '"><input type="checkbox" value="' + esc(uid) + '"' + checked + '> ' + esc(label) + '</label>';
+    }).join('');
+    function filterOptions() {
+      var q = (searchInp && searchInp.value) ? searchInp.value.trim().toLowerCase() : '';
+      optionsContainer.querySelectorAll('label').forEach(function (label) {
+        var text = (label.getAttribute('data-label') || label.textContent || '').toLowerCase();
+        label.style.display = !q || text.indexOf(q) !== -1 ? '' : 'none';
+      });
+    }
+    if (searchInp) {
+      searchInp.addEventListener('input', filterOptions);
+      searchInp.addEventListener('focus', function (e) { e.stopPropagation(); });
+    }
+    function updateTrigger() {
+      var vals = getTaskAlsoNotifyValues();
+      if (vals.length === 0) { trigger.innerHTML = '<span class="multiselect-placeholder">Select users to receive task notifications...</span>'; return; }
+      var labels = vals.map(function (uid) {
+        var s = staffList.filter(function (x) { return (x.uid || '') === uid; })[0];
+        return s ? (s.displayName || s.email || uid) : uid;
+      });
+      trigger.innerHTML = labels.map(function (l) { return '<span class="multiselect-chip">' + esc(l) + '</span>'; }).join('');
+    }
+    updateTrigger();
+    optionsContainer.querySelectorAll('input[type=checkbox]').forEach(function (cb) { cb.addEventListener('change', updateTrigger); });
+    trigger.addEventListener('click', function () {
+      wrap.classList.toggle('open');
+      if (searchInp && wrap.classList.contains('open')) { searchInp.value = ''; filterOptions(); searchInp.focus(); }
+    });
+    document.addEventListener('click', function (e) {
+      if (!wrap.contains(e.target)) wrap.classList.remove('open');
+    });
+  }
+
   function buildModalHtml(task, state) {
     var clients = state.clients || [];
     var assigneeLabel = task && task.assignedToName ? task.assignedToName : 'Unassigned';
@@ -318,6 +373,10 @@
         '<div class="multiselect-wrap" id="task-client-ms"><button type="button" class="multiselect-trigger fi" id="task-client-trigger">' + (clientLabel !== 'None' ? esc(clientLabel) : '<span class="multiselect-placeholder">Select...</span>') + '</button>' +
         '<div class="multiselect-panel" id="task-client-panel"><input type="text" class="multiselect-search fi" id="task-client-search" placeholder="Search..." autocomplete="off">' +
         '<div class="multiselect-options" id="task-client-options"></div></div></div></div>' +
+        '<div class="fg fg-full"><label>Also notify</label>' +
+        '<div class="multiselect-wrap" id="task-also-notify-ms"><button type="button" class="multiselect-trigger fi" id="task-also-notify-trigger"><span class="multiselect-placeholder">Select users to receive task notifications...</span></button>' +
+        '<div class="multiselect-panel" id="task-also-notify-panel"><input type="text" class="multiselect-search fi" id="task-also-notify-search" placeholder="Search..." autocomplete="off">' +
+        '<div class="multiselect-options" id="task-also-notify-options"></div></div></div></div>' +
         '<div class="fg fg-full"><label>Description</label><textarea id="task-notes" class="fi" rows="4" placeholder="Add details, context, acceptance criteria...">' + esc(task ? (task.notes || '') : '') + '</textarea></div>' +
       '</div>' +
       '<div class="modal-actions" style="margin-top:18px;gap:8px">' +
@@ -351,6 +410,7 @@
     bindTaskSingleSelect('task-assignee', assigneeOpts, task ? task.assignedTo : '');
     var clientOpts = [{ value: '', label: 'None' }].concat((state.clients || []).filter(function (c) { return c.status === 'active'; }).map(function (c) { return { value: c.id, label: c.name || '' }; }));
     bindTaskSingleSelect('task-client', clientOpts, task ? task.clientId : '');
+    bindTaskAlsoNotify(_staff, task ? (task.alsoNotify || []) : []);
   }
 
   function saveFromModal(taskId, state) {
@@ -370,7 +430,8 @@
       title: title, category: category, clientId: clientId, clientName: clientName,
       assignedTo: assignedTo, assignedToName: assignedToName,
       dueDate: gv('task-due') || null, status: gv('task-status') || 'todo',
-      priority: gv('task-priority') || 'medium', notes: gv('task-notes').trim()
+      priority: gv('task-priority') || 'medium', notes: gv('task-notes').trim(),
+      alsoNotify: getTaskAlsoNotifyValues()
     };
     var profile = (state && state.profile) || {};
 

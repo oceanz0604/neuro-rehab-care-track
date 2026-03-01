@@ -57,6 +57,14 @@
     else window.history.pushState({ tab: tab }, '', url.toString());
   }
 
+  /** Format date for display in Indian locale (e.g. 23 Feb 2026). */
+  function formatDateIN(dateStr) {
+    if (!dateStr) return '—';
+    var d = typeof dateStr === 'string' && dateStr.length >= 10 ? new Date(dateStr + 'T12:00:00') : new Date(dateStr);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
   function render(state) {
     _client = state.selectedClientData;
     if (!_client) { $('pd-header').innerHTML = '<p>Patient not found.</p>'; $('pd-tabs').innerHTML = ''; $('pd-content').innerHTML = ''; var t = $('pd-tb-title'); if (t) t.textContent = 'Patient'; return; }
@@ -123,14 +131,18 @@
     var nameParts = (c.name || '?').trim().split(/\s+/);
     var initials = nameParts.length >= 2 ? (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase() : (nameParts[0] || '?').substring(0, 2).toUpperCase();
     var avatarBg = 'risk-' + riskClass + '-bg';
-    var admissionStr = c.admissionDate ? esc(c.admissionDate) : '—';
+    var admissionStr = c.admissionDate ? esc(formatDateIN(c.admissionDate)) : '—';
     var diagnosesList = (c.diagnoses && c.diagnoses.length) ? c.diagnoses.filter(Boolean) : (c.diagnosis && c.diagnosis.trim() ? [c.diagnosis.trim()] : []);
     var diagnosisLines = diagnosesList.length ? diagnosesList.map(function (d) { return '<div class="pd-header-detail-line">' + esc(d) + '</div>'; }).join('') : '<div class="pd-header-detail-line pd-header-detail-muted">—</div>';
     var doctorsList = (c.assignedDoctors && c.assignedDoctors.length) ? c.assignedDoctors.filter(Boolean) : (c.assignedTherapist && c.assignedTherapist.trim() ? [c.assignedTherapist.trim()] : []);
     var doctorLines = doctorsList.length ? doctorsList.map(function (d) { return '<div class="pd-header-detail-line">' + esc(d) + '</div>'; }).join('') : '<div class="pd-header-detail-line pd-header-detail-muted">—</div>';
     var dischargeSnap = getDischargeSnapshot(c);
     var plannedDischargeHtml = dischargeSnap
-      ? '<div class="pd-header-detail-row"><span class="pd-header-label">Planned discharge</span><span class="pd-header-value">' + esc(c.plannedDischargeDate) + ' <span class="' + esc(dischargeSnap.class) + '">(' + esc(dischargeSnap.text) + ')</span></span></div>'
+      ? '<div class="pd-header-detail-row"><span class="pd-header-label">Planned discharge</span><span class="pd-header-value">' + esc(formatDateIN(c.plannedDischargeDate)) + ' <span class="' + esc(dischargeSnap.class) + '">(' + esc(dischargeSnap.text) + ')</span></span></div>'
+      : '';
+    var isDischarged = (c.status || 'active') === 'discharged';
+    var actualDischargeHtml = isDischarged
+      ? '<div class="pd-header-detail-row"><span class="pd-header-label">Actual discharge date</span><span class="pd-header-value">' + (c.dischargeDate ? esc(formatDateIN(c.dischargeDate)) : '—') + '</span></div>'
       : '';
     return '<div class="pd-header-card">' +
       '<div class="pd-header-card-left">' +
@@ -139,6 +151,7 @@
         '<div class="pd-header-detail-row"><span class="pd-header-value">' + riskBadge + '</span></div>' +
         '<div class="pd-header-detail-row"><span class="pd-header-label">Admission date</span><span class="pd-header-value">' + admissionStr + '</span></div>' +
         plannedDischargeHtml +
+        actualDischargeHtml +
       '</div>' +
       '<div class="pd-header-card-right">' +
         '<div class="pd-header-block"><span class="pd-header-label">Diagnosis</span><div class="pd-header-detail-lines">' + diagnosisLines + '</div></div>' +
@@ -169,14 +182,28 @@
     var dischargeBtn = $('patient-discharge-btn');
     if (dischargeBtn) dischargeBtn.addEventListener('click', function () {
       if (!_client) return;
-      if (window.AppModal && AppModal.confirm) {
-        AppModal.confirm('Discharge Patient', 'Are you sure you want to discharge <strong>' + esc(_client.name) + '</strong>?', function () {
-          AppDB.dischargeClient(_client.id).then(function () {
-            if (window.CareTrack) window.CareTrack.toast('Patient discharged');
-            window.CareTrack.refreshData();
-            window.CareTrack.navigate('patients');
-          });
-        }, 'Discharge');
+      var today = new Date();
+      var todayStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+      var html = '<div class="modal-card"><h3 class="modal-title">Discharge Patient</h3>' +
+        '<p>Discharging <strong>' + esc(_client.name) + '</strong>. Enter the actual discharge date (required).</p>' +
+        '<div class="fg" style="margin:16px 0"><label>Actual discharge date (required)</label><input id="discharge-actual-date" type="date" class="fi" value="' + esc(todayStr) + '"></div>' +
+        '<div class="modal-actions"><button type="button" class="btn btn-ghost" id="discharge-cancel">Cancel</button><button type="button" class="btn" id="discharge-submit">Discharge</button></div></div>';
+      if (window.AppModal && AppModal.open) {
+        AppModal.open(html, {
+          onReady: function () {
+            document.getElementById('discharge-cancel').addEventListener('click', AppModal.close);
+            document.getElementById('discharge-submit').addEventListener('click', function () {
+              var actualDate = (document.getElementById('discharge-actual-date') || {}).value || '';
+              if (!actualDate.trim()) { if (window.CareTrack) window.CareTrack.toast('Actual discharge date is required'); return; }
+              AppModal.close();
+              AppDB.dischargeClient(_client.id, actualDate.trim()).then(function () {
+                if (window.CareTrack) window.CareTrack.toast('Patient discharged');
+                window.CareTrack.refreshData();
+                window.CareTrack.navigate('patients');
+              });
+            });
+          }
+        });
       }
     });
     var addReportBtn = $('pd-add-report-btn');
@@ -210,6 +237,7 @@
       fgs('ep-gender', 'Gender', ['', 'Male', 'Female', 'Other'], c.gender) +
       multiselectFg('ep-diag', 'Initial diagnosis') +
       fgv('ep-planned-discharge', 'Planned Discharge Date', 'date', c.plannedDischargeDate) +
+      fgv('ep-discharge-date', 'Actual Discharge Date (required when discharged)', 'date', c.dischargeDate) +
       fgv('ep-legal', 'Legal Status', 'text', c.legalStatus) +
       fgv('ep-emergency', 'Emergency Contact', 'text', c.emergencyContact) +
       fgv('ep-consent', 'Consent', 'text', c.consent) +
@@ -253,6 +281,7 @@
           var data = {
             name: v('ep-name'), dob: v('ep-dob'), gender: v('ep-gender'),
             plannedDischargeDate: v('ep-planned-discharge') || null,
+            dischargeDate: v('ep-discharge-date') || null,
             legalStatus: v('ep-legal'), emergencyContact: v('ep-emergency'), consent: v('ep-consent'),
             ward: v('ep-ward'), roomNumber: v('ep-room'), currentRisk: v('ep-risk'),
             diagnoses: diagnoses,
@@ -261,6 +290,7 @@
             assignedTherapist: assignedDoctors[0] || ''
           };
           if (!data.name) { window.CareTrack.toast('Name required'); return; }
+          if ((_client.status || '') === 'discharged' && !data.dischargeDate) { window.CareTrack.toast('Actual discharge date is required for discharged patients'); return; }
           if (window.CareTrack && window.CareTrack.setButtonLoading) window.CareTrack.setButtonLoading(epSave, true, 'Saving...');
           AppDB.updateClient(_client.id, data).then(function () {
             if (window.AppPush && AppPush.triggerPush) {
